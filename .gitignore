@@ -1,0 +1,31 @@
+node_modules/
+dist/
+build/
+.turbo/
+coverage/
+*.log
+.env
+.env.local
+.env.*.local
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.tsbuildinfo
+.pnpm-store/
+
+# Local infra volumes
+infrastructure/docker/data/
+
+# Web
+apps/web/dist/
+
+# Playwright
+apps/web/test-results/
+apps/web/playwright-report/
+
+# Claude Code local configuration (hooks/skills/settings are personal-machine tooling,
+# not shared project source)
+.claude/
+CLAUDE.local.md

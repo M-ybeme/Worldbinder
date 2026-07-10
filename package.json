@@ -1,0 +1,29 @@
+{
+  "name": "worldbinder",
+  "private": true,
+  "version": "0.1.0",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "packageManager": "pnpm@11.11.0",
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "test:integration": "turbo run test:integration",
+    "test:e2e": "turbo run test:e2e",
+    "db:migrate": "pnpm --filter @worldbinder/api db:migrate",
+    "db:seed": "pnpm --filter @worldbinder/api db:seed",
+    "format": "prettier --write .",
+    "infra:up": "docker compose --env-file .env -f infrastructure/compose/docker-compose.yml up -d",
+    "infra:down": "docker compose --env-file .env -f infrastructure/compose/docker-compose.yml down",
+    "infra:logs": "docker compose --env-file .env -f infrastructure/compose/docker-compose.yml logs -f"
+  },
+  "devDependencies": {
+    "turbo": "^2.5.0",
+    "typescript": "^5.7.0",
+    "prettier": "^3.4.0"
+  }
+}

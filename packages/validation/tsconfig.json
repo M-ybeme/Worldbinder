@@ -1,0 +1,4 @@
+{
+  "extends": "@worldbinder/tsconfig/node-library.json",
+  "include": ["src"]
+}

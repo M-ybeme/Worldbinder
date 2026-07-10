@@ -1,0 +1,63 @@
+:root {
+  color-scheme: light dark;
+  --wb-bg: #ffffff;
+  --wb-fg: #16171d;
+  --wb-border: #e5e4e7;
+  --wb-accent: #6d28d9;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --wb-bg: #16171d;
+    --wb-fg: #f3f4f6;
+    --wb-border: #2e303a;
+    --wb-accent: #c084fc;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
+  background: var(--wb-bg);
+  color: var(--wb-fg);
+}
+
+.app-shell {
+  min-height: 100svh;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-shell__header {
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--wb-border);
+}
+
+.app-shell__brand {
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--wb-accent);
+}
+
+.app-shell__main {
+  padding: 2rem 1.5rem;
+  max-width: 640px;
+}
+
+.status-panel {
+  margin-top: 1.5rem;
+}
+
+.status-panel dt {
+  font-size: 0.85rem;
+  opacity: 0.7;
+}
+
+.status-panel dd {
+  margin: 0.25rem 0 0;
+  font-variant-numeric: tabular-nums;
+}

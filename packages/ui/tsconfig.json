@@ -1,0 +1,4 @@
+{
+  "extends": "@worldbinder/tsconfig/react-library.json",
+  "include": ["src"]
+}
