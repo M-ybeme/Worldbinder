@@ -15,6 +15,13 @@
       "when": 1783726500927,
       "tag": "0001_high_legion",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1783737301912,
+      "tag": "0002_reflective_nomad",
+      "breakpoints": true
     }
   ]
 }

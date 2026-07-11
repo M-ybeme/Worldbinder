@@ -1,20 +1,25 @@
+import { useQuery } from '@tanstack/react-query'
 import { FormMessage } from '@worldbinder/ui'
-import { useEffect, useRef } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-import { useVerifyEmail } from '../hooks/useAuthMutations'
+import * as authApi from '../api/authApi'
 
 export function VerifyEmailPage() {
   const [searchParams] = useSearchParams()
   const token = searchParams.get('token')
-  const verifyEmail = useVerifyEmail()
-  const submitted = useRef(false)
 
-  useEffect(() => {
-    if (token && !submitted.current) {
-      submitted.current = true
-      verifyEmail.mutate({ token })
-    }
-  }, [token, verifyEmail])
+  // useQuery, not useMutation+useEffect: a mutation fired from an effect is
+  // tied to that render's observer, and StrictMode's dev-only double-mount
+  // discards the first one mid-flight, leaving the (current) second observer
+  // stuck pending forever since nothing ever calls .mutate() on it. A query
+  // keyed on the token is exactly the "run once on mount" primitive React
+  // Query is designed for — both mount attempts share the same cache entry.
+  const verifyEmail = useQuery({
+    queryKey: ['auth', 'verify-email', token],
+    queryFn: () => authApi.verifyEmail({ token: token as string }),
+    enabled: !!token,
+    retry: false,
+    staleTime: Infinity,
+  })
 
   if (!token) {
     return (

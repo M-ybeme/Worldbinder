@@ -10,7 +10,10 @@ export function App() {
         <span className="app-shell__brand">Worldbinder</span>
         <nav className="app-shell__nav">
           {status === 'authenticated' ? (
-            <Link to="/account/profile">Account</Link>
+            <>
+              <Link to="/app/campaigns">Campaigns</Link>
+              <Link to="/account/profile">Account</Link>
+            </>
           ) : (
             <Link to="/login">Log in</Link>
           )}

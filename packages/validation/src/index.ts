@@ -1,5 +1,5 @@
-export { cursorPaginationQuerySchema } from './pagination.js';
-export type { CursorPaginationQuery } from './pagination.js';
+export { cursorPaginationQuerySchema } from './pagination.js'
+export type { CursorPaginationQuery } from './pagination.js'
 
 export {
   changePasswordSchema,
@@ -11,7 +11,7 @@ export {
   resendVerificationSchema,
   resetPasswordSchema,
   verifyEmailSchema,
-} from './auth.js';
+} from './auth.js'
 export type {
   ChangePasswordInput,
   ForgotPasswordInput,
@@ -20,4 +20,19 @@ export type {
   ResendVerificationInput,
   ResetPasswordInput,
   VerifyEmailInput,
-} from './auth.js';
+} from './auth.js'
+
+export { createCampaignSchema, updateCampaignSchema } from './campaigns.js'
+export type { CreateCampaignInput, UpdateCampaignInput } from './campaigns.js'
+
+export {
+  acceptInvitationSchema,
+  assignableCampaignRoleSchema,
+  inviteMemberSchema,
+  updateMemberRoleSchema,
+} from './membership.js'
+export type {
+  AcceptInvitationInput,
+  InviteMemberInput,
+  UpdateMemberRoleInput,
+} from './membership.js'

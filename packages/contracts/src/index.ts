@@ -1,2 +1,9 @@
 export type { HealthCheckResponse, HealthIndicatorResult } from './health.js'
 export type { AuthTokenResponse, AuthUser, SessionSummary } from './auth.js'
+export type { CampaignDetail, CampaignRole, CampaignStatus, CampaignSummary } from './campaigns.js'
+export type {
+  CampaignInvitationSummary,
+  CampaignMemberStatus,
+  InvitationPreview,
+  MembershipSummary,
+} from './membership.js'

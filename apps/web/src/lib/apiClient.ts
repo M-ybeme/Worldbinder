@@ -74,4 +74,6 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
 export const apiGet = <T>(path: string): Promise<T> => apiRequest<T>(path)
 export const apiPost = <T>(path: string, body?: unknown, options?: Pick<RequestOptions, 'skipAuthRetry'>): Promise<T> =>
   apiRequest<T>(path, { method: 'POST', body, ...options })
+export const apiPatch = <T>(path: string, body?: unknown): Promise<T> =>
+  apiRequest<T>(path, { method: 'PATCH', body })
 export const apiDelete = <T>(path: string): Promise<T> => apiRequest<T>(path, { method: 'DELETE' })

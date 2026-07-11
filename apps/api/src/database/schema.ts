@@ -1,9 +1,11 @@
 import {
+  boolean,
   jsonb,
   pgEnum,
   pgTable,
   text,
   timestamp,
+  unique,
   uuid,
 } from 'drizzle-orm/pg-core';
 
@@ -98,6 +100,94 @@ export const securityEvents = pgTable('security_events', {
   type: securityEventTypeEnum('type').notNull(),
   metadataJson: jsonb('metadata_json'),
   ipHash: text('ip_hash'),
+  createdAt: timestamp('created_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+export const campaignStatusEnum = pgEnum('campaign_status', [
+  'draft',
+  'active',
+  'hiatus',
+  'completed',
+  'archived',
+]);
+
+export const campaignRoleEnum = pgEnum('campaign_role', [
+  'owner',
+  'gm',
+  'editor',
+  'player',
+  'viewer',
+]);
+
+export const campaignMemberStatusEnum = pgEnum('campaign_member_status', [
+  'active',
+  'removed',
+]);
+
+export const campaigns = pgTable('campaigns', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  ownerUserId: uuid('owner_user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  slug: text('slug').notNull().unique(),
+  description: text('description'),
+  systemName: text('system_name'),
+  status: campaignStatusEnum('status').notNull().default('draft'),
+  coverAttachmentId: uuid('cover_attachment_id'),
+  currentWorldDateJson: jsonb('current_world_date_json'),
+  settingsJson: jsonb('settings_json'),
+  createdAt: timestamp('created_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  archivedAt: timestamp('archived_at', { withTimezone: true }),
+  deletedAt: timestamp('deleted_at', { withTimezone: true }),
+});
+
+export const campaignMembers = pgTable(
+  'campaign_members',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    campaignId: uuid('campaign_id')
+      .notNull()
+      .references(() => campaigns.id, { onDelete: 'cascade' }),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    role: campaignRoleEnum('role').notNull(),
+    editorSecretAccess: boolean('editor_secret_access')
+      .notNull()
+      .default(false),
+    status: campaignMemberStatusEnum('status').notNull().default('active'),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [unique().on(table.campaignId, table.userId)],
+);
+
+export const campaignInvitations = pgTable('campaign_invitations', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  campaignId: uuid('campaign_id')
+    .notNull()
+    .references(() => campaigns.id, { onDelete: 'cascade' }),
+  email: text('email').notNull(),
+  role: campaignRoleEnum('role').notNull(),
+  tokenHash: text('token_hash').notNull(),
+  invitedByUserId: uuid('invited_by_user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  acceptedAt: timestamp('accepted_at', { withTimezone: true }),
+  revokedAt: timestamp('revoked_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true })
     .notNull()
     .defaultNow(),

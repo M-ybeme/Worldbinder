@@ -11,6 +11,13 @@ import { LoginPage } from '../features/auth/pages/LoginPage'
 import { RegisterPage } from '../features/auth/pages/RegisterPage'
 import { ResetPasswordPage } from '../features/auth/pages/ResetPasswordPage'
 import { VerifyEmailPage } from '../features/auth/pages/VerifyEmailPage'
+import { CampaignLayout } from '../features/campaigns/components/CampaignLayout'
+import { RequireCampaignMembership } from '../features/campaigns/components/RequireCampaignMembership'
+import { CampaignOverviewPage } from '../features/campaigns/pages/CampaignOverviewPage'
+import { CampaignSettingsPage } from '../features/campaigns/pages/CampaignSettingsPage'
+import { CampaignsListPage } from '../features/campaigns/pages/CampaignsListPage'
+import { AcceptInvitationPage } from '../features/membership/pages/AcceptInvitationPage'
+import { MembersPage } from '../features/membership/pages/MembersPage'
 import { StatusPage } from '../features/system-status/pages/StatusPage'
 
 export const router = createBrowserRouter([
@@ -43,6 +50,32 @@ export const router = createBrowserRouter([
             ],
           },
         ],
+      },
+      {
+        path: 'app',
+        element: <RequireAuth />,
+        children: [
+          { path: 'campaigns', element: <CampaignsListPage /> },
+          {
+            path: 'campaign/:campaignId',
+            element: <RequireCampaignMembership />,
+            children: [
+              {
+                element: <CampaignLayout />,
+                children: [
+                  { index: true, element: <CampaignOverviewPage /> },
+                  { path: 'settings', element: <CampaignSettingsPage /> },
+                  { path: 'members', element: <MembersPage /> },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+      {
+        path: 'accept-invitation/:token',
+        element: <RequireAuth />,
+        children: [{ index: true, element: <AcceptInvitationPage /> }],
       },
     ],
   },

@@ -1,7 +1,6 @@
 import type { INestApplication } from '@nestjs/common';
 import { Test, type TestingModule } from '@nestjs/testing';
 import type { AuthTokenResponse, SessionSummary } from '@worldbinder/contracts';
-import { randomUUID } from 'node:crypto';
 import { eq, like } from 'drizzle-orm';
 import type Redis from 'ioredis';
 import request from 'supertest';
@@ -14,12 +13,15 @@ import {
   emailVerificationTokens,
   passwordResetTokens,
   securityEvents,
-  userCredentials,
   users,
 } from '../src/database/schema';
 import { REDIS } from '../src/redis/redis.module';
+import {
+  createVerifiedUser as createVerifiedUserFixture,
+  findEmailToken,
+  uniqueEmail as uniqueEmailFixture,
+} from './helpers/test-users';
 
-const MAILPIT_URL = 'http://127.0.0.1:8025';
 const TEST_EMAIL_DOMAIN = 'auth-integration-test.local';
 
 interface MessageResponse {
@@ -31,40 +33,7 @@ function body<T>(res: request.Response): T {
 }
 
 function uniqueEmail(label: string): string {
-  return `${label}-${randomUUID()}@${TEST_EMAIL_DOMAIN}`;
-}
-
-async function findEmailToken(
-  email: string,
-  subjectIncludes: string,
-): Promise<string> {
-  for (let attempt = 0; attempt < 20; attempt += 1) {
-    const listRes = await fetch(`${MAILPIT_URL}/api/v1/messages`);
-    const list = (await listRes.json()) as {
-      messages: { ID: string; Subject: string; To: { Address: string }[] }[];
-    };
-
-    const match = list.messages.find(
-      (m) =>
-        m.Subject.includes(subjectIncludes) &&
-        m.To.some((t) => t.Address === email),
-    );
-
-    if (match) {
-      const detailRes = await fetch(
-        `${MAILPIT_URL}/api/v1/message/${match.ID}`,
-      );
-      const detail = (await detailRes.json()) as { HTML: string };
-      const tokenMatch = /token=([^&"\s]+)/.exec(detail.HTML);
-      if (tokenMatch) return decodeURIComponent(tokenMatch[1]);
-    }
-
-    await new Promise((resolve) => setTimeout(resolve, 150));
-  }
-
-  throw new Error(
-    `No "${subjectIncludes}" email found for ${email} after polling Mailpit`,
-  );
+  return uniqueEmailFixture(TEST_EMAIL_DOMAIN, label);
 }
 
 describe('Auth (e2e)', () => {
@@ -102,22 +71,12 @@ describe('Auth (e2e)', () => {
   async function createVerifiedUser(
     password: string,
   ): Promise<{ id: string; email: string }> {
-    const email = uniqueEmail('fixture');
-    const [user] = await db
-      .insert(users)
-      .values({
-        email,
-        displayName: 'Fixture User',
-        emailVerifiedAt: new Date(),
-      })
-      .returning({ id: users.id, email: users.email });
-    if (!user) throw new Error('failed to create fixture user');
-
-    await db.insert(userCredentials).values({
-      userId: user.id,
-      passwordHash: await passwords.hash(password),
-    });
-    return user;
+    return createVerifiedUserFixture(
+      db,
+      passwords,
+      password,
+      uniqueEmail('fixture'),
+    );
   }
 
   describe('full lifecycle: register -> verify -> login -> refresh -> reuse -> logout', () => {

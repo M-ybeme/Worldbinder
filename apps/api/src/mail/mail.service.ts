@@ -50,6 +50,21 @@ export class MailService implements OnModuleDestroy {
     );
   }
 
+  async sendCampaignInviteEmail(
+    to: string,
+    token: string,
+    campaignName: string,
+  ): Promise<void> {
+    const link = `${this.env.values.FRONTEND_URL}/accept-invitation/${encodeURIComponent(token)}`;
+    await this.send(
+      to,
+      `You've been invited to "${campaignName}" on Worldbinder`,
+      `<p>You've been invited to join the campaign "${campaignName}" on Worldbinder.</p>
+       <p><a href="${link}">${link}</a></p>
+       <p>This invitation expires in 7 days.</p>`,
+    );
+  }
+
   private async send(to: string, subject: string, html: string): Promise<void> {
     try {
       await this.transporter.sendMail({

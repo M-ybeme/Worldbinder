@@ -6,10 +6,12 @@ import {
 import cookieParser from 'cookie-parser';
 import { LoggerModule } from 'nestjs-pino';
 import { AuthModule } from './auth/auth.module';
+import { CampaignsModule } from './campaigns/campaigns.module';
 import { ConfigModule } from './config/config.module';
 import { EnvService } from './config/env.service';
 import { DatabaseModule } from './database/database.module';
 import { HealthModule } from './health/health.module';
+import { MembershipModule } from './membership/membership.module';
 import { RedisModule } from './redis/redis.module';
 
 @Module({
@@ -33,6 +35,8 @@ import { RedisModule } from './redis/redis.module';
     RedisModule,
     HealthModule,
     AuthModule,
+    MembershipModule,
+    CampaignsModule,
   ],
 })
 export class AppModule implements NestModule {
