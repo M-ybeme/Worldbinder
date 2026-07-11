@@ -1,5 +1,17 @@
 import { z } from 'zod'
 
+/**
+ * `z.coerce.boolean()` uses JS's `Boolean(str)` semantics, so the string
+ * "false" (non-empty) coerces to `true` — a classic footgun for env vars.
+ * This parses the literal strings instead.
+ */
+function booleanString(defaultValue: 'true' | 'false') {
+  return z
+    .enum(['true', 'false'])
+    .default(defaultValue)
+    .transform((value) => value === 'true')
+}
+
 export function loadEnv<T extends z.ZodTypeAny>(
   schema: T,
   source: NodeJS.ProcessEnv = process.env,
@@ -22,6 +34,22 @@ export const apiEnvSchema = z.object({
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
   DATABASE_URL: z.string().url(),
   REDIS_URL: z.string().url(),
+
+  // Auth
+  JWT_ACCESS_SECRET: z.string().min(32, 'JWT_ACCESS_SECRET must be at least 32 characters'),
+  JWT_ACCESS_TTL_SECONDS: z.coerce.number().int().positive().default(900),
+  REFRESH_TOKEN_TTL_DAYS: z.coerce.number().int().positive().default(30),
+  REFRESH_COOKIE_NAME: z.string().default('worldbinder_refresh'),
+  COOKIE_DOMAIN: z.string().optional(),
+  FRONTEND_URL: z.string().url().default('http://localhost:5173'),
+
+  // Mail (Mailpit locally; a real provider's SMTP credentials in production)
+  SMTP_HOST: z.string().default('127.0.0.1'),
+  SMTP_PORT: z.coerce.number().int().positive().default(1025),
+  SMTP_SECURE: booleanString('false'),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASSWORD: z.string().optional(),
+  MAIL_FROM: z.string().default('Worldbinder <noreply@worldbinder.local>'),
 })
 
 export type ApiEnv = z.infer<typeof apiEnvSchema>

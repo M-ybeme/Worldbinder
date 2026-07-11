@@ -120,8 +120,9 @@ A release is considered feature-complete when users can perform the following wo
 - Mark threads foreshadowed, active, dormant, resolved, or abandoned
 - See the last session in which a thread appeared
 - Surface neglected threads on the dashboard
+- Browse plot threads as a player, read-only, with player-facing status labels and only authorized fields/connections (see §5.4 and §9.8)
 - Search across the campaign
-- Browse in-world history on a timeline
+- Browse in-world history on a timeline, nested under World rather than a top-level nav destination (see §10.1)
 - Browse locations on uploaded maps
 
 ### 3.6 Ownership workflows
@@ -177,7 +178,7 @@ An editor can maintain encyclopedia data, sessions, and plot threads but does no
 
 ### 5.4 Player
 
-A player can view information revealed to them. Optional campaign settings may allow player-created notes, comments, or private observations, but this is not required for the first beta.
+A player can view information revealed to them, including read-only access to plot threads that are visible to them — the thread list stays in player navigation, but the API returns only authorized public fields (public title, public summary, player-facing status, known connected entities, revealed session history, public resolution) and omits GM-only fields (GM notes, planned developments, hidden relationships, unrevealed entities, internal status values) entirely rather than nulling them out. See `docs/planning/ui-ux.md` for the full breakdown and §9.8 for the status projection this implies. Optional campaign settings may allow player-created notes, comments, or private observations, but this is not required for the first beta.
 
 ### 5.5 Viewer
 
@@ -185,19 +186,20 @@ A viewer has read-only access to campaign-visible information. This role is usef
 
 ### 5.6 Permission matrix
 
-| Capability | Owner | GM | Editor | Player | Viewer |
-|---|---:|---:|---:|---:|---:|
-| Edit campaign settings | Yes | Limited | No | No | No |
-| Invite/remove members | Yes | Yes | No | No | No |
-| Change roles | Yes | Limited | No | No | No |
-| View GM-only content | Yes | Yes | Configurable | No | No |
-| Create/edit entities | Yes | Yes | Yes | Optional | No |
-| Create/edit sessions | Yes | Yes | Yes | No | No |
-| Manage plot threads | Yes | Yes | Yes | No | No |
-| Reveal content | Yes | Yes | No | No | No |
-| Export campaign | Yes | Yes | Configurable | No | No |
-| Archive campaign | Yes | Yes | No | No | No |
-| Delete campaign | Yes | No | No | No | No |
+| Capability             | Owner |      GM |       Editor |   Player | Viewer |
+| ---------------------- | ----: | ------: | -----------: | -------: | -----: |
+| Edit campaign settings |   Yes | Limited |           No |       No |     No |
+| Invite/remove members  |   Yes |     Yes |           No |       No |     No |
+| Change roles           |   Yes | Limited |           No |       No |     No |
+| View GM-only content   |   Yes |     Yes | Configurable |       No |     No |
+| Create/edit entities   |   Yes |     Yes |          Yes | Optional |     No |
+| Create/edit sessions   |   Yes |     Yes |          Yes |       No |     No |
+| Manage plot threads    |   Yes |     Yes |          Yes |       No |     No |
+| View visible threads   |   Yes |     Yes |          Yes |      Yes |    Yes |
+| Reveal content         |   Yes |     Yes |           No |       No |     No |
+| Export campaign        |   Yes |     Yes | Configurable |       No |     No |
+| Archive campaign       |   Yes |     Yes |           No |       No |     No |
+| Delete campaign        |   Yes |      No |           No |       No |     No |
 
 The API must make the final permission decision. UI checks exist only to improve usability.
 
@@ -679,7 +681,7 @@ Join tables:
 - `updated_at`
 - `deleted_at`
 
-Statuses:
+Statuses (internal, GM-facing — stored as-is):
 
 - Foreshadowed
 - Active
@@ -693,6 +695,20 @@ Importance:
 - Standard
 - Major
 - Critical
+
+#### Player-facing status projection
+
+The internal status above is deliberately GM-facing — "Abandoned" or "Dormant" can itself be a spoiler. Players see a smaller, projected set of labels computed from the internal status rather than the raw enum value:
+
+| Internal (GM) | Player-facing                                    |
+| ------------- | ------------------------------------------------ |
+| Foreshadowed  | Open                                             |
+| Active        | Ongoing                                          |
+| Dormant       | Ongoing                                          |
+| Resolved      | Completed                                        |
+| Abandoned     | Open, or hidden entirely depending on visibility |
+
+For v1 this is a pure API-layer projection (no extra column) computed from `status` at response time — not a separate stored field. Revisit only if a GM needs the player-facing label to diverge from a mechanical function of internal status (e.g. resolving a thread internally while it still reads "Ongoing" to players for a specific number of sessions).
 
 ### 9.9 Visibility grants
 
@@ -826,6 +842,8 @@ Join tables connect events to entities, sessions, and tags.
 
 ### 10.1 Route tree
 
+Primary navigation is deliberately small: **Dashboard, World, Sessions, Threads, Maps, Search**, consistent for both GM and player roles (role differences affect content and actions, not navigation structure — see `docs/planning/ui-ux.md`). Timeline and the relationship graph are views _within_ World rather than separate top-level destinations, since they're different lenses on the same campaign knowledge rather than a distinct content domain.
+
 ```text
 /login
 /register
@@ -835,9 +853,11 @@ Join tables connect events to entities, sessions, and tags.
 
 /app/campaigns
 /app/campaign/:campaignId/dashboard
-/app/campaign/:campaignId/encyclopedia
-/app/campaign/:campaignId/encyclopedia/new
-/app/campaign/:campaignId/encyclopedia/:entityId
+/app/campaign/:campaignId/world
+/app/campaign/:campaignId/world/new
+/app/campaign/:campaignId/world/:entityId
+/app/campaign/:campaignId/world/timeline
+/app/campaign/:campaignId/world/relationships
 /app/campaign/:campaignId/sessions
 /app/campaign/:campaignId/sessions/:sessionId
 /app/campaign/:campaignId/threads
@@ -845,7 +865,6 @@ Join tables connect events to entities, sessions, and tags.
 /app/campaign/:campaignId/search
 /app/campaign/:campaignId/maps
 /app/campaign/:campaignId/maps/:mapId
-/app/campaign/:campaignId/timeline
 /app/campaign/:campaignId/members
 /app/campaign/:campaignId/settings
 /app/campaign/:campaignId/import-export
@@ -854,6 +873,8 @@ Join tables connect events to entities, sessions, and tags.
 /account/security
 /account/sessions
 ```
+
+Note: `/world` is the product-facing and route-facing name for what earlier sections of this document call the "encyclopedia." The underlying domain module (`apps/api/src/entities`, `entities` table, "Encyclopedia workflows" in §3.3) keeps its existing name — this rename is a navigation/URL decision, not a data-model rename.
 
 ### 10.2 State ownership
 
@@ -1778,7 +1799,7 @@ A backup is not considered valid until a restore has been tested.
 
 Each milestone must end in working software, passing tests, and updated documentation.
 
-## Milestone 0 — Foundation
+## Milestone 0 — Foundation [Done]
 
 ### Deliverables
 
@@ -1805,7 +1826,7 @@ Each milestone must end in working software, passing tests, and updated document
 
 ---
 
-## Milestone 1 — Authentication and Account Security
+## Milestone 1 — Authentication and Account Security [Done]
 
 ### Deliverables
 

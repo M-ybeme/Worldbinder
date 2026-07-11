@@ -1,0 +1,70 @@
+import { Injectable, type OnModuleDestroy } from '@nestjs/common';
+import { Logger } from 'nestjs-pino';
+import nodemailer, { type Transporter } from 'nodemailer';
+import { EnvService } from '../config/env.service';
+
+@Injectable()
+export class MailService implements OnModuleDestroy {
+  private readonly transporter: Transporter;
+
+  constructor(
+    private readonly env: EnvService,
+    private readonly logger: Logger,
+  ) {
+    this.transporter = nodemailer.createTransport({
+      host: this.env.values.SMTP_HOST,
+      port: this.env.values.SMTP_PORT,
+      secure: this.env.values.SMTP_SECURE,
+      // Mailpit (local dev/test) speaks plaintext SMTP only — this prevents
+      // nodemailer from ever attempting an opportunistic STARTTLS upgrade.
+      ignoreTLS: !this.env.values.SMTP_SECURE,
+      auth:
+        this.env.values.SMTP_USER && this.env.values.SMTP_PASSWORD
+          ? {
+              user: this.env.values.SMTP_USER,
+              pass: this.env.values.SMTP_PASSWORD,
+            }
+          : undefined,
+    });
+  }
+
+  async sendVerificationEmail(to: string, token: string): Promise<void> {
+    const link = `${this.env.values.FRONTEND_URL}/verify-email?token=${encodeURIComponent(token)}`;
+    await this.send(
+      to,
+      'Verify your Worldbinder account',
+      `<p>Confirm your email address to finish creating your Worldbinder account.</p>
+       <p><a href="${link}">${link}</a></p>
+       <p>This link expires in 24 hours.</p>`,
+    );
+  }
+
+  async sendPasswordResetEmail(to: string, token: string): Promise<void> {
+    const link = `${this.env.values.FRONTEND_URL}/reset-password?token=${encodeURIComponent(token)}`;
+    await this.send(
+      to,
+      'Reset your Worldbinder password',
+      `<p>A password reset was requested for this account. If this wasn't you, ignore this email.</p>
+       <p><a href="${link}">${link}</a></p>
+       <p>This link expires in 1 hour.</p>`,
+    );
+  }
+
+  private async send(to: string, subject: string, html: string): Promise<void> {
+    try {
+      await this.transporter.sendMail({
+        from: this.env.values.MAIL_FROM,
+        to,
+        subject,
+        html,
+      });
+    } catch (error) {
+      this.logger.error({ err: error, to, subject }, 'Failed to send email');
+      throw error;
+    }
+  }
+
+  onModuleDestroy(): void {
+    this.transporter.close();
+  }
+}

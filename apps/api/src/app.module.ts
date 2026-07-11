@@ -1,5 +1,11 @@
-import { Module } from '@nestjs/common';
+import {
+  type MiddlewareConsumer,
+  Module,
+  type NestModule,
+} from '@nestjs/common';
+import cookieParser from 'cookie-parser';
 import { LoggerModule } from 'nestjs-pino';
+import { AuthModule } from './auth/auth.module';
 import { ConfigModule } from './config/config.module';
 import { EnvService } from './config/env.service';
 import { DatabaseModule } from './database/database.module';
@@ -26,6 +32,14 @@ import { RedisModule } from './redis/redis.module';
     DatabaseModule,
     RedisModule,
     HealthModule,
+    AuthModule,
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  // Registered here (not just in main.ts) so it also applies when the Nest
+  // testing module builds the app directly via createNestApplication(),
+  // bypassing main.ts's bootstrap() entirely.
+  configure(consumer: MiddlewareConsumer): void {
+    consumer.apply(cookieParser()).forRoutes('*');
+  }
+}

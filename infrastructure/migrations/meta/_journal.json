@@ -8,6 +8,13 @@
       "when": 1783722761460,
       "tag": "0000_ambiguous_wrecker",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1783726500927,
+      "tag": "0001_high_legion",
+      "breakpoints": true
     }
   ]
 }

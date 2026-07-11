@@ -23,23 +23,29 @@ pnpm db:seed
 pnpm dev                   # starts web (5173), api (3000), and worker together
 ```
 
-Open http://localhost:5173 — the dashboard shows live API connectivity via the API's `/health` endpoint.
+Open http://localhost:5173 — the dashboard shows live API connectivity via the API's `/health` endpoint. `pnpm db:seed` creates a demo login: `gm@worldbinder.local` / `worldbinder-demo`.
 
 Stop local infrastructure with `pnpm infra:down`.
 
+## Authentication
+
+Login uses a short-lived JWT access token (kept in memory on the frontend, never `localStorage`) plus a rotating, `HttpOnly`-cookie refresh token backed by a `user_sessions` row — see [ADR-0007](docs/decisions/0007-access-token-plus-rotating-refresh-sessions.md) for the full design and reuse-detection behavior.
+
+Locally, registration/verification/password-reset emails go to Mailpit, not a real inbox — view them at http://localhost:8025.
+
 ## Common commands
 
-| Command | Purpose |
-|---|---|
-| `pnpm dev` | Run all apps in dev/watch mode via Turborepo |
-| `pnpm build` | Build all apps and packages |
-| `pnpm lint` | Lint all apps and packages |
-| `pnpm typecheck` | Type-check all apps and packages |
-| `pnpm test` | Run unit tests |
-| `pnpm test:integration` | Run backend integration tests against a real Postgres/Redis (requires `pnpm infra:up`) |
-| `pnpm db:migrate` | Apply pending Drizzle migrations |
-| `pnpm db:seed` | Insert local development seed data |
-| `pnpm infra:up` / `pnpm infra:down` | Start/stop local Docker Compose infrastructure |
+| Command                             | Purpose                                                                                |
+| ----------------------------------- | -------------------------------------------------------------------------------------- |
+| `pnpm dev`                          | Run all apps in dev/watch mode via Turborepo                                           |
+| `pnpm build`                        | Build all apps and packages                                                            |
+| `pnpm lint`                         | Lint all apps and packages                                                             |
+| `pnpm typecheck`                    | Type-check all apps and packages                                                       |
+| `pnpm test`                         | Run unit tests                                                                         |
+| `pnpm test:integration`             | Run backend integration tests against a real Postgres/Redis (requires `pnpm infra:up`) |
+| `pnpm db:migrate`                   | Apply pending Drizzle migrations                                                       |
+| `pnpm db:seed`                      | Insert local development seed data                                                     |
+| `pnpm infra:up` / `pnpm infra:down` | Start/stop local Docker Compose infrastructure                                         |
 
 ## Repository layout
 
