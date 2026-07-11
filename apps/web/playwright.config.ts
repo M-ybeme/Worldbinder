@@ -11,6 +11,10 @@ import { defineConfig, devices } from '@playwright/test'
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: false,
+  // Specs share real IP-scoped rate limits and a real Mailpit inbox against
+  // the same dev backend — same reasoning as the Jest e2e suite's
+  // `maxWorkers: 1` (see apps/api/test/jest-e2e.json).
+  workers: 1,
   retries: 0,
   // This scenario is one long sequential flow (two accounts, several page
   // loads, two Mailpit polling loops up to ~20s each) rather than a single

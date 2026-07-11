@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import type { CampaignRole } from '@worldbinder/contracts';
 
 const MANAGEMENT_ROLES: CampaignRole[] = ['owner', 'gm'];
+const ENTITY_EDITOR_ROLES: CampaignRole[] = ['owner', 'gm', 'editor'];
 
 /**
  * Encodes the §5.6 permission matrix. Route-level access is a coarse
@@ -62,5 +63,14 @@ export class CampaignPolicyService {
 
   canDeleteCampaign(role: CampaignRole): boolean {
     return role === 'owner';
+  }
+
+  /**
+   * Player is "Optional" for entity editing per §5.6, but v1 has no
+   * per-campaign toggle for that yet — Player/Viewer stay read-only until
+   * one is designed.
+   */
+  canEditEntities(role: CampaignRole): boolean {
+    return ENTITY_EDITOR_ROLES.includes(role);
   }
 }

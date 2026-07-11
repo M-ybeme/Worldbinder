@@ -1858,7 +1858,7 @@ Each milestone must end in working software, passing tests, and updated document
 
 ---
 
-## Milestone 2 — Campaign Tenancy and Membership
+## Milestone 2 — Campaign Tenancy and Membership [Done]
 
 ### Deliverables
 
@@ -1886,7 +1886,7 @@ Each milestone must end in working software, passing tests, and updated document
 
 ---
 
-## Milestone 3 — Encyclopedia Core
+## Milestone 3 — Encyclopedia Core [Done]
 
 ### Deliverables
 

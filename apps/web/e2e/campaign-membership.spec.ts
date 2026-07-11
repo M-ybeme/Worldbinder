@@ -1,4 +1,5 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test } from '@playwright/test'
+import { clearRateLimits, findEmailLink, login, registerAndVerify } from './helpers'
 
 /**
  * Covers roadmap §20.4 "critical Playwright suite" items 1-4 (register and
@@ -12,58 +13,7 @@ import { expect, test, type Page } from '@playwright/test'
  * started by this config — see playwright.config.ts).
  */
 
-const MAILPIT_URL = 'http://127.0.0.1:8025'
-const PASSWORD = 'verify-pass-123456'
-
-interface MailpitMessage {
-  ID: string
-  Subject: string
-  To: { Address: string }[]
-}
-
-async function findEmailLink(email: string, subjectIncludes: string): Promise<string> {
-  for (let attempt = 0; attempt < 40; attempt += 1) {
-    const list = (await (await fetch(`${MAILPIT_URL}/api/v1/messages`)).json()) as {
-      messages: MailpitMessage[]
-    }
-    const match = list.messages.find(
-      (m) => m.Subject.includes(subjectIncludes) && m.To.some((t) => t.Address === email),
-    )
-    if (match) {
-      const detail = (await (
-        await fetch(`${MAILPIT_URL}/api/v1/message/${match.ID}`)
-      ).json()) as { HTML: string }
-      const hrefMatch = /href="([^"]+)"/.exec(detail.HTML)
-      if (hrefMatch) return hrefMatch[1]
-    }
-    await new Promise((resolve) => setTimeout(resolve, 500))
-  }
-  throw new Error(`No "${subjectIncludes}" email found for ${email} after polling Mailpit`)
-}
-
-async function registerAndVerify(page: Page, email: string, displayName: string): Promise<void> {
-  await page.goto('/register')
-  await page.getByLabel('Display name').fill(displayName)
-  await page.getByLabel('Email').fill(email)
-  await page.getByLabel('Password', { exact: true }).fill(PASSWORD)
-  await page.getByRole('button', { name: 'Create account' }).click()
-  await expect(page.getByRole('heading', { name: 'Check your inbox' })).toBeVisible()
-
-  const verifyLink = await findEmailLink(email, 'Verify')
-  await page.goto(verifyLink)
-  // Generous timeout: the first real navigation to a route in a fresh dev
-  // session can trigger Vite's on-demand dependency (re-)optimization,
-  // which reloads the page mid-flight — the API call itself is fast.
-  await expect(page.getByText(/email verified/i)).toBeVisible({ timeout: 20_000 })
-}
-
-async function login(page: Page, email: string): Promise<void> {
-  await page.goto('/login')
-  await page.getByLabel('Email').fill(email)
-  await page.getByLabel('Password', { exact: true }).fill(PASSWORD)
-  await page.getByRole('button', { name: 'Log in' }).click()
-  await expect(page).toHaveURL(/\/account\/profile$/)
-}
+test.beforeEach(() => clearRateLimits())
 
 test('campaign lifecycle: create, invite, accept, switch, role change, remove, archive/restore, tenant isolation', async ({
   browser,
@@ -117,16 +67,16 @@ test('campaign lifecycle: create, invite, accept, switch, role change, remove, a
   })
 
   await test.step('campaign switcher lists the newly joined campaign', async () => {
-    await expect(
-      inviteePage.locator('select[aria-label="Switch campaign"]'),
-    ).toContainText(campaignName)
+    await expect(inviteePage.locator('select[aria-label="Switch campaign"]')).toContainText(
+      campaignName,
+    )
   })
 
   await test.step('permission-aware nav: editor does not see Settings', async () => {
     await expect(inviteePage.getByRole('link', { name: 'Settings' })).toHaveCount(0)
   })
 
-  await test.step('owner changes the invitee\'s role to viewer', async () => {
+  await test.step("owner changes the invitee's role to viewer", async () => {
     await ownerPage.reload()
     const roleSelect = ownerPage.getByLabel('Role for PW Invitee')
     await roleSelect.selectOption('viewer')

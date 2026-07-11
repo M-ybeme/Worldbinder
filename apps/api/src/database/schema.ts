@@ -192,3 +192,91 @@ export const campaignInvitations = pgTable('campaign_invitations', {
     .notNull()
     .defaultNow(),
 });
+
+export const entityTypeEnum = pgEnum('entity_type', [
+  'character',
+  'location',
+  'faction',
+  'organization',
+  'item',
+  'deity',
+  'creature',
+  'event',
+  'quest',
+  'lore',
+  'custom',
+]);
+
+export const entityStatusEnum = pgEnum('entity_status', [
+  'draft',
+  'published',
+  'archived',
+]);
+
+export const entityVisibilityEnum = pgEnum('entity_visibility', [
+  'public',
+  'gm_only',
+]);
+
+export const entities = pgTable(
+  'entities',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    campaignId: uuid('campaign_id')
+      .notNull()
+      .references(() => campaigns.id, { onDelete: 'cascade' }),
+    entityType: entityTypeEnum('entity_type').notNull(),
+    name: text('name').notNull(),
+    slug: text('slug').notNull(),
+    summary: text('summary'),
+    aliasesJson: jsonb('aliases_json'),
+    publicContentJson: jsonb('public_content_json'),
+    gmContentJson: jsonb('gm_content_json'),
+    metadataJson: jsonb('metadata_json'),
+    status: entityStatusEnum('status').notNull().default('draft'),
+    visibility: entityVisibilityEnum('visibility').notNull().default('public'),
+    createdByUserId: uuid('created_by_user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    updatedByUserId: uuid('updated_by_user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    deletedAt: timestamp('deleted_at', { withTimezone: true }),
+  },
+  (table) => [unique().on(table.campaignId, table.slug)],
+);
+
+export const tags = pgTable(
+  'tags',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    campaignId: uuid('campaign_id')
+      .notNull()
+      .references(() => campaigns.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    normalizedName: text('normalized_name').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [unique().on(table.campaignId, table.normalizedName)],
+);
+
+export const entityTags = pgTable(
+  'entity_tags',
+  {
+    entityId: uuid('entity_id')
+      .notNull()
+      .references(() => entities.id, { onDelete: 'cascade' }),
+    tagId: uuid('tag_id')
+      .notNull()
+      .references(() => tags.id, { onDelete: 'cascade' }),
+  },
+  (table) => [unique().on(table.entityId, table.tagId)],
+);

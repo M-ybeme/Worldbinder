@@ -76,4 +76,12 @@ describe('CampaignPolicyService', () => {
     expect(policy.canArchiveCampaign('gm')).toBe(true);
     expect(policy.canArchiveCampaign('editor')).toBe(false);
   });
+
+  it('allows owner, GM, and editor to edit entities but not player or viewer', () => {
+    expect(policy.canEditEntities('owner')).toBe(true);
+    expect(policy.canEditEntities('gm')).toBe(true);
+    expect(policy.canEditEntities('editor')).toBe(true);
+    expect(policy.canEditEntities('player')).toBe(false);
+    expect(policy.canEditEntities('viewer')).toBe(false);
+  });
 });

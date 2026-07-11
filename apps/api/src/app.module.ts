@@ -10,6 +10,7 @@ import { CampaignsModule } from './campaigns/campaigns.module';
 import { ConfigModule } from './config/config.module';
 import { EnvService } from './config/env.service';
 import { DatabaseModule } from './database/database.module';
+import { EntitiesModule } from './entities/entities.module';
 import { HealthModule } from './health/health.module';
 import { MembershipModule } from './membership/membership.module';
 import { RedisModule } from './redis/redis.module';
@@ -37,6 +38,7 @@ import { RedisModule } from './redis/redis.module';
     AuthModule,
     MembershipModule,
     CampaignsModule,
+    EntitiesModule,
   ],
 })
 export class AppModule implements NestModule {

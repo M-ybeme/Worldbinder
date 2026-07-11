@@ -1,8 +1,8 @@
-import { reactConfig } from '@worldbinder/eslint-config/react';
-import globals from 'globals';
+import { reactConfig } from '@worldbinder/eslint-config/react'
+import globals from 'globals'
 
 export default [
-  { ignores: ['dist'] },
+  { ignores: ['dist', 'playwright-report', 'test-results'] },
   ...reactConfig,
   {
     files: ['**/*.{ts,tsx}'],
@@ -11,4 +11,4 @@ export default [
       globals: globals.browser,
     },
   },
-];
+]

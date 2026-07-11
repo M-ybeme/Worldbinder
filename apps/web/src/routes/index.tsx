@@ -16,6 +16,9 @@ import { RequireCampaignMembership } from '../features/campaigns/components/Requ
 import { CampaignOverviewPage } from '../features/campaigns/pages/CampaignOverviewPage'
 import { CampaignSettingsPage } from '../features/campaigns/pages/CampaignSettingsPage'
 import { CampaignsListPage } from '../features/campaigns/pages/CampaignsListPage'
+import { EntityDetailPage } from '../features/entities/pages/EntityDetailPage'
+import { EntityFormPage } from '../features/entities/pages/EntityFormPage'
+import { WorldListPage } from '../features/entities/pages/WorldListPage'
 import { AcceptInvitationPage } from '../features/membership/pages/AcceptInvitationPage'
 import { MembersPage } from '../features/membership/pages/MembersPage'
 import { StatusPage } from '../features/system-status/pages/StatusPage'
@@ -66,6 +69,10 @@ export const router = createBrowserRouter([
                   { index: true, element: <CampaignOverviewPage /> },
                   { path: 'settings', element: <CampaignSettingsPage /> },
                   { path: 'members', element: <MembersPage /> },
+                  { path: 'world', element: <WorldListPage /> },
+                  { path: 'world/new', element: <EntityFormPage /> },
+                  { path: 'world/:entityId', element: <EntityDetailPage /> },
+                  { path: 'world/:entityId/edit', element: <EntityFormPage /> },
                 ],
               },
             ],

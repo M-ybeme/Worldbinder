@@ -19,10 +19,9 @@ export function CampaignLayout() {
         <NavLink to={`/app/campaign/${campaign.id}`} end>
           Overview
         </NavLink>
+        <NavLink to={`/app/campaign/${campaign.id}/world`}>World</NavLink>
         <NavLink to={`/app/campaign/${campaign.id}/members`}>Members</NavLink>
-        {canManage && (
-          <NavLink to={`/app/campaign/${campaign.id}/settings`}>Settings</NavLink>
-        )}
+        {canManage && <NavLink to={`/app/campaign/${campaign.id}/settings`}>Settings</NavLink>}
       </nav>
       <Outlet context={{ campaign }} />
     </div>

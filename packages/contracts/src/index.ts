@@ -7,3 +7,11 @@ export type {
   InvitationPreview,
   MembershipSummary,
 } from './membership.js'
+export type {
+  EntityDetail,
+  EntityStatus,
+  EntitySummary,
+  EntityType,
+  EntityVisibility,
+  TiptapDoc,
+} from './entities.js'

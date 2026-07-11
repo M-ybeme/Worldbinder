@@ -36,3 +36,20 @@ export type {
   InviteMemberInput,
   UpdateMemberRoleInput,
 } from './membership.js'
+
+export {
+  createEntitySchema,
+  entityStatusSchema,
+  entityTypeSchema,
+  entityVisibilitySchema,
+  listEntitiesQuerySchema,
+  tiptapDocSchema,
+  updateEntitySchema,
+} from './entities.js'
+export type {
+  CreateEntityInput,
+  EntityType,
+  ListEntitiesQuery,
+  TiptapDoc,
+  UpdateEntityInput,
+} from './entities.js'
