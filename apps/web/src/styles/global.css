@@ -257,6 +257,13 @@ body {
   line-height: 1;
 }
 
+.wb-entity-multi-picker__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.5rem;
+}
+
 .wb-entity-mention {
   padding: 0.05rem 0.35rem;
   border-radius: 4px;

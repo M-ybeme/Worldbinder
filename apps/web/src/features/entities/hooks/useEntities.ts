@@ -59,3 +59,11 @@ export function useDeleteEntityMutation(campaignId: string) {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: entitiesListKey(campaignId) }),
   })
 }
+
+export function useEntitySessionsQuery(campaignId: string, entityId: string | undefined) {
+  return useQuery({
+    queryKey: [...entityQueryKey(campaignId, entityId ?? ''), 'sessions'],
+    queryFn: () => entitiesApi.getEntitySessions(campaignId, entityId as string),
+    enabled: !!entityId,
+  })
+}

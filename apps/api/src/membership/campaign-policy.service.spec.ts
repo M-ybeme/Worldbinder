@@ -85,6 +85,22 @@ describe('CampaignPolicyService', () => {
     expect(policy.canEditEntities('viewer')).toBe(false);
   });
 
+  it('allows owner, GM, and editor to edit sessions but not player or viewer', () => {
+    expect(policy.canEditSessions('owner')).toBe(true);
+    expect(policy.canEditSessions('gm')).toBe(true);
+    expect(policy.canEditSessions('editor')).toBe(true);
+    expect(policy.canEditSessions('player')).toBe(false);
+    expect(policy.canEditSessions('viewer')).toBe(false);
+  });
+
+  it('restricts revealing content to owner and GM, unlike session/entity editing', () => {
+    expect(policy.canRevealContent('owner')).toBe(true);
+    expect(policy.canRevealContent('gm')).toBe(true);
+    expect(policy.canRevealContent('editor')).toBe(false);
+    expect(policy.canRevealContent('player')).toBe(false);
+    expect(policy.canRevealContent('viewer')).toBe(false);
+  });
+
   describe('canViewVisibility', () => {
     it('lets everyone see public content regardless of role', () => {
       for (const role of [

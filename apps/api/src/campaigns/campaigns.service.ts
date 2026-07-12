@@ -4,7 +4,11 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import type { CampaignDetail, CampaignSummary } from '@worldbinder/contracts';
+import type {
+  CampaignDetail,
+  CampaignSummary,
+  WorldDate,
+} from '@worldbinder/contracts';
 import type {
   CreateCampaignInput,
   UpdateCampaignInput,
@@ -231,10 +235,7 @@ export class CampaignsService {
     return {
       ...this.toSummary(campaign, role),
       settingsJson: campaign.settingsJson as Record<string, unknown> | null,
-      currentWorldDateJson: campaign.currentWorldDateJson as Record<
-        string,
-        unknown
-      > | null,
+      currentWorldDateJson: campaign.currentWorldDateJson as WorldDate | null,
     };
   }
 }

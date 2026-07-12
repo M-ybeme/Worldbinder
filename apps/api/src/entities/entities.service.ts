@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import type {
   Backlink,
+  CampaignSessionSummary,
   EntityDetail,
   EntityRelationshipView,
   EntitySummary,
@@ -24,6 +25,7 @@ import { entities, entityTags, tags } from '../database/schema';
 import { CampaignPolicyService } from '../membership/campaign-policy.service';
 import type { CampaignMembership } from '../membership/guards/campaign-membership.guard';
 import { RelationshipsService } from '../relationships/relationships.service';
+import { SessionsService } from '../sessions/sessions.service';
 import { WikiLinksService } from './wiki-links.service';
 
 type EntityRow = typeof entities.$inferSelect;
@@ -35,6 +37,7 @@ export class EntitiesService {
     private readonly policy: CampaignPolicyService,
     private readonly relationships: RelationshipsService,
     private readonly wikiLinks: WikiLinksService,
+    private readonly sessions: SessionsService,
   ) {}
 
   async create(
@@ -180,6 +183,15 @@ export class EntitiesService {
   ): Promise<Backlink[]> {
     await this.requireVisibleEntity(campaignId, entityId, membership);
     return this.wikiLinks.backlinks(campaignId, entityId, membership);
+  }
+
+  async getSessionAppearances(
+    campaignId: string,
+    entityId: string,
+    membership: CampaignMembership,
+  ): Promise<CampaignSessionSummary[]> {
+    await this.requireVisibleEntity(campaignId, entityId, membership);
+    return this.sessions.listForEntity(campaignId, entityId, membership);
   }
 
   async update(

@@ -1931,7 +1931,7 @@ Each milestone must end in working software, passing tests, and updated document
 
 ---
 
-## Milestone 5 — Sessions
+## Milestone 5 — Sessions [Done]
 
 ### Deliverables
 

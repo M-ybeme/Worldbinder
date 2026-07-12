@@ -1,6 +1,9 @@
 export { cursorPaginationQuerySchema } from './pagination.js'
 export type { CursorPaginationQuery } from './pagination.js'
 
+export { worldDateSchema } from './calendar.js'
+export type { WorldDate } from './calendar.js'
+
 export {
   changePasswordSchema,
   emailSchema,
@@ -64,3 +67,18 @@ export type {
   CreateRelationshipTypeInput,
   UpdateRelationshipInput,
 } from './relationships.js'
+
+export {
+  completeSessionSchema,
+  createSessionSchema,
+  revealEntitySchema,
+  sessionStatusSchema,
+  updateSessionSchema,
+} from './sessions.js'
+export type {
+  CompleteSessionInput,
+  CreateSessionInput,
+  RevealEntityInput,
+  SessionStatus,
+  UpdateSessionInput,
+} from './sessions.js'

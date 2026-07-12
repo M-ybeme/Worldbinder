@@ -74,6 +74,19 @@ export class CampaignPolicyService {
     return ENTITY_EDITOR_ROLES.includes(role);
   }
 
+  /** Same actor set as `canEditEntities` (§5.6's "Create/edit sessions" row)
+   * — kept as its own method since it's a distinct capability the matrix
+   * could diverge on later, not because the logic differs today. */
+  canEditSessions(role: CampaignRole): boolean {
+    return ENTITY_EDITOR_ROLES.includes(role);
+  }
+
+  /** "Reveal content" is owner/GM only per §5.6 — unlike editing sessions
+   * or entities, an editor cannot flip a secret to public. */
+  canRevealContent(role: CampaignRole): boolean {
+    return MANAGEMENT_ROLES.includes(role);
+  }
+
   /**
    * Shared two-tier visibility check (ADR-0009): `public` is visible to
    * every member, `gm_only` follows the same GM-content rule as entities.

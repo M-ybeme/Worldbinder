@@ -1,3 +1,5 @@
+import type { WorldDate } from './calendar.js'
+
 export type CampaignStatus = 'draft' | 'active' | 'hiatus' | 'completed' | 'archived'
 
 export type CampaignRole = 'owner' | 'gm' | 'editor' | 'player' | 'viewer'
@@ -17,5 +19,5 @@ export interface CampaignSummary {
 
 export interface CampaignDetail extends CampaignSummary {
   settingsJson: Record<string, unknown> | null
-  currentWorldDateJson: Record<string, unknown> | null
+  currentWorldDateJson: WorldDate | null
 }

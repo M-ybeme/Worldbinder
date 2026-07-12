@@ -3,7 +3,11 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useCampaignOutletContext } from '../../campaigns/hooks/useCampaignContext'
 import { RelatedContentPanel } from '../../relationships/components/RelatedContentPanel'
 import { RichTextEditor } from '../components/RichTextEditor'
-import { useDeleteEntityMutation, useEntityQuery } from '../hooks/useEntities'
+import {
+  useDeleteEntityMutation,
+  useEntityQuery,
+  useEntitySessionsQuery,
+} from '../hooks/useEntities'
 import { clearDraft } from '../lib/draftDb'
 
 const MANAGEMENT_ROLES = new Set(['owner', 'gm', 'editor'])
@@ -14,6 +18,7 @@ export function EntityDetailPage() {
   const navigate = useNavigate()
 
   const entityQuery = useEntityQuery(campaign.id, entityId)
+  const sessionAppearancesQuery = useEntitySessionsQuery(campaign.id, entityId)
   const deleteEntity = useDeleteEntityMutation(campaign.id)
   const canManage = MANAGEMENT_ROLES.has(campaign.role)
 
@@ -93,6 +98,22 @@ export function EntityDetailPage() {
         canEdit={canManage}
         campaignRole={campaign.role}
       />
+
+      <div className="wb-related-content">
+        <div>
+          <h2>Session Appearances</h2>
+          {sessionAppearancesQuery.data?.length === 0 && <p>No session appearances yet.</p>}
+          <ul className="wb-relationship-list">
+            {sessionAppearancesQuery.data?.map((session) => (
+              <li key={session.id}>
+                <Link to={`/app/campaign/${campaign.id}/sessions/${session.id}`}>
+                  Session {session.sessionNumber}: {session.title}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
     </section>
   )
 }

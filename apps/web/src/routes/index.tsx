@@ -21,6 +21,9 @@ import { EntityFormPage } from '../features/entities/pages/EntityFormPage'
 import { WorldListPage } from '../features/entities/pages/WorldListPage'
 import { AcceptInvitationPage } from '../features/membership/pages/AcceptInvitationPage'
 import { MembersPage } from '../features/membership/pages/MembersPage'
+import { SessionDetailPage } from '../features/sessions/pages/SessionDetailPage'
+import { SessionFormPage } from '../features/sessions/pages/SessionFormPage'
+import { SessionListPage } from '../features/sessions/pages/SessionListPage'
 import { StatusPage } from '../features/system-status/pages/StatusPage'
 
 export const router = createBrowserRouter([
@@ -73,6 +76,10 @@ export const router = createBrowserRouter([
                   { path: 'world/new', element: <EntityFormPage /> },
                   { path: 'world/:entityId', element: <EntityDetailPage /> },
                   { path: 'world/:entityId/edit', element: <EntityFormPage /> },
+                  { path: 'sessions', element: <SessionListPage /> },
+                  { path: 'sessions/new', element: <SessionFormPage /> },
+                  { path: 'sessions/:sessionId', element: <SessionDetailPage /> },
+                  { path: 'sessions/:sessionId/edit', element: <SessionFormPage /> },
                 ],
               },
             ],

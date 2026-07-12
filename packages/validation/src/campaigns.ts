@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { worldDateSchema } from './calendar.js'
 
 export const campaignNameSchema = z.string().trim().min(1).max(150)
 
@@ -14,6 +15,6 @@ export const updateCampaignSchema = z.object({
   description: z.string().trim().max(5000).nullable().optional(),
   systemName: z.string().trim().max(150).nullable().optional(),
   settingsJson: z.record(z.string(), z.unknown()).nullable().optional(),
-  currentWorldDateJson: z.record(z.string(), z.unknown()).nullable().optional(),
+  currentWorldDateJson: worldDateSchema.nullable().optional(),
 })
 export type UpdateCampaignInput = z.infer<typeof updateCampaignSchema>

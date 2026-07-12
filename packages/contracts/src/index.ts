@@ -21,3 +21,10 @@ export type {
   RelationshipType,
 } from './relationships.js'
 export type { Backlink, WikiLinkSection } from './wiki-links.js'
+export type { WorldDate } from './calendar.js'
+export type {
+  CampaignSessionDetail,
+  CampaignSessionSummary,
+  SessionParticipant,
+  SessionStatus,
+} from './sessions.js'

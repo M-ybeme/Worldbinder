@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm';
 import {
   boolean,
+  integer,
   jsonb,
   pgEnum,
   pgTable,
@@ -371,3 +372,110 @@ export const entityWikiLinks = pgTable('entity_wiki_links', {
     .notNull()
     .defaultNow(),
 });
+
+export const sessionStatusEnum = pgEnum('session_status', [
+  'planned',
+  'in_progress',
+  'completed',
+  'cancelled',
+]);
+
+export const sessions = pgTable(
+  'sessions',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    campaignId: uuid('campaign_id')
+      .notNull()
+      .references(() => campaigns.id, { onDelete: 'cascade' }),
+    sessionNumber: integer('session_number').notNull(),
+    title: text('title').notNull(),
+    status: sessionStatusEnum('status').notNull().default('planned'),
+    scheduledAt: timestamp('scheduled_at', { withTimezone: true }),
+    playedAt: timestamp('played_at', { withTimezone: true }),
+    worldStartDateJson: jsonb('world_start_date_json'),
+    worldEndDateJson: jsonb('world_end_date_json'),
+    // GM prep notes — never player-facing regardless of session status,
+    // gated the same way as gmContentJson.
+    plannedContentJson: jsonb('planned_content_json'),
+    recapContentJson: jsonb('recap_content_json'),
+    gmContentJson: jsonb('gm_content_json'),
+    visibility: entityVisibilityEnum('visibility').notNull().default('public'),
+    createdByUserId: uuid('created_by_user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    updatedByUserId: uuid('updated_by_user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    deletedAt: timestamp('deleted_at', { withTimezone: true }),
+  },
+  (table) => [unique().on(table.campaignId, table.sessionNumber)],
+);
+
+export const sessionParticipants = pgTable(
+  'session_participants',
+  {
+    sessionId: uuid('session_id')
+      .notNull()
+      .references(() => sessions.id, { onDelete: 'cascade' }),
+    campaignMemberId: uuid('campaign_member_id')
+      .notNull()
+      .references(() => campaignMembers.id, { onDelete: 'cascade' }),
+  },
+  (table) => [unique().on(table.sessionId, table.campaignMemberId)],
+);
+
+export const sessionEntities = pgTable(
+  'session_entities',
+  {
+    sessionId: uuid('session_id')
+      .notNull()
+      .references(() => sessions.id, { onDelete: 'cascade' }),
+    entityId: uuid('entity_id')
+      .notNull()
+      .references(() => entities.id, { onDelete: 'cascade' }),
+  },
+  (table) => [unique().on(table.sessionId, table.entityId)],
+);
+
+// Kept as its own table rather than folded into session_entities (which
+// featured entity of any type belongs in) — locations "visited" are a
+// distinct concept the UI renders separately (roadmap §9.7/ui-ux.md).
+// Service layer enforces entityType === 'location' on insert.
+export const sessionLocations = pgTable(
+  'session_locations',
+  {
+    sessionId: uuid('session_id')
+      .notNull()
+      .references(() => sessions.id, { onDelete: 'cascade' }),
+    entityId: uuid('entity_id')
+      .notNull()
+      .references(() => entities.id, { onDelete: 'cascade' }),
+  },
+  (table) => [unique().on(table.sessionId, table.entityId)],
+);
+
+// An audit trail ("this entity's visibility flipped from gm_only to public
+// during this session"), not just a link — hence its own id/timestamp
+// rather than the composite-key shape of the other session join tables.
+export const sessionReveals = pgTable(
+  'session_reveals',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    sessionId: uuid('session_id')
+      .notNull()
+      .references(() => sessions.id, { onDelete: 'cascade' }),
+    entityId: uuid('entity_id')
+      .notNull()
+      .references(() => entities.id, { onDelete: 'cascade' }),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [unique().on(table.sessionId, table.entityId)],
+);

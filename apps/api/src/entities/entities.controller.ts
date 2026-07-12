@@ -14,6 +14,7 @@ import {
 } from '@nestjs/common';
 import type {
   Backlink,
+  CampaignSessionSummary,
   EntityDetail,
   EntityRelationshipView,
   EntitySummary,
@@ -91,6 +92,19 @@ export class EntitiesController {
     @CurrentMembership() membership: CampaignMembership,
   ): Promise<Backlink[]> {
     return this.entities.getBacklinks(campaignId, entityId, membership);
+  }
+
+  @Get(':entityId/sessions')
+  getSessionAppearances(
+    @Param('campaignId', ParseUUIDPipe) campaignId: string,
+    @Param('entityId', ParseUUIDPipe) entityId: string,
+    @CurrentMembership() membership: CampaignMembership,
+  ): Promise<CampaignSessionSummary[]> {
+    return this.entities.getSessionAppearances(
+      campaignId,
+      entityId,
+      membership,
+    );
   }
 
   @RequireCampaignRole('owner', 'gm', 'editor')

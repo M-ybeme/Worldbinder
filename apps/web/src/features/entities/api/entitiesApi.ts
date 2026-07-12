@@ -1,4 +1,4 @@
-import type { EntityDetail, EntitySummary } from '@worldbinder/contracts'
+import type { CampaignSessionSummary, EntityDetail, EntitySummary } from '@worldbinder/contracts'
 import type {
   CreateEntityInput,
   ListEntitiesQuery,
@@ -34,3 +34,9 @@ export const updateEntity = (
 
 export const deleteEntity = (campaignId: string, entityId: string): Promise<{ message: string }> =>
   apiDelete(`/campaigns/${campaignId}/entities/${entityId}`)
+
+export const getEntitySessions = (
+  campaignId: string,
+  entityId: string,
+): Promise<CampaignSessionSummary[]> =>
+  apiGet(`/campaigns/${campaignId}/entities/${entityId}/sessions`)
