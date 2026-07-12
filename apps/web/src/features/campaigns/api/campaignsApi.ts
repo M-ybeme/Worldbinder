@@ -1,4 +1,4 @@
-import type { CampaignDetail, CampaignSummary } from '@worldbinder/contracts'
+import type { CampaignDashboard, CampaignDetail, CampaignSummary } from '@worldbinder/contracts'
 import type { CreateCampaignInput, UpdateCampaignInput } from '@worldbinder/validation'
 import { apiDelete, apiGet, apiPatch, apiPost } from '../../../lib/apiClient'
 
@@ -10,8 +10,13 @@ export const createCampaign = (input: CreateCampaignInput): Promise<CampaignDeta
 export const getCampaign = (campaignId: string): Promise<CampaignDetail> =>
   apiGet(`/campaigns/${campaignId}`)
 
-export const updateCampaign = (campaignId: string, input: UpdateCampaignInput): Promise<CampaignDetail> =>
-  apiPatch(`/campaigns/${campaignId}`, input)
+export const getCampaignDashboard = (campaignId: string): Promise<CampaignDashboard> =>
+  apiGet(`/campaigns/${campaignId}/dashboard`)
+
+export const updateCampaign = (
+  campaignId: string,
+  input: UpdateCampaignInput,
+): Promise<CampaignDetail> => apiPatch(`/campaigns/${campaignId}`, input)
 
 export const archiveCampaign = (campaignId: string): Promise<{ message: string }> =>
   apiPost(`/campaigns/${campaignId}/archive`)

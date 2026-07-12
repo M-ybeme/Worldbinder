@@ -1,6 +1,13 @@
 export type { HealthCheckResponse, HealthIndicatorResult } from './health.js'
 export type { AuthTokenResponse, AuthUser, SessionSummary } from './auth.js'
-export type { CampaignDetail, CampaignRole, CampaignStatus, CampaignSummary } from './campaigns.js'
+export type {
+  CampaignActivityItem,
+  CampaignDashboard,
+  CampaignDetail,
+  CampaignRole,
+  CampaignStatus,
+  CampaignSummary,
+} from './campaigns.js'
 export type {
   CampaignInvitationSummary,
   CampaignMemberStatus,
@@ -28,3 +35,12 @@ export type {
   SessionParticipant,
   SessionStatus,
 } from './sessions.js'
+export type {
+  PlayerFacingThreadStatus,
+  PlotThreadDetail,
+  PlotThreadImportance,
+  PlotThreadSessionAction,
+  PlotThreadSessionEntry,
+  PlotThreadStatus,
+  PlotThreadSummary,
+} from './plot-threads.js'

@@ -8,16 +8,17 @@ import type {
   CampaignSessionSummary,
   EntityDetail,
   EntityRelationshipView,
+  PlotThreadDetail,
   RelationshipType,
 } from '@worldbinder/contracts';
-import { like } from 'drizzle-orm';
+import { eq, like } from 'drizzle-orm';
 import type Redis from 'ioredis';
 import request from 'supertest';
 import type { App } from 'supertest/types';
 import { AppModule } from '../src/app.module';
 import { PasswordService } from '../src/auth/password.service';
 import { DRIZZLE, type Database } from '../src/database/database.module';
-import { campaignMembers, users } from '../src/database/schema';
+import { campaignMembers, plotThreads, users } from '../src/database/schema';
 import { REDIS } from '../src/redis/redis.module';
 import { createVerifiedUser, uniqueEmail } from './helpers/test-users';
 
@@ -126,6 +127,18 @@ describe('Sessions (e2e)', () => {
       .set('Authorization', `Bearer ${token}`)
       .send({ title: 'Fixture Session', ...overrides });
     return body<CampaignSessionDetail>(res);
+  }
+
+  async function createThread(
+    token: string,
+    campaignId: string,
+    overrides: Record<string, unknown> = {},
+  ): Promise<PlotThreadDetail> {
+    const res = await request(app.getHttpServer())
+      .post(`/campaigns/${campaignId}/plot-threads`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ title: 'Fixture Thread', ...overrides });
+    return body<PlotThreadDetail>(res);
   }
 
   describe('create, get, update, delete', () => {
@@ -536,6 +549,154 @@ describe('Sessions (e2e)', () => {
       expect(
         body<CampaignSessionSummary[]>(playerAppearances).map((s) => s.id),
       ).toEqual([publicSession.id]);
+    });
+  });
+
+  describe('plot thread linking', () => {
+    it('introducing sets introducedSessionId only on the first link; resolving sets status + resolvedSessionId; any action bumps lastReferencedSessionId to the newer session', async () => {
+      const { token, campaign } = await createOwnerAndCampaign(
+        'Thread Linking Campaign',
+      );
+      const thread = await createThread(token, campaign.id);
+
+      const session1 = await createSession(token, campaign.id, {
+        title: 'Session One',
+        plotThreadChanges: [{ plotThreadId: thread.id, action: 'introduced' }],
+      });
+
+      let [row] = await db
+        .select()
+        .from(plotThreads)
+        .where(eq(plotThreads.id, thread.id));
+      expect(row?.introducedSessionId).toBe(session1.id);
+      expect(row?.lastReferencedSessionId).toBe(session1.id);
+
+      // Re-introducing on a later session must not move introducedSessionId,
+      // but does bump lastReferencedSessionId (a higher session number).
+      const session2 = await createSession(token, campaign.id, {
+        title: 'Session Two',
+        plotThreadChanges: [{ plotThreadId: thread.id, action: 'introduced' }],
+      });
+
+      [row] = await db
+        .select()
+        .from(plotThreads)
+        .where(eq(plotThreads.id, thread.id));
+      expect(row?.introducedSessionId).toBe(session1.id);
+      expect(row?.lastReferencedSessionId).toBe(session2.id);
+
+      const session3 = await createSession(token, campaign.id, {
+        title: 'Session Three',
+        plotThreadChanges: [{ plotThreadId: thread.id, action: 'resolved' }],
+      });
+
+      [row] = await db
+        .select()
+        .from(plotThreads)
+        .where(eq(plotThreads.id, thread.id));
+      expect(row?.status).toBe('resolved');
+      expect(row?.resolvedSessionId).toBe(session3.id);
+      expect(row?.lastReferencedSessionId).toBe(session3.id);
+
+      const detailRes = await request(app.getHttpServer())
+        .get(`/campaigns/${campaign.id}/plot-threads/${thread.id}`)
+        .set('Authorization', `Bearer ${token}`);
+      expect(body<PlotThreadDetail>(detailRes).sessions).toHaveLength(3);
+    });
+
+    it('unlinking a plot thread from a session does not retroactively clear lastReferencedSessionId (documented simplification)', async () => {
+      const { token, campaign } = await createOwnerAndCampaign(
+        'Thread Unlink Campaign',
+      );
+      const thread = await createThread(token, campaign.id);
+
+      const session = await createSession(token, campaign.id, {
+        title: 'Session One',
+        plotThreadChanges: [{ plotThreadId: thread.id, action: 'advanced' }],
+      });
+
+      let [row] = await db
+        .select()
+        .from(plotThreads)
+        .where(eq(plotThreads.id, thread.id));
+      expect(row?.lastReferencedSessionId).toBe(session.id);
+
+      await request(app.getHttpServer())
+        .patch(`/campaigns/${campaign.id}/sessions/${session.id}`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ updatedAt: session.updatedAt, plotThreadChanges: [] });
+
+      [row] = await db
+        .select()
+        .from(plotThreads)
+        .where(eq(plotThreads.id, thread.id));
+      expect(row?.lastReferencedSessionId).toBe(session.id);
+
+      const detailRes = await request(app.getHttpServer())
+        .get(`/campaigns/${campaign.id}/plot-threads/${thread.id}`)
+        .set('Authorization', `Bearer ${token}`);
+      expect(body<PlotThreadDetail>(detailRes).sessions).toEqual([]);
+    });
+
+    it('rejects linking a plot thread that belongs to another campaign', async () => {
+      const { token: tokenA, campaign: campaignA } =
+        await createOwnerAndCampaign('Cross-Campaign Thread Link A');
+      const { token: tokenB, campaign: campaignB } =
+        await createOwnerAndCampaign('Cross-Campaign Thread Link B');
+      const outsiderThread = await createThread(tokenB, campaignB.id);
+
+      const res = await request(app.getHttpServer())
+        .post(`/campaigns/${campaignA.id}/sessions`)
+        .set('Authorization', `Bearer ${tokenA}`)
+        .send({
+          title: 'Nope',
+          plotThreadChanges: [
+            { plotThreadId: outsiderThread.id, action: 'introduced' },
+          ],
+        });
+      expect(res.status).toBe(400);
+    });
+
+    it('a player only sees plotThreadChanges entries whose thread they can see', async () => {
+      const { token, campaign } = await createOwnerAndCampaign(
+        'Thread Link Visibility Campaign',
+      );
+      const player = await addMember(
+        campaign.id,
+        'thread-link-player',
+        'player',
+      );
+
+      const publicThread = await createThread(token, campaign.id, {
+        title: 'Public Thread',
+      });
+      const hiddenThread = await createThread(token, campaign.id, {
+        title: 'Hidden Thread',
+        visibility: 'gm_only',
+      });
+
+      const session = await createSession(token, campaign.id, {
+        title: 'Mixed Session',
+        plotThreadChanges: [
+          { plotThreadId: publicThread.id, action: 'introduced' },
+          { plotThreadId: hiddenThread.id, action: 'introduced' },
+        ],
+      });
+
+      const ownerView = await request(app.getHttpServer())
+        .get(`/campaigns/${campaign.id}/sessions/${session.id}`)
+        .set('Authorization', `Bearer ${token}`);
+      expect(
+        body<CampaignSessionDetail>(ownerView).plotThreadChanges,
+      ).toHaveLength(2);
+
+      const playerView = await request(app.getHttpServer())
+        .get(`/campaigns/${campaign.id}/sessions/${session.id}`)
+        .set('Authorization', `Bearer ${player.token}`);
+      const playerChanges =
+        body<CampaignSessionDetail>(playerView).plotThreadChanges;
+      expect(playerChanges).toHaveLength(1);
+      expect(playerChanges[0]?.plotThread.id).toBe(publicThread.id);
     });
   });
 });

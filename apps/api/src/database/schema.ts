@@ -479,3 +479,94 @@ export const sessionReveals = pgTable(
   },
   (table) => [unique().on(table.sessionId, table.entityId)],
 );
+
+export const plotThreadStatusEnum = pgEnum('plot_thread_status', [
+  'foreshadowed',
+  'active',
+  'dormant',
+  'resolved',
+  'abandoned',
+]);
+
+export const plotThreadImportanceEnum = pgEnum('plot_thread_importance', [
+  'minor',
+  'standard',
+  'major',
+  'critical',
+]);
+
+export const plotThreads = pgTable('plot_threads', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  campaignId: uuid('campaign_id')
+    .notNull()
+    .references(() => campaigns.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  summary: text('summary'),
+  publicContentJson: jsonb('public_content_json'),
+  gmContentJson: jsonb('gm_content_json'),
+  status: plotThreadStatusEnum('status').notNull().default('foreshadowed'),
+  importance: plotThreadImportanceEnum('importance')
+    .notNull()
+    .default('standard'),
+  visibility: entityVisibilityEnum('visibility').notNull().default('public'),
+  // Denormalized cache, not the source of truth — the full per-session
+  // timeline (with action) lives in session_plot_threads and is only
+  // joined on the thread detail view. These let the thread list and
+  // dashboard compute "last referenced"/dormancy without an N-row join.
+  introducedSessionId: uuid('introduced_session_id').references(
+    () => sessions.id,
+    { onDelete: 'set null' },
+  ),
+  lastReferencedSessionId: uuid('last_referenced_session_id').references(
+    () => sessions.id,
+    { onDelete: 'set null' },
+  ),
+  resolvedSessionId: uuid('resolved_session_id').references(() => sessions.id, {
+    onDelete: 'set null',
+  }),
+  createdByUserId: uuid('created_by_user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  updatedByUserId: uuid('updated_by_user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  createdAt: timestamp('created_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  deletedAt: timestamp('deleted_at', { withTimezone: true }),
+});
+
+export const plotThreadEntities = pgTable(
+  'plot_thread_entities',
+  {
+    plotThreadId: uuid('plot_thread_id')
+      .notNull()
+      .references(() => plotThreads.id, { onDelete: 'cascade' }),
+    entityId: uuid('entity_id')
+      .notNull()
+      .references(() => entities.id, { onDelete: 'cascade' }),
+  },
+  (table) => [unique().on(table.plotThreadId, table.entityId)],
+);
+
+export const plotThreadSessionActionEnum = pgEnum(
+  'plot_thread_session_action',
+  ['introduced', 'advanced', 'resolved'],
+);
+
+export const sessionPlotThreads = pgTable(
+  'session_plot_threads',
+  {
+    sessionId: uuid('session_id')
+      .notNull()
+      .references(() => sessions.id, { onDelete: 'cascade' }),
+    plotThreadId: uuid('plot_thread_id')
+      .notNull()
+      .references(() => plotThreads.id, { onDelete: 'cascade' }),
+    action: plotThreadSessionActionEnum('action').notNull(),
+  },
+  (table) => [unique().on(table.sessionId, table.plotThreadId)],
+);

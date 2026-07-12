@@ -10,6 +10,7 @@ import type {
   CampaignSessionDetail,
   CampaignSessionSummary,
   EntitySummary,
+  PlotThreadSessionAction,
   SessionParticipant,
   TiptapDoc,
   WorldDate,
@@ -17,6 +18,7 @@ import type {
 import type {
   CompleteSessionInput,
   CreateSessionInput,
+  PlotThreadChangeInput,
   UpdateSessionInput,
 } from '@worldbinder/validation';
 import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
@@ -25,15 +27,18 @@ import {
   campaignMembers,
   campaigns,
   entities,
+  plotThreads,
   sessionEntities,
   sessionLocations,
   sessionParticipants,
+  sessionPlotThreads,
   sessionReveals,
   sessions,
   users,
 } from '../database/schema';
 import { CampaignPolicyService } from '../membership/campaign-policy.service';
 import type { CampaignMembership } from '../membership/guards/campaign-membership.guard';
+import { PlotThreadsService } from '../plot-threads/plot-threads.service';
 
 type SessionRow = typeof sessions.$inferSelect;
 type EntityRow = typeof entities.$inferSelect;
@@ -43,6 +48,7 @@ export class SessionsService {
   constructor(
     @Inject(DRIZZLE) private readonly db: Database,
     private readonly policy: CampaignPolicyService,
+    private readonly plotThreads: PlotThreadsService,
   ) {}
 
   async create(
@@ -95,6 +101,15 @@ export class SessionsService {
           campaignId,
           row.id,
           input.locationEntityIds,
+        );
+      }
+      if (input.plotThreadChanges) {
+        await this.syncPlotThreadChanges(
+          tx,
+          campaignId,
+          row.id,
+          sessionNumber,
+          input.plotThreadChanges,
         );
       }
 
@@ -227,6 +242,15 @@ export class SessionsService {
           campaignId,
           sessionId,
           input.locationEntityIds,
+        );
+      }
+      if (input.plotThreadChanges !== undefined) {
+        await this.syncPlotThreadChanges(
+          tx,
+          campaignId,
+          sessionId,
+          existing.sessionNumber,
+          input.plotThreadChanges,
         );
       }
     });
@@ -541,6 +565,76 @@ export class SessionsService {
       .values(uniqueIds.map((entityId) => ({ sessionId, entityId })));
   }
 
+  /** Full-replace sync like the other session join tables, plus a diff
+   * against the *previous* set so `PlotThreadsService.applySessionLink`'s
+   * side effects (denormalized session-id fields, resolved status) only
+   * fire for links that are new or whose action changed — not re-applied
+   * on every unrelated session edit. */
+  private async syncPlotThreadChanges(
+    tx: Database,
+    campaignId: string,
+    sessionId: string,
+    sessionNumber: number,
+    changes: PlotThreadChangeInput[],
+  ): Promise<void> {
+    const existingRows = await tx
+      .select({
+        plotThreadId: sessionPlotThreads.plotThreadId,
+        action: sessionPlotThreads.action,
+      })
+      .from(sessionPlotThreads)
+      .where(eq(sessionPlotThreads.sessionId, sessionId));
+    const existingByThread = new Map<string, PlotThreadSessionAction>(
+      existingRows.map((row) => [row.plotThreadId, row.action]),
+    );
+
+    const uniqueChanges = dedupePlotThreadChanges(changes);
+
+    await tx
+      .delete(sessionPlotThreads)
+      .where(eq(sessionPlotThreads.sessionId, sessionId));
+
+    if (uniqueChanges.length > 0) {
+      const validRows = await tx
+        .select({ id: plotThreads.id })
+        .from(plotThreads)
+        .where(
+          and(
+            inArray(
+              plotThreads.id,
+              uniqueChanges.map((change) => change.plotThreadId),
+            ),
+            eq(plotThreads.campaignId, campaignId),
+            isNull(plotThreads.deletedAt),
+          ),
+        );
+      assertAllValid(
+        uniqueChanges.map((change) => change.plotThreadId),
+        validRows,
+        'One or more plot threads do not belong to this campaign',
+      );
+
+      await tx.insert(sessionPlotThreads).values(
+        uniqueChanges.map((change) => ({
+          sessionId,
+          plotThreadId: change.plotThreadId,
+          action: change.action,
+        })),
+      );
+    }
+
+    for (const change of uniqueChanges) {
+      if (existingByThread.get(change.plotThreadId) === change.action) continue;
+      await this.plotThreads.applySessionLink(
+        tx,
+        campaignId,
+        change.plotThreadId,
+        { id: sessionId, sessionNumber },
+        change.action,
+      );
+    }
+  }
+
   private async requireSession(
     campaignId: string,
     sessionId: string,
@@ -677,6 +771,12 @@ export class SessionsService {
       displayName: p.displayName,
     }));
 
+    const plotThreadChanges = await this.plotThreads.listForSession(
+      row.campaignId,
+      row.id,
+      membership,
+    );
+
     return {
       ...this.toSummary(row),
       recapContentJson: row.recapContentJson as TiptapDoc | null,
@@ -699,8 +799,21 @@ export class SessionsService {
         .map((r) => r.entity)
         .filter(canSeeEntity)
         .map(toEntitySummary),
+      plotThreadChanges,
     };
   }
+}
+
+/** Last write wins if the same plot thread appears twice in one submission. */
+function dedupePlotThreadChanges(
+  changes: PlotThreadChangeInput[],
+): PlotThreadChangeInput[] {
+  const map = new Map<string, PlotThreadSessionAction>();
+  for (const change of changes) map.set(change.plotThreadId, change.action);
+  return Array.from(map.entries()).map(([plotThreadId, action]) => ({
+    plotThreadId,
+    action,
+  }));
 }
 
 function assertAllValid(

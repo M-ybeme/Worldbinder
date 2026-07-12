@@ -48,6 +48,9 @@ export function SessionDetailPage() {
   }
 
   const session = sessionQuery.data
+  const threadsIntroduced = session.plotThreadChanges.filter((c) => c.action === 'introduced')
+  const threadsAdvanced = session.plotThreadChanges.filter((c) => c.action === 'advanced')
+  const threadsResolved = session.plotThreadChanges.filter((c) => c.action === 'resolved')
 
   async function handleComplete() {
     const worldEndDateJson =
@@ -208,6 +211,48 @@ export function SessionDetailPage() {
             {session.locations.map((e) => (
               <li key={e.id}>
                 <Link to={`/app/campaign/${campaign.id}/world/${e.id}`}>{e.name}</Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div>
+          <h2>Threads Created</h2>
+          {threadsIntroduced.length === 0 && <p>No threads introduced this session.</p>}
+          <ul className="wb-relationship-list">
+            {threadsIntroduced.map((change) => (
+              <li key={change.plotThread.id}>
+                <Link to={`/app/campaign/${campaign.id}/threads/${change.plotThread.id}`}>
+                  {change.plotThread.title}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div>
+          <h2>Threads Advanced</h2>
+          {threadsAdvanced.length === 0 && <p>No threads advanced this session.</p>}
+          <ul className="wb-relationship-list">
+            {threadsAdvanced.map((change) => (
+              <li key={change.plotThread.id}>
+                <Link to={`/app/campaign/${campaign.id}/threads/${change.plotThread.id}`}>
+                  {change.plotThread.title}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div>
+          <h2>Threads Resolved</h2>
+          {threadsResolved.length === 0 && <p>No threads resolved this session.</p>}
+          <ul className="wb-relationship-list">
+            {threadsResolved.map((change) => (
+              <li key={change.plotThread.id}>
+                <Link to={`/app/campaign/${campaign.id}/threads/${change.plotThread.id}`}>
+                  {change.plotThread.title}
+                </Link>
               </li>
             ))}
           </ul>

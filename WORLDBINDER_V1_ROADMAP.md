@@ -1953,7 +1953,7 @@ Each milestone must end in working software, passing tests, and updated document
 
 ---
 
-## Milestone 6 — Plot Threads and Dashboard
+## Milestone 6 — Plot Threads and Dashboard [Done]
 
 ### Deliverables
 

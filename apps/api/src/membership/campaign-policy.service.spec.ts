@@ -93,6 +93,14 @@ describe('CampaignPolicyService', () => {
     expect(policy.canEditSessions('viewer')).toBe(false);
   });
 
+  it('allows owner, GM, and editor to manage plot threads but not player or viewer', () => {
+    expect(policy.canManagePlotThreads('owner')).toBe(true);
+    expect(policy.canManagePlotThreads('gm')).toBe(true);
+    expect(policy.canManagePlotThreads('editor')).toBe(true);
+    expect(policy.canManagePlotThreads('player')).toBe(false);
+    expect(policy.canManagePlotThreads('viewer')).toBe(false);
+  });
+
   it('restricts revealing content to owner and GM, unlike session/entity editing', () => {
     expect(policy.canRevealContent('owner')).toBe(true);
     expect(policy.canRevealContent('gm')).toBe(true);

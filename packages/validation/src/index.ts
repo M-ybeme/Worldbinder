@@ -78,7 +78,23 @@ export {
 export type {
   CompleteSessionInput,
   CreateSessionInput,
+  PlotThreadChangeInput,
   RevealEntityInput,
   SessionStatus,
   UpdateSessionInput,
 } from './sessions.js'
+
+export {
+  createPlotThreadSchema,
+  plotThreadImportanceSchema,
+  plotThreadSessionActionSchema,
+  plotThreadStatusSchema,
+  updatePlotThreadSchema,
+} from './plot-threads.js'
+export type {
+  CreatePlotThreadInput,
+  PlotThreadImportance,
+  PlotThreadSessionAction,
+  PlotThreadStatus,
+  UpdatePlotThreadInput,
+} from './plot-threads.js'

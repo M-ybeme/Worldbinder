@@ -5,20 +5,37 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import type {
+  CampaignActivityItem,
+  CampaignDashboard,
   CampaignDetail,
+  CampaignSessionSummary,
   CampaignSummary,
+  PlotThreadSummary,
   WorldDate,
 } from '@worldbinder/contracts';
 import type {
   CreateCampaignInput,
   UpdateCampaignInput,
 } from '@worldbinder/validation';
-import { and, desc, eq, isNull } from 'drizzle-orm';
+import { and, desc, eq, isNotNull, isNull, sql } from 'drizzle-orm';
 import { randomBytes } from 'node:crypto';
 import { DRIZZLE, type Database } from '../database/database.module';
-import { campaignMembers, campaigns } from '../database/schema';
+import {
+  campaignMembers,
+  campaigns,
+  entities,
+  plotThreads,
+  sessions,
+} from '../database/schema';
 import { CampaignPolicyService } from '../membership/campaign-policy.service';
 import type { CampaignMembership } from '../membership/guards/campaign-membership.guard';
+import {
+  isNeglected,
+  projectPlayerFacingStatus,
+} from '../plot-threads/plot-threads.service';
+
+type PlotThreadRow = typeof plotThreads.$inferSelect;
+type SessionRow = typeof sessions.$inferSelect;
 
 @Injectable()
 export class CampaignsService {
@@ -183,6 +200,187 @@ export class CampaignsService {
     if (!updated) throw new NotFoundException('Campaign not found');
   }
 
+  /**
+   * "Dashboard aggregation" (roadmap §11.2) — reads entities/sessions/
+   * plot_threads directly rather than injecting their services: this is a
+   * read-only cross-cutting query, and the codebase already has precedent
+   * for direct cross-table reads at this scale (e.g. `SessionsService`
+   * writes `campaigns.currentWorldDateJson` directly rather than going
+   * through `CampaignsService`).
+   */
+  async getDashboard(
+    campaignId: string,
+    membership: CampaignMembership,
+  ): Promise<CampaignDashboard> {
+    const campaign = await this.requireCampaign(campaignId);
+    const canViewGm = this.policy.canViewGmContent(
+      membership.role,
+      membership.editorSecretAccess,
+    );
+
+    const sessionVisibility = canViewGm
+      ? []
+      : [eq(sessions.visibility, 'public' as const)];
+    const entityVisibility = canViewGm
+      ? []
+      : [eq(entities.visibility, 'public' as const)];
+    const threadVisibility = canViewGm
+      ? []
+      : [eq(plotThreads.visibility, 'public' as const)];
+
+    const [upcomingSessionRow] = await this.db
+      .select()
+      .from(sessions)
+      .where(
+        and(
+          eq(sessions.campaignId, campaignId),
+          isNull(sessions.deletedAt),
+          eq(sessions.status, 'planned'),
+          isNotNull(sessions.scheduledAt),
+          ...sessionVisibility,
+        ),
+      )
+      .orderBy(sessions.scheduledAt)
+      .limit(1);
+
+    const [lastPlayedRow] = await this.db
+      .select()
+      .from(sessions)
+      .where(
+        and(
+          eq(sessions.campaignId, campaignId),
+          isNull(sessions.deletedAt),
+          eq(sessions.status, 'completed'),
+          ...sessionVisibility,
+        ),
+      )
+      .orderBy(desc(sessions.playedAt))
+      .limit(1);
+
+    const [latestCompletedRow] = await this.db
+      .select({ max: sql<number | null>`max(${sessions.sessionNumber})` })
+      .from(sessions)
+      .where(
+        and(
+          eq(sessions.campaignId, campaignId),
+          eq(sessions.status, 'completed'),
+          isNull(sessions.deletedAt),
+        ),
+      );
+    const latestCompletedSessionNumber = latestCompletedRow?.max ?? null;
+
+    const threadRows = await this.db
+      .select({ thread: plotThreads, lastSession: sessions })
+      .from(plotThreads)
+      .leftJoin(sessions, eq(sessions.id, plotThreads.lastReferencedSessionId))
+      .where(
+        and(
+          eq(plotThreads.campaignId, campaignId),
+          isNull(plotThreads.deletedAt),
+          ...threadVisibility,
+        ),
+      );
+
+    const threadsWithNeglect = threadRows.map((row) => ({
+      ...row,
+      neglected: isNeglected(
+        {
+          status: row.thread.status,
+          lastReferencedSessionNumber: row.lastSession?.sessionNumber ?? null,
+        },
+        latestCompletedSessionNumber,
+      ),
+    }));
+
+    const activeThreads: PlotThreadSummary[] = threadsWithNeglect
+      .filter(
+        (row) =>
+          row.thread.status !== 'resolved' && row.thread.status !== 'abandoned',
+      )
+      .sort(
+        (a, b) => b.thread.updatedAt.getTime() - a.thread.updatedAt.getTime(),
+      )
+      .slice(0, 10)
+      .map((row) =>
+        toThreadSummary(row.thread, row.lastSession, row.neglected, canViewGm),
+      );
+
+    const neglectedThreads: PlotThreadSummary[] = threadsWithNeglect
+      .filter((row) => row.neglected)
+      .sort(
+        (a, b) => b.thread.updatedAt.getTime() - a.thread.updatedAt.getTime(),
+      )
+      .map((row) =>
+        toThreadSummary(row.thread, row.lastSession, row.neglected, canViewGm),
+      );
+
+    const recentEntities = await this.db
+      .select()
+      .from(entities)
+      .where(
+        and(
+          eq(entities.campaignId, campaignId),
+          isNull(entities.deletedAt),
+          ...entityVisibility,
+        ),
+      )
+      .orderBy(desc(entities.updatedAt))
+      .limit(5);
+
+    const recentSessions = await this.db
+      .select()
+      .from(sessions)
+      .where(
+        and(
+          eq(sessions.campaignId, campaignId),
+          isNull(sessions.deletedAt),
+          ...sessionVisibility,
+        ),
+      )
+      .orderBy(desc(sessions.updatedAt))
+      .limit(5);
+
+    // Roadmap's ui-ux.md sketch shows "Recently Edited" and "Recent
+    // Activity" as two separate widgets; there's no activity-log table in
+    // the data model (only `security_events`, which is auth-only), so one
+    // honest "recently changed" feed backs both rather than fabricating a
+    // second data source.
+    const recentActivity: CampaignActivityItem[] = [
+      ...recentEntities.map((entity) => ({
+        resourceType: 'entity' as const,
+        id: entity.id,
+        title: entity.name,
+        updatedAt: entity.updatedAt.toISOString(),
+      })),
+      ...recentSessions.map((session) => ({
+        resourceType: 'session' as const,
+        id: session.id,
+        title: `Session ${session.sessionNumber}: ${session.title}`,
+        updatedAt: session.updatedAt.toISOString(),
+      })),
+      ...threadRows.map((row) => ({
+        resourceType: 'plot_thread' as const,
+        id: row.thread.id,
+        title: row.thread.title,
+        updatedAt: row.thread.updatedAt.toISOString(),
+      })),
+    ]
+      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+      .slice(0, 10);
+
+    return {
+      currentWorldDateJson: campaign.currentWorldDateJson as WorldDate | null,
+      status: campaign.status,
+      upcomingSession: upcomingSessionRow
+        ? toSessionSummary(upcomingSessionRow)
+        : null,
+      lastPlayedSession: lastPlayedRow ? toSessionSummary(lastPlayedRow) : null,
+      activeThreads,
+      neglectedThreads,
+      recentActivity,
+    };
+  }
+
   private async requireCampaign(campaignId: string) {
     const [campaign] = await this.db
       .select()
@@ -246,4 +444,56 @@ function slugify(input: string): string {
     .trim()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
+}
+
+/** Mirrors `PlotThreadsService`'s private `toSummary` — small duplication,
+ * consistent with this codebase's existing per-module mapping-function
+ * precedent (`toEntitySummary` is already duplicated across several
+ * modules) rather than a shared cross-cutting utils file. */
+function toThreadSummary(
+  thread: PlotThreadRow,
+  lastSession: SessionRow | null,
+  neglected: boolean,
+  canViewGm: boolean,
+): PlotThreadSummary {
+  return {
+    id: thread.id,
+    campaignId: thread.campaignId,
+    title: thread.title,
+    summary: thread.summary,
+    playerFacingStatus: projectPlayerFacingStatus(thread.status),
+    ...(canViewGm
+      ? { status: thread.status, importance: thread.importance }
+      : {}),
+    visibility: thread.visibility,
+    lastReferencedSession: lastSession
+      ? {
+          id: lastSession.id,
+          sessionNumber: lastSession.sessionNumber,
+          title: lastSession.title,
+        }
+      : null,
+    neglected,
+    createdAt: thread.createdAt.toISOString(),
+    updatedAt: thread.updatedAt.toISOString(),
+  };
+}
+
+function toSessionSummary(session: SessionRow): CampaignSessionSummary {
+  return {
+    id: session.id,
+    campaignId: session.campaignId,
+    sessionNumber: session.sessionNumber,
+    title: session.title,
+    status: session.status,
+    scheduledAt: session.scheduledAt?.toISOString() ?? null,
+    playedAt: session.playedAt?.toISOString() ?? null,
+    worldStartDateJson:
+      session.worldStartDateJson as CampaignSessionSummary['worldStartDateJson'],
+    worldEndDateJson:
+      session.worldEndDateJson as CampaignSessionSummary['worldEndDateJson'],
+    visibility: session.visibility,
+    createdAt: session.createdAt.toISOString(),
+    updatedAt: session.updatedAt.toISOString(),
+  };
 }

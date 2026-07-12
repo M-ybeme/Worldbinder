@@ -11,7 +11,11 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
-import type { CampaignDetail, CampaignSummary } from '@worldbinder/contracts';
+import type {
+  CampaignDashboard,
+  CampaignDetail,
+  CampaignSummary,
+} from '@worldbinder/contracts';
 import {
   createCampaignSchema,
   updateCampaignSchema,
@@ -58,6 +62,15 @@ export class CampaignsController {
     @CurrentMembership() membership: CampaignMembership,
   ): Promise<CampaignDetail> {
     return this.campaigns.getById(campaignId, membership);
+  }
+
+  @UseGuards(CampaignMembershipGuard)
+  @Get(':campaignId/dashboard')
+  getDashboard(
+    @Param('campaignId', ParseUUIDPipe) campaignId: string,
+    @CurrentMembership() membership: CampaignMembership,
+  ): Promise<CampaignDashboard> {
+    return this.campaigns.getDashboard(campaignId, membership);
   }
 
   @UseGuards(CampaignMembershipGuard)

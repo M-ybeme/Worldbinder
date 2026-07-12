@@ -21,6 +21,9 @@ import { EntityFormPage } from '../features/entities/pages/EntityFormPage'
 import { WorldListPage } from '../features/entities/pages/WorldListPage'
 import { AcceptInvitationPage } from '../features/membership/pages/AcceptInvitationPage'
 import { MembersPage } from '../features/membership/pages/MembersPage'
+import { ThreadDetailPage } from '../features/plot-threads/pages/ThreadDetailPage'
+import { ThreadFormPage } from '../features/plot-threads/pages/ThreadFormPage'
+import { ThreadListPage } from '../features/plot-threads/pages/ThreadListPage'
 import { SessionDetailPage } from '../features/sessions/pages/SessionDetailPage'
 import { SessionFormPage } from '../features/sessions/pages/SessionFormPage'
 import { SessionListPage } from '../features/sessions/pages/SessionListPage'
@@ -80,6 +83,10 @@ export const router = createBrowserRouter([
                   { path: 'sessions/new', element: <SessionFormPage /> },
                   { path: 'sessions/:sessionId', element: <SessionDetailPage /> },
                   { path: 'sessions/:sessionId/edit', element: <SessionFormPage /> },
+                  { path: 'threads', element: <ThreadListPage /> },
+                  { path: 'threads/new', element: <ThreadFormPage /> },
+                  { path: 'threads/:threadId', element: <ThreadDetailPage /> },
+                  { path: 'threads/:threadId/edit', element: <ThreadFormPage /> },
                 ],
               },
             ],

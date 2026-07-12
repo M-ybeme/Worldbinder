@@ -1,4 +1,6 @@
 import type { WorldDate } from './calendar.js'
+import type { PlotThreadSummary } from './plot-threads.js'
+import type { CampaignSessionSummary } from './sessions.js'
 
 export type CampaignStatus = 'draft' | 'active' | 'hiatus' | 'completed' | 'archived'
 
@@ -20,4 +22,29 @@ export interface CampaignSummary {
 export interface CampaignDetail extends CampaignSummary {
   settingsJson: Record<string, unknown> | null
   currentWorldDateJson: WorldDate | null
+}
+
+export interface CampaignActivityItem {
+  resourceType: 'entity' | 'session' | 'plot_thread'
+  id: string
+  title: string
+  updatedAt: string
+}
+
+/**
+ * Backs the campaign Dashboard (roadmap §11.2 "Dashboard aggregation").
+ * `recentActivity` deliberately covers both the ui-ux.md sketch's
+ * "Recently Edited" and "Recent Activity" widgets — there's no dedicated
+ * activity-log table in the data model (only `security_events`, which is
+ * auth-only), so one honest "recently changed" feed backs both rather than
+ * fabricating a second data source.
+ */
+export interface CampaignDashboard {
+  currentWorldDateJson: WorldDate | null
+  status: CampaignStatus
+  upcomingSession: CampaignSessionSummary | null
+  lastPlayedSession: CampaignSessionSummary | null
+  activeThreads: PlotThreadSummary[]
+  neglectedThreads: PlotThreadSummary[]
+  recentActivity: CampaignActivityItem[]
 }

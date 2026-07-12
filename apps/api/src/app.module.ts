@@ -13,6 +13,7 @@ import { DatabaseModule } from './database/database.module';
 import { EntitiesModule } from './entities/entities.module';
 import { HealthModule } from './health/health.module';
 import { MembershipModule } from './membership/membership.module';
+import { PlotThreadsModule } from './plot-threads/plot-threads.module';
 import { RedisModule } from './redis/redis.module';
 import { RelationshipsModule } from './relationships/relationships.module';
 import { SessionsModule } from './sessions/sessions.module';
@@ -41,6 +42,7 @@ import { SessionsModule } from './sessions/sessions.module';
     MembershipModule,
     CampaignsModule,
     RelationshipsModule,
+    PlotThreadsModule,
     SessionsModule,
     EntitiesModule,
   ],

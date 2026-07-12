@@ -1,4 +1,5 @@
 import type { EntityVisibility, TiptapDoc, WorldDate } from '@worldbinder/contracts'
+import type { PlotThreadChangeInput } from '@worldbinder/validation'
 import { Button, FormMessage, Select, TextField } from '@worldbinder/ui'
 import { useEffect, useState, type FormEvent } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
@@ -6,6 +7,7 @@ import { useCampaignOutletContext } from '../../campaigns/hooks/useCampaignConte
 import { useMembersQuery } from '../../membership/hooks/useCampaignMembers'
 import { EntityMultiPicker } from '../../entities/components/EntityMultiPicker'
 import { RichTextEditor } from '../../entities/components/RichTextEditor'
+import { PlotThreadChangesEditor } from '../../plot-threads/components/PlotThreadChangesEditor'
 import {
   useCreateSessionMutation,
   useSessionQuery,
@@ -70,6 +72,7 @@ export function SessionFormPage() {
   const [participantIds, setParticipantIds] = useState<string[]>([])
   const [featuredEntityIds, setFeaturedEntityIds] = useState<string[]>([])
   const [locationEntityIds, setLocationEntityIds] = useState<string[]>([])
+  const [plotThreadChanges, setPlotThreadChanges] = useState<PlotThreadChangeInput[]>([])
   const [updatedAt, setUpdatedAt] = useState<string | null>(null)
 
   useEffect(() => {
@@ -85,6 +88,12 @@ export function SessionFormPage() {
     setParticipantIds(session.participants.map((p) => p.campaignMemberId))
     setFeaturedEntityIds(session.featuredEntities.map((e) => e.id))
     setLocationEntityIds(session.locations.map((e) => e.id))
+    setPlotThreadChanges(
+      session.plotThreadChanges.map((change) => ({
+        plotThreadId: change.plotThread.id,
+        action: change.action,
+      })),
+    )
     setUpdatedAt(session.updatedAt)
   }, [isEditMode, sessionQuery.data])
 
@@ -117,6 +126,7 @@ export function SessionFormPage() {
         participantIds,
         featuredEntityIds,
         locationEntityIds,
+        plotThreadChanges,
       })
       navigate(`/app/campaign/${campaign.id}/sessions/${result.id}`)
       return
@@ -131,6 +141,7 @@ export function SessionFormPage() {
       participantIds,
       featuredEntityIds,
       locationEntityIds,
+      plotThreadChanges,
     })
     navigate(`/app/campaign/${campaign.id}/sessions/${result.id}`)
   }
@@ -255,6 +266,12 @@ export function SessionFormPage() {
           value={locationEntityIds}
           onChange={setLocationEntityIds}
           entityType="location"
+        />
+
+        <PlotThreadChangesEditor
+          campaignId={campaign.id}
+          value={plotThreadChanges}
+          onChange={setPlotThreadChanges}
         />
 
         <FormMessage message={mutation.error?.message} />

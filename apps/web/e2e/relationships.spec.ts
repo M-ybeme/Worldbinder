@@ -110,7 +110,7 @@ test('a [[ wiki-link mention creates a backlink on the target entity', async ({ 
   await expect(page.getByRole('heading', { name: dukeName })).toBeVisible()
 
   await page.goto(westvaleUrl)
-  await expect(page.getByText('Backlinks')).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Backlinks' })).toBeVisible()
   await expect(
     page.locator('.wb-backlink-list').getByRole('link', { name: dukeName }),
   ).toBeVisible()

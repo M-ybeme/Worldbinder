@@ -87,6 +87,12 @@ export class CampaignPolicyService {
     return MANAGEMENT_ROLES.includes(role);
   }
 
+  /** Same actor set as `canEditEntities`/`canEditSessions` (§5.6's "Manage
+   * plot threads" row). */
+  canManagePlotThreads(role: CampaignRole): boolean {
+    return ENTITY_EDITOR_ROLES.includes(role);
+  }
+
   /**
    * Shared two-tier visibility check (ADR-0009): `public` is visible to
    * every member, `gm_only` follows the same GM-content rule as entities.

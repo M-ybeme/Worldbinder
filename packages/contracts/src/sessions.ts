@@ -1,5 +1,6 @@
 import type { WorldDate } from './calendar.js'
 import type { EntitySummary, EntityVisibility, TiptapDoc } from './entities.js'
+import type { PlotThreadSessionAction, PlotThreadSummary } from './plot-threads.js'
 
 export type SessionStatus = 'planned' | 'in_progress' | 'completed' | 'cancelled'
 
@@ -36,4 +37,5 @@ export interface CampaignSessionDetail extends CampaignSessionSummary {
   featuredEntities: EntitySummary[]
   locations: EntitySummary[]
   reveals: EntitySummary[]
+  plotThreadChanges: { plotThread: PlotThreadSummary; action: PlotThreadSessionAction }[]
 }

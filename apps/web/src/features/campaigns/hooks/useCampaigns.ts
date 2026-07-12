@@ -18,6 +18,13 @@ export function useCampaignQuery(campaignId: string | undefined) {
   })
 }
 
+export function useCampaignDashboardQuery(campaignId: string) {
+  return useQuery({
+    queryKey: [...campaignQueryKey(campaignId), 'dashboard'],
+    queryFn: () => campaignsApi.getCampaignDashboard(campaignId),
+  })
+}
+
 export function useCreateCampaignMutation() {
   const queryClient = useQueryClient()
 

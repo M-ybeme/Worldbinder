@@ -1,16 +1,24 @@
 import { z } from 'zod'
 import { worldDateSchema } from './calendar.js'
 import { entityVisibilitySchema, tiptapDocSchema } from './entities.js'
+import { plotThreadSessionActionSchema } from './plot-threads.js'
 
 export const sessionStatusSchema = z.enum(['planned', 'in_progress', 'completed', 'cancelled'])
 export type SessionStatus = z.infer<typeof sessionStatusSchema>
 
 const uuidField = z.string().uuid()
 
+const plotThreadChangeSchema = z.object({
+  plotThreadId: uuidField,
+  action: plotThreadSessionActionSchema,
+})
+export type PlotThreadChangeInput = z.infer<typeof plotThreadChangeSchema>
+
 const sessionJoinFields = {
   participantIds: z.array(uuidField).optional(),
   featuredEntityIds: z.array(uuidField).optional(),
   locationEntityIds: z.array(uuidField).optional(),
+  plotThreadChanges: z.array(plotThreadChangeSchema).optional(),
 }
 
 export const createSessionSchema = z.object({
