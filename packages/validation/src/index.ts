@@ -98,3 +98,6 @@ export type {
   PlotThreadStatus,
   UpdatePlotThreadInput,
 } from './plot-threads.js'
+
+export { searchQuerySchema, searchResourceTypeSchema } from './search.js'
+export type { SearchQuery, SearchResourceType } from './search.js'

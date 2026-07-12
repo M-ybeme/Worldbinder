@@ -25,6 +25,7 @@ import {
 } from '../database/schema';
 import { CampaignPolicyService } from '../membership/campaign-policy.service';
 import type { CampaignMembership } from '../membership/guards/campaign-membership.guard';
+import { buildWeightedTsvector } from '../search/search-vector.util';
 import { RelationshipTypesService } from './relationship-types.service';
 
 type RelationshipRow = typeof entityRelationships.$inferSelect;
@@ -72,6 +73,9 @@ export class RelationshipsService {
         description: input.description ?? null,
         visibility: input.visibility ?? type.defaultVisibility,
         createdByUserId: userId,
+        // Weight D (roadmap §14.2) — description is the only searchable
+        // field on a relationship, no public/gm split exists on this table.
+        searchVector: buildWeightedTsvector({ d: [input.description ?? ''] }),
       })
       .returning();
 
@@ -91,7 +95,14 @@ export class RelationshipsService {
       .update(entityRelationships)
       .set({
         ...(input.description !== undefined
-          ? { description: input.description }
+          ? {
+              description: input.description,
+              // description is searchVector's only input, so it's safe to
+              // recompute inline here — no merge with existing state needed.
+              searchVector: buildWeightedTsvector({
+                d: [input.description ?? ''],
+              }),
+            }
           : {}),
         ...(input.visibility !== undefined
           ? { visibility: input.visibility }

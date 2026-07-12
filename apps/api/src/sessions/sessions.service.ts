@@ -21,7 +21,7 @@ import type {
   PlotThreadChangeInput,
   UpdateSessionInput,
 } from '@worldbinder/validation';
-import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
+import { and, eq, inArray, isNull, sql, type SQL } from 'drizzle-orm';
 import { DRIZZLE, type Database } from '../database/database.module';
 import {
   campaignMembers,
@@ -39,6 +39,10 @@ import {
 import { CampaignPolicyService } from '../membership/campaign-policy.service';
 import type { CampaignMembership } from '../membership/guards/campaign-membership.guard';
 import { PlotThreadsService } from '../plot-threads/plot-threads.service';
+import {
+  buildWeightedTsvector,
+  extractPlainText,
+} from '../search/search-vector.util';
 
 type SessionRow = typeof sessions.$inferSelect;
 type EntityRow = typeof entities.$inferSelect;
@@ -59,6 +63,13 @@ export class SessionsService {
   ): Promise<CampaignSessionDetail> {
     this.assertCanEdit(membership);
 
+    const vectors = buildSessionSearchVectors({
+      title: input.title,
+      recapContentJson: null,
+      plannedContentJson: input.plannedContentJson ?? null,
+      gmContentJson: null,
+    });
+
     const sessionId = await this.db.transaction(async (tx) => {
       const sessionNumber = await this.nextSessionNumber(tx, campaignId);
 
@@ -74,6 +85,8 @@ export class SessionsService {
           visibility: input.visibility ?? 'public',
           createdByUserId: userId,
           updatedByUserId: userId,
+          searchVectorPublic: vectors.public,
+          searchVectorGm: vectors.gm,
         })
         .returning({ id: sessions.id });
 
@@ -172,6 +185,25 @@ export class SessionsService {
     );
     this.assertNotStale(existing, input.updatedAt);
 
+    // No join-table wrinkle here (unlike entities' tags) — every field the
+    // vector needs lives on this row, so the merge can happen inline in
+    // the same `.set()` call below.
+    const vectors = buildSessionSearchVectors({
+      title: input.title !== undefined ? input.title : existing.title,
+      recapContentJson:
+        input.recapContentJson !== undefined
+          ? input.recapContentJson
+          : (existing.recapContentJson as TiptapDoc | null),
+      plannedContentJson:
+        input.plannedContentJson !== undefined
+          ? input.plannedContentJson
+          : (existing.plannedContentJson as TiptapDoc | null),
+      gmContentJson:
+        input.gmContentJson !== undefined
+          ? input.gmContentJson
+          : (existing.gmContentJson as TiptapDoc | null),
+    });
+
     await this.db.transaction(async (tx) => {
       const [row] = await tx
         .update(sessions)
@@ -208,6 +240,8 @@ export class SessionsService {
             : {}),
           updatedByUserId: userId,
           updatedAt: new Date(),
+          searchVectorPublic: vectors.public,
+          searchVectorGm: vectors.gm,
         })
         .where(
           and(
@@ -312,6 +346,18 @@ export class SessionsService {
     const worldEndDate =
       input.worldEndDateJson ?? (existing.worldEndDateJson as WorldDate | null);
 
+    // Completion is the other write path (besides update()) that can set
+    // recapContentJson — same merge-and-recompute treatment.
+    const vectors = buildSessionSearchVectors({
+      title: existing.title,
+      recapContentJson:
+        input.recapContentJson !== undefined
+          ? input.recapContentJson
+          : (existing.recapContentJson as TiptapDoc | null),
+      plannedContentJson: existing.plannedContentJson as TiptapDoc | null,
+      gmContentJson: existing.gmContentJson as TiptapDoc | null,
+    });
+
     await this.db.transaction(async (tx) => {
       const [row] = await tx
         .update(sessions)
@@ -327,6 +373,8 @@ export class SessionsService {
             ? new Date(input.playedAt)
             : (existing.playedAt ?? new Date()),
           updatedAt: new Date(),
+          searchVectorPublic: vectors.public,
+          searchVectorGm: vectors.gm,
         })
         .where(
           and(
@@ -802,6 +850,28 @@ export class SessionsService {
       plotThreadChanges,
     };
   }
+}
+
+/** Builds both search-vector SQL expressions for a session row (roadmap
+ * §14.2 weights: title=A, content=C — sessions have no summary/tags field,
+ * so weight B is unused). `gm` additionally folds in plannedContentJson/
+ * gmContentJson text; `public` never does — see the `searchVectorPublic`/
+ * `searchVectorGm` column comments in `database/schema.ts`. */
+function buildSessionSearchVectors(fields: {
+  title: string;
+  recapContentJson: TiptapDoc | null;
+  plannedContentJson: TiptapDoc | null;
+  gmContentJson: TiptapDoc | null;
+}): { public: SQL; gm: SQL } {
+  const recapText = extractPlainText(fields.recapContentJson);
+  const plannedText = extractPlainText(fields.plannedContentJson);
+  const gmText = extractPlainText(fields.gmContentJson);
+  const a = [fields.title];
+
+  return {
+    public: buildWeightedTsvector({ a, c: [recapText] }),
+    gm: buildWeightedTsvector({ a, c: [recapText, plannedText, gmText] }),
+  };
 }
 
 /** Last write wins if the same plot thread appears twice in one submission. */

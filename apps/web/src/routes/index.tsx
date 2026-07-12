@@ -24,6 +24,7 @@ import { MembersPage } from '../features/membership/pages/MembersPage'
 import { ThreadDetailPage } from '../features/plot-threads/pages/ThreadDetailPage'
 import { ThreadFormPage } from '../features/plot-threads/pages/ThreadFormPage'
 import { ThreadListPage } from '../features/plot-threads/pages/ThreadListPage'
+import { SearchResultsPage } from '../features/search/pages/SearchResultsPage'
 import { SessionDetailPage } from '../features/sessions/pages/SessionDetailPage'
 import { SessionFormPage } from '../features/sessions/pages/SessionFormPage'
 import { SessionListPage } from '../features/sessions/pages/SessionListPage'
@@ -87,6 +88,7 @@ export const router = createBrowserRouter([
                   { path: 'threads/new', element: <ThreadFormPage /> },
                   { path: 'threads/:threadId', element: <ThreadDetailPage /> },
                   { path: 'threads/:threadId/edit', element: <ThreadFormPage /> },
+                  { path: 'search', element: <SearchResultsPage /> },
                 ],
               },
             ],

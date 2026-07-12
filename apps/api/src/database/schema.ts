@@ -1,6 +1,8 @@
 import { sql } from 'drizzle-orm';
 import {
   boolean,
+  customType,
+  index,
   integer,
   jsonb,
   pgEnum,
@@ -11,6 +13,15 @@ import {
   uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core';
+
+// No native tsvector column type in drizzle-orm; `pg_trgm`/GIN indexes on
+// these columns require a hand-added `CREATE EXTENSION IF NOT EXISTS
+// pg_trgm;` in the generated migration (drizzle-kit cannot emit extension
+// statements from schema.ts) — see CHANGELOG.md for the milestone this was
+// introduced in.
+const tsvector = customType<{ data: string }>({
+  dataType: () => 'tsvector',
+});
 
 export const userStatusEnum = pgEnum('user_status', ['active', 'deactivated']);
 
@@ -238,6 +249,15 @@ export const entities = pgTable(
     metadataJson: jsonb('metadata_json'),
     status: entityStatusEnum('status').notNull().default('draft'),
     visibility: entityVisibilityEnum('visibility').notNull().default('public'),
+    // Search (Milestone 7): searchVectorPublic covers name/aliases/tags/
+    // summary/publicContentJson; searchVectorGm additionally includes
+    // gmContentJson. Two separate columns, not one gated at query time, so
+    // a non-GM search query can never match against secret text — matches
+    // this codebase's existing field-omission stance on gmContentJson.
+    // Row-level `visibility` above is a separate, still-mandatory filter;
+    // these columns only gate content *within* an otherwise-visible row.
+    searchVectorPublic: tsvector('search_vector_public'),
+    searchVectorGm: tsvector('search_vector_gm'),
     createdByUserId: uuid('created_by_user_id')
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
@@ -252,7 +272,20 @@ export const entities = pgTable(
       .defaultNow(),
     deletedAt: timestamp('deleted_at', { withTimezone: true }),
   },
-  (table) => [unique().on(table.campaignId, table.slug)],
+  (table) => [
+    unique().on(table.campaignId, table.slug),
+    index('entities_campaign_id_idx').on(table.campaignId),
+    index('entities_search_vector_public_idx').using(
+      'gin',
+      table.searchVectorPublic,
+    ),
+    index('entities_search_vector_gm_idx').using('gin', table.searchVectorGm),
+    // Requires pg_trgm (see the tsvector customType comment above).
+    index('entities_name_trgm_idx').using(
+      'gin',
+      sql`${table.name} gin_trgm_ops`,
+    ),
+  ],
 );
 
 export const tags = pgTable(
@@ -321,32 +354,45 @@ export const relationshipTypes = pgTable(
   ],
 );
 
-export const entityRelationships = pgTable('entity_relationships', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  campaignId: uuid('campaign_id')
-    .notNull()
-    .references(() => campaigns.id, { onDelete: 'cascade' }),
-  sourceEntityId: uuid('source_entity_id')
-    .notNull()
-    .references(() => entities.id, { onDelete: 'cascade' }),
-  targetEntityId: uuid('target_entity_id')
-    .notNull()
-    .references(() => entities.id, { onDelete: 'cascade' }),
-  relationshipTypeId: uuid('relationship_type_id')
-    .notNull()
-    .references(() => relationshipTypes.id, { onDelete: 'cascade' }),
-  description: text('description'),
-  visibility: entityVisibilityEnum('visibility').notNull().default('public'),
-  createdByUserId: uuid('created_by_user_id')
-    .notNull()
-    .references(() => users.id, { onDelete: 'cascade' }),
-  createdAt: timestamp('created_at', { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  updatedAt: timestamp('updated_at', { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-});
+export const entityRelationships = pgTable(
+  'entity_relationships',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    campaignId: uuid('campaign_id')
+      .notNull()
+      .references(() => campaigns.id, { onDelete: 'cascade' }),
+    sourceEntityId: uuid('source_entity_id')
+      .notNull()
+      .references(() => entities.id, { onDelete: 'cascade' }),
+    targetEntityId: uuid('target_entity_id')
+      .notNull()
+      .references(() => entities.id, { onDelete: 'cascade' }),
+    relationshipTypeId: uuid('relationship_type_id')
+      .notNull()
+      .references(() => relationshipTypes.id, { onDelete: 'cascade' }),
+    description: text('description'),
+    visibility: entityVisibilityEnum('visibility').notNull().default('public'),
+    // Search (Milestone 7): weight D, description only — no public/gm split
+    // exists on this table, so a single column is enough here.
+    searchVector: tsvector('search_vector'),
+    createdByUserId: uuid('created_by_user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index('entity_relationships_campaign_id_idx').on(table.campaignId),
+    index('entity_relationships_search_vector_idx').using(
+      'gin',
+      table.searchVector,
+    ),
+  ],
+);
 
 export const wikiLinkSectionEnum = pgEnum('wiki_link_section', [
   'public',
@@ -400,6 +446,11 @@ export const sessions = pgTable(
     recapContentJson: jsonb('recap_content_json'),
     gmContentJson: jsonb('gm_content_json'),
     visibility: entityVisibilityEnum('visibility').notNull().default('public'),
+    // Search (Milestone 7): searchVectorPublic covers title/recapContentJson;
+    // searchVectorGm additionally includes plannedContentJson/gmContentJson.
+    // Same two-column rationale as entities above.
+    searchVectorPublic: tsvector('search_vector_public'),
+    searchVectorGm: tsvector('search_vector_gm'),
     createdByUserId: uuid('created_by_user_id')
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
@@ -414,7 +465,19 @@ export const sessions = pgTable(
       .defaultNow(),
     deletedAt: timestamp('deleted_at', { withTimezone: true }),
   },
-  (table) => [unique().on(table.campaignId, table.sessionNumber)],
+  (table) => [
+    unique().on(table.campaignId, table.sessionNumber),
+    index('sessions_campaign_id_idx').on(table.campaignId),
+    index('sessions_search_vector_public_idx').using(
+      'gin',
+      table.searchVectorPublic,
+    ),
+    index('sessions_search_vector_gm_idx').using('gin', table.searchVectorGm),
+    index('sessions_title_trgm_idx').using(
+      'gin',
+      sql`${table.title} gin_trgm_ops`,
+    ),
+  ],
 );
 
 export const sessionParticipants = pgTable(
@@ -495,49 +558,73 @@ export const plotThreadImportanceEnum = pgEnum('plot_thread_importance', [
   'critical',
 ]);
 
-export const plotThreads = pgTable('plot_threads', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  campaignId: uuid('campaign_id')
-    .notNull()
-    .references(() => campaigns.id, { onDelete: 'cascade' }),
-  title: text('title').notNull(),
-  summary: text('summary'),
-  publicContentJson: jsonb('public_content_json'),
-  gmContentJson: jsonb('gm_content_json'),
-  status: plotThreadStatusEnum('status').notNull().default('foreshadowed'),
-  importance: plotThreadImportanceEnum('importance')
-    .notNull()
-    .default('standard'),
-  visibility: entityVisibilityEnum('visibility').notNull().default('public'),
-  // Denormalized cache, not the source of truth — the full per-session
-  // timeline (with action) lives in session_plot_threads and is only
-  // joined on the thread detail view. These let the thread list and
-  // dashboard compute "last referenced"/dormancy without an N-row join.
-  introducedSessionId: uuid('introduced_session_id').references(
-    () => sessions.id,
-    { onDelete: 'set null' },
-  ),
-  lastReferencedSessionId: uuid('last_referenced_session_id').references(
-    () => sessions.id,
-    { onDelete: 'set null' },
-  ),
-  resolvedSessionId: uuid('resolved_session_id').references(() => sessions.id, {
-    onDelete: 'set null',
-  }),
-  createdByUserId: uuid('created_by_user_id')
-    .notNull()
-    .references(() => users.id, { onDelete: 'cascade' }),
-  updatedByUserId: uuid('updated_by_user_id')
-    .notNull()
-    .references(() => users.id, { onDelete: 'cascade' }),
-  createdAt: timestamp('created_at', { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  updatedAt: timestamp('updated_at', { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  deletedAt: timestamp('deleted_at', { withTimezone: true }),
-});
+export const plotThreads = pgTable(
+  'plot_threads',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    campaignId: uuid('campaign_id')
+      .notNull()
+      .references(() => campaigns.id, { onDelete: 'cascade' }),
+    title: text('title').notNull(),
+    summary: text('summary'),
+    publicContentJson: jsonb('public_content_json'),
+    gmContentJson: jsonb('gm_content_json'),
+    status: plotThreadStatusEnum('status').notNull().default('foreshadowed'),
+    importance: plotThreadImportanceEnum('importance')
+      .notNull()
+      .default('standard'),
+    visibility: entityVisibilityEnum('visibility').notNull().default('public'),
+    // Search (Milestone 7): searchVectorPublic covers title/summary/
+    // publicContentJson; searchVectorGm additionally includes gmContentJson.
+    // Same two-column rationale as entities above.
+    searchVectorPublic: tsvector('search_vector_public'),
+    searchVectorGm: tsvector('search_vector_gm'),
+    // Denormalized cache, not the source of truth — the full per-session
+    // timeline (with action) lives in session_plot_threads and is only
+    // joined on the thread detail view. These let the thread list and
+    // dashboard compute "last referenced"/dormancy without an N-row join.
+    introducedSessionId: uuid('introduced_session_id').references(
+      () => sessions.id,
+      { onDelete: 'set null' },
+    ),
+    lastReferencedSessionId: uuid('last_referenced_session_id').references(
+      () => sessions.id,
+      { onDelete: 'set null' },
+    ),
+    resolvedSessionId: uuid('resolved_session_id').references(
+      () => sessions.id,
+      { onDelete: 'set null' },
+    ),
+    createdByUserId: uuid('created_by_user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    updatedByUserId: uuid('updated_by_user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    deletedAt: timestamp('deleted_at', { withTimezone: true }),
+  },
+  (table) => [
+    index('plot_threads_campaign_id_idx').on(table.campaignId),
+    index('plot_threads_search_vector_public_idx').using(
+      'gin',
+      table.searchVectorPublic,
+    ),
+    index('plot_threads_search_vector_gm_idx').using(
+      'gin',
+      table.searchVectorGm,
+    ),
+    index('plot_threads_title_trgm_idx').using(
+      'gin',
+      sql`${table.title} gin_trgm_ops`,
+    ),
+  ],
+);
 
 export const plotThreadEntities = pgTable(
   'plot_thread_entities',

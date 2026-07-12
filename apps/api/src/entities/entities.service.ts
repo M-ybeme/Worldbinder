@@ -18,13 +18,17 @@ import type {
   ListEntitiesQuery,
   UpdateEntityInput,
 } from '@worldbinder/validation';
-import { and, desc, eq, ilike, inArray, isNull } from 'drizzle-orm';
+import { and, desc, eq, ilike, inArray, isNull, type SQL } from 'drizzle-orm';
 import { randomBytes } from 'node:crypto';
 import { DRIZZLE, type Database } from '../database/database.module';
 import { entities, entityTags, tags } from '../database/schema';
 import { CampaignPolicyService } from '../membership/campaign-policy.service';
 import type { CampaignMembership } from '../membership/guards/campaign-membership.guard';
 import { RelationshipsService } from '../relationships/relationships.service';
+import {
+  buildWeightedTsvector,
+  extractPlainText,
+} from '../search/search-vector.util';
 import { SessionsService } from '../sessions/sessions.service';
 import { WikiLinksService } from './wiki-links.service';
 
@@ -51,6 +55,15 @@ export class EntitiesService {
 
     const slug = await this.generateUniqueSlug(campaignId, input.name);
 
+    const vectors = buildEntitySearchVectors({
+      name: input.name,
+      aliases: input.aliases ?? [],
+      tags: input.tags ?? [],
+      summary: input.summary ?? null,
+      publicContentJson: input.publicContentJson ?? null,
+      gmContentJson: input.gmContentJson ?? null,
+    });
+
     const entity = await this.db.transaction(async (tx) => {
       const [row] = await tx
         .insert(entities)
@@ -68,6 +81,8 @@ export class EntitiesService {
           visibility: input.visibility ?? 'public',
           createdByUserId: userId,
           updatedByUserId: userId,
+          searchVectorPublic: vectors.public,
+          searchVectorGm: vectors.gm,
         })
         .returning();
 
@@ -225,6 +240,13 @@ export class EntitiesService {
       });
     }
 
+    // Resolved once, up front: tags live in a join table, not this row, so
+    // when `input.tags` is undefined this update isn't changing them and
+    // the pre-transaction read reflects the current, unaffected state.
+    // Reused below both to rebuild the search vector and for the response
+    // DTO, replacing what used to be a second, post-transaction query.
+    const tagNames = input.tags ?? (await this.getEntityTags(entityId));
+
     const entity = await this.db.transaction(async (tx) => {
       const [row] = await tx
         .update(entities)
@@ -284,10 +306,40 @@ export class EntitiesService {
         );
       }
 
+      // A second statement, not folded into the primary `.set()` above:
+      // the tsvector needs the *merged* post-update state (a partial
+      // update must not blank out unchanged fields from the vector), and
+      // tags specifically aren't available until `syncTags()` above has
+      // resolved them.
+      const vectors = buildEntitySearchVectors({
+        name: input.name !== undefined ? input.name : existing.name,
+        aliases:
+          input.aliases !== undefined
+            ? input.aliases
+            : ((existing.aliasesJson as string[] | null) ?? []),
+        tags: tagNames,
+        summary: input.summary !== undefined ? input.summary : existing.summary,
+        publicContentJson:
+          input.publicContentJson !== undefined
+            ? input.publicContentJson
+            : (existing.publicContentJson as TiptapDoc | null),
+        gmContentJson:
+          input.gmContentJson !== undefined
+            ? input.gmContentJson
+            : (existing.gmContentJson as TiptapDoc | null),
+      });
+
+      await tx
+        .update(entities)
+        .set({
+          searchVectorPublic: vectors.public,
+          searchVectorGm: vectors.gm,
+        })
+        .where(eq(entities.id, entityId));
+
       return row;
     });
 
-    const tagNames = input.tags ?? (await this.getEntityTags(entityId));
     return this.toDetail(entity, membership, tagNames);
   }
 
@@ -459,6 +511,30 @@ export class EntitiesService {
         : {}),
     };
   }
+}
+
+/** Builds both search-vector SQL expressions for an entity row (roadmap
+ * §14.2 weights: name/aliases=A, tags/summary=B, body content=C).
+ * `gm` additionally folds in `gmContentJson` text; `public` never does —
+ * see the `searchVectorPublic`/`searchVectorGm` column comments in
+ * `database/schema.ts` for why these stay two separate columns. */
+function buildEntitySearchVectors(fields: {
+  name: string;
+  aliases: string[];
+  tags: string[];
+  summary: string | null;
+  publicContentJson: TiptapDoc | null;
+  gmContentJson: TiptapDoc | null;
+}): { public: SQL; gm: SQL } {
+  const publicContentText = extractPlainText(fields.publicContentJson);
+  const gmContentText = extractPlainText(fields.gmContentJson);
+  const a = [fields.name, ...fields.aliases];
+  const b = [...fields.tags, fields.summary ?? ''];
+
+  return {
+    public: buildWeightedTsvector({ a, b, c: [publicContentText] }),
+    gm: buildWeightedTsvector({ a, b, c: [publicContentText, gmContentText] }),
+  };
 }
 
 function slugify(input: string): string {

@@ -20,7 +20,7 @@ import type {
   CreatePlotThreadInput,
   UpdatePlotThreadInput,
 } from '@worldbinder/validation';
-import { and, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNull, sql, type SQL } from 'drizzle-orm';
 import { DRIZZLE, type Database } from '../database/database.module';
 import {
   entities,
@@ -31,6 +31,10 @@ import {
 } from '../database/schema';
 import { CampaignPolicyService } from '../membership/campaign-policy.service';
 import type { CampaignMembership } from '../membership/guards/campaign-membership.guard';
+import {
+  buildWeightedTsvector,
+  extractPlainText,
+} from '../search/search-vector.util';
 
 type PlotThreadRow = typeof plotThreads.$inferSelect;
 type EntityRow = typeof entities.$inferSelect;
@@ -119,6 +123,13 @@ export class PlotThreadsService {
     this.assertCanManage(membership);
     this.assertCanWriteGmContent(membership, input.gmContentJson);
 
+    const vectors = buildPlotThreadSearchVectors({
+      title: input.title,
+      summary: input.summary ?? null,
+      publicContentJson: input.publicContentJson ?? null,
+      gmContentJson: input.gmContentJson ?? null,
+    });
+
     const threadId = await this.db.transaction(async (tx) => {
       const [row] = await tx
         .insert(plotThreads)
@@ -132,6 +143,8 @@ export class PlotThreadsService {
           visibility: input.visibility ?? 'public',
           createdByUserId: userId,
           updatedByUserId: userId,
+          searchVectorPublic: vectors.public,
+          searchVectorGm: vectors.gm,
         })
         .returning({ id: plotThreads.id });
 
@@ -233,6 +246,21 @@ export class PlotThreadsService {
           )
         : undefined;
 
+    // No join-table wrinkle here — every field the vector needs lives on
+    // this row, so the merge can happen inline in the same `.set()` call.
+    const vectors = buildPlotThreadSearchVectors({
+      title: input.title !== undefined ? input.title : existing.title,
+      summary: input.summary !== undefined ? input.summary : existing.summary,
+      publicContentJson:
+        input.publicContentJson !== undefined
+          ? input.publicContentJson
+          : (existing.publicContentJson as TiptapDoc | null),
+      gmContentJson:
+        input.gmContentJson !== undefined
+          ? input.gmContentJson
+          : (existing.gmContentJson as TiptapDoc | null),
+    });
+
     await this.db.transaction(async (tx) => {
       const [row] = await tx
         .update(plotThreads)
@@ -259,6 +287,8 @@ export class PlotThreadsService {
             : {}),
           updatedByUserId: userId,
           updatedAt: new Date(),
+          searchVectorPublic: vectors.public,
+          searchVectorGm: vectors.gm,
         })
         .where(
           and(
@@ -653,6 +683,28 @@ export class PlotThreadsService {
       updatedAt: thread.updatedAt.toISOString(),
     };
   }
+}
+
+/** Builds both search-vector SQL expressions for a plot-thread row
+ * (roadmap §14.2 weights: title=A, summary=B, content=C). `gm` additionally
+ * folds in gmContentJson text; `public` never does — see the
+ * `searchVectorPublic`/`searchVectorGm` column comments in
+ * `database/schema.ts`. */
+function buildPlotThreadSearchVectors(fields: {
+  title: string;
+  summary: string | null;
+  publicContentJson: TiptapDoc | null;
+  gmContentJson: TiptapDoc | null;
+}): { public: SQL; gm: SQL } {
+  const publicContentText = extractPlainText(fields.publicContentJson);
+  const gmContentText = extractPlainText(fields.gmContentJson);
+  const a = [fields.title];
+  const b = [fields.summary ?? ''];
+
+  return {
+    public: buildWeightedTsvector({ a, b, c: [publicContentText] }),
+    gm: buildWeightedTsvector({ a, b, c: [publicContentText, gmContentText] }),
+  };
 }
 
 /** Tags aren't fetched here — the plot-thread panels don't render them,

@@ -303,3 +303,138 @@ body {
   background: var(--wb-muted-bg);
   font-size: 0.9rem;
 }
+
+.wb-search-overlay__backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 10vh 1rem 1rem;
+}
+
+.wb-search-overlay__panel {
+  width: 100%;
+  max-width: 560px;
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--wb-bg);
+  border: 1px solid var(--wb-border);
+  border-radius: 10px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+}
+
+.wb-search-overlay__input {
+  padding: 1rem;
+  border: none;
+  border-bottom: 1px solid var(--wb-border);
+  background: transparent;
+  color: var(--wb-fg);
+  font-size: 1.05rem;
+}
+
+.wb-search-overlay__input:focus-visible {
+  outline: none;
+}
+
+.wb-search-overlay__results {
+  list-style: none;
+  margin: 0;
+  padding: 0.35rem;
+  overflow-y: auto;
+}
+
+.wb-search-overlay__status {
+  padding: 0.6rem 0.75rem;
+  font-size: 0.85rem;
+  opacity: 0.7;
+}
+
+.wb-search-overlay__footer {
+  padding: 0.6rem 1rem;
+  border-top: 1px solid var(--wb-border);
+  font-size: 0.85rem;
+}
+
+.wb-search-result {
+  display: block;
+  padding: 0.55rem 0.75rem;
+  border-radius: 6px;
+  text-decoration: none;
+  color: inherit;
+}
+
+.wb-search-result--active,
+.wb-search-result:hover {
+  background: var(--wb-muted-bg);
+}
+
+.wb-search-result__heading {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.wb-search-result__title {
+  font-weight: 500;
+}
+
+.wb-search-result__subtitle {
+  font-size: 0.75rem;
+  opacity: 0.65;
+}
+
+.wb-search-result__snippet {
+  margin: 0.2rem 0 0;
+  font-size: 0.85rem;
+  opacity: 0.8;
+}
+
+.wb-search-result__snippet mark {
+  background: color-mix(in srgb, var(--wb-accent) 35%, transparent);
+  color: inherit;
+  border-radius: 2px;
+}
+
+.wb-search-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin: 1rem 0;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--wb-border);
+  border-radius: 8px;
+}
+
+.wb-search-filters__option {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+}
+
+.wb-search-results-page {
+  list-style: none;
+  margin: 1rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.wb-search-results-page .wb-search-result {
+  border: 1px solid var(--wb-border);
+  background: var(--wb-muted-bg);
+}
+
+.wb-pagination {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  font-size: 0.85rem;
+}

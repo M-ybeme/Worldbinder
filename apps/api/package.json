@@ -23,7 +23,9 @@
     "test:e2e": "dotenv -e ../../.env -- jest --config ./test/jest-e2e.json",
     "db:generate": "dotenv -e ../../.env -- drizzle-kit generate",
     "db:migrate": "dotenv -e ../../.env -- tsx src/database/migrate.ts",
-    "db:seed": "dotenv -e ../../.env -- tsx src/database/seed.ts"
+    "db:seed": "dotenv -e ../../.env -- tsx src/database/seed.ts",
+    "db:seed:perf": "dotenv -e ../../.env -- tsx src/database/seed-perf.ts",
+    "search:benchmark": "dotenv -e ../../.env -- tsx src/search/search-benchmark.ts"
   },
   "dependencies": {
     "@worldbinder/config": "workspace:*",

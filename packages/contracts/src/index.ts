@@ -44,3 +44,4 @@ export type {
   PlotThreadStatus,
   PlotThreadSummary,
 } from './plot-threads.js'
+export type { SearchResourceType, SearchResponse, SearchResult, SearchSnippet } from './search.js'

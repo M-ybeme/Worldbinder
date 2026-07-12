@@ -16,6 +16,7 @@ import { MembershipModule } from './membership/membership.module';
 import { PlotThreadsModule } from './plot-threads/plot-threads.module';
 import { RedisModule } from './redis/redis.module';
 import { RelationshipsModule } from './relationships/relationships.module';
+import { SearchModule } from './search/search.module';
 import { SessionsModule } from './sessions/sessions.module';
 
 @Module({
@@ -45,6 +46,7 @@ import { SessionsModule } from './sessions/sessions.module';
     PlotThreadsModule,
     SessionsModule,
     EntitiesModule,
+    SearchModule,
   ],
 })
 export class AppModule implements NestModule {

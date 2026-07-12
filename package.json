@@ -16,6 +16,8 @@
     "test:e2e": "turbo run test:e2e",
     "db:migrate": "pnpm --filter @worldbinder/api db:migrate",
     "db:seed": "pnpm --filter @worldbinder/api db:seed",
+    "db:seed:perf": "pnpm --filter @worldbinder/api db:seed:perf",
+    "search:benchmark": "pnpm --filter @worldbinder/api search:benchmark",
     "format": "prettier --write .",
     "infra:up": "docker compose --env-file .env -f infrastructure/compose/docker-compose.yml up -d",
     "infra:down": "docker compose --env-file .env -f infrastructure/compose/docker-compose.yml down",
