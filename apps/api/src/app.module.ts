@@ -14,6 +14,7 @@ import { EntitiesModule } from './entities/entities.module';
 import { HealthModule } from './health/health.module';
 import { MembershipModule } from './membership/membership.module';
 import { RedisModule } from './redis/redis.module';
+import { RelationshipsModule } from './relationships/relationships.module';
 
 @Module({
   imports: [
@@ -38,6 +39,7 @@ import { RedisModule } from './redis/redis.module';
     AuthModule,
     MembershipModule,
     CampaignsModule,
+    RelationshipsModule,
     EntitiesModule,
   ],
 })

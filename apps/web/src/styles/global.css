@@ -190,3 +190,109 @@ body {
   font-size: 0.8rem;
   opacity: 0.75;
 }
+
+.wb-combobox {
+  position: relative;
+}
+
+.wb-combobox__listbox {
+  position: absolute;
+  z-index: 10;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin: 0.25rem 0 0;
+  padding: 0.25rem;
+  list-style: none;
+  max-height: 220px;
+  overflow-y: auto;
+  border: 1px solid var(--wb-border);
+  border-radius: 6px;
+  background: var(--wb-field-bg);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.wb-combobox__option {
+  padding: 0.4rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  cursor: pointer;
+}
+
+.wb-combobox__option--active {
+  background: var(--wb-muted-bg);
+}
+
+.wb-combobox__meta {
+  font-size: 0.75rem;
+  opacity: 0.6;
+}
+
+.wb-combobox__status {
+  padding: 0.4rem 0.5rem;
+  font-size: 0.85rem;
+  opacity: 0.7;
+}
+
+.wb-entity-picker__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.6rem;
+  border: 1px solid var(--wb-border);
+  border-radius: 6px;
+  background: var(--wb-muted-bg);
+  width: fit-content;
+}
+
+.wb-entity-picker__chip button {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: var(--wb-fg);
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.wb-entity-mention {
+  padding: 0.05rem 0.35rem;
+  border-radius: 4px;
+  background: var(--wb-muted-bg);
+  color: var(--wb-accent);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.wb-entity-mention--broken {
+  color: var(--wb-error);
+  text-decoration: line-through;
+}
+
+.wb-related-content {
+  margin-top: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.wb-relationship-list,
+.wb-backlink-list {
+  list-style: none;
+  padding: 0;
+  margin: 0.5rem 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.wb-relationship-list li,
+.wb-backlink-list li {
+  padding: 0.5rem 0.7rem;
+  border: 1px solid var(--wb-border);
+  border-radius: 6px;
+  background: var(--wb-muted-bg);
+  font-size: 0.9rem;
+}

@@ -15,3 +15,9 @@ export type {
   EntityVisibility,
   TiptapDoc,
 } from './entities.js'
+export type {
+  EntityRelationship,
+  EntityRelationshipView,
+  RelationshipType,
+} from './relationships.js'
+export type { Backlink, WikiLinkSection } from './wiki-links.js'

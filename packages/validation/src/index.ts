@@ -53,3 +53,14 @@ export type {
   TiptapDoc,
   UpdateEntityInput,
 } from './entities.js'
+
+export {
+  createRelationshipSchema,
+  createRelationshipTypeSchema,
+  updateRelationshipSchema,
+} from './relationships.js'
+export type {
+  CreateRelationshipInput,
+  CreateRelationshipTypeInput,
+  UpdateRelationshipInput,
+} from './relationships.js'

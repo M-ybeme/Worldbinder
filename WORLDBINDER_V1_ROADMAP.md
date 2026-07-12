@@ -1909,7 +1909,7 @@ Each milestone must end in working software, passing tests, and updated document
 
 ---
 
-## Milestone 4 — Relationships, Wiki Links, and Backlinks
+## Milestone 4 — Relationships, Wiki Links, and Backlinks [Done]
 
 ### Deliverables
 

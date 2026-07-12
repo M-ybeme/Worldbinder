@@ -1,3 +1,4 @@
+import { sql } from 'drizzle-orm';
 import {
   boolean,
   jsonb,
@@ -6,6 +7,7 @@ import {
   text,
   timestamp,
   unique,
+  uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core';
 
@@ -280,3 +282,92 @@ export const entityTags = pgTable(
   },
   (table) => [unique().on(table.entityId, table.tagId)],
 );
+
+export const relationshipTypes = pgTable(
+  'relationship_types',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    // Nullable: built-in types have no owning campaign and are shared
+    // across all campaigns. Custom types belong to exactly one campaign.
+    campaignId: uuid('campaign_id').references(() => campaigns.id, {
+      onDelete: 'cascade',
+    }),
+    key: text('key').notNull(),
+    forwardLabel: text('forward_label').notNull(),
+    reverseLabel: text('reverse_label').notNull(),
+    allowedSourceTypesJson: jsonb('allowed_source_types_json'),
+    allowedTargetTypesJson: jsonb('allowed_target_types_json'),
+    symmetric: boolean('symmetric').notNull().default(false),
+    allowDuplicates: boolean('allow_duplicates').notNull().default(false),
+    defaultVisibility: entityVisibilityEnum('default_visibility')
+      .notNull()
+      .default('public'),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    // Postgres treats every NULL as distinct in an ordinary unique
+    // constraint, so a single unique(campaign_id, key) would not stop two
+    // built-in rows (campaign_id null) from sharing a key. Two partial
+    // indexes enforce the intended scoping instead.
+    uniqueIndex('relationship_types_builtin_key_idx')
+      .on(table.key)
+      .where(sql`${table.campaignId} is null`),
+    uniqueIndex('relationship_types_campaign_key_idx')
+      .on(table.campaignId, table.key)
+      .where(sql`${table.campaignId} is not null`),
+  ],
+);
+
+export const entityRelationships = pgTable('entity_relationships', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  campaignId: uuid('campaign_id')
+    .notNull()
+    .references(() => campaigns.id, { onDelete: 'cascade' }),
+  sourceEntityId: uuid('source_entity_id')
+    .notNull()
+    .references(() => entities.id, { onDelete: 'cascade' }),
+  targetEntityId: uuid('target_entity_id')
+    .notNull()
+    .references(() => entities.id, { onDelete: 'cascade' }),
+  relationshipTypeId: uuid('relationship_type_id')
+    .notNull()
+    .references(() => relationshipTypes.id, { onDelete: 'cascade' }),
+  description: text('description'),
+  visibility: entityVisibilityEnum('visibility').notNull().default('public'),
+  createdByUserId: uuid('created_by_user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  createdAt: timestamp('created_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
+export const wikiLinkSectionEnum = pgEnum('wiki_link_section', [
+  'public',
+  'gm',
+]);
+
+export const entityWikiLinks = pgTable('entity_wiki_links', {
+  id: uuid('id').defaultRandom().primaryKey(),
+  campaignId: uuid('campaign_id')
+    .notNull()
+    .references(() => campaigns.id, { onDelete: 'cascade' }),
+  // Only 'entity' exists as a source today; sessions/plot-threads will add
+  // more resource types in later milestones, hence a plain text column
+  // rather than an enum tied to today's single value.
+  sourceResourceType: text('source_resource_type').notNull(),
+  sourceResourceId: uuid('source_resource_id').notNull(),
+  sourceSection: wikiLinkSectionEnum('source_section').notNull(),
+  targetEntityId: uuid('target_entity_id')
+    .notNull()
+    .references(() => entities.id, { onDelete: 'cascade' }),
+  displayText: text('display_text').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});

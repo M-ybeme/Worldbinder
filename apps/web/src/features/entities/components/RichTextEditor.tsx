@@ -6,6 +6,8 @@ import TableHeader from '@tiptap/extension-table-header'
 import TableRow from '@tiptap/extension-table-row'
 import { EditorContent, useEditor, type Editor, type JSONContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
+import { useNavigate } from 'react-router-dom'
+import { EntityMention } from './entityMentionExtension'
 
 const EMPTY_DOC: TiptapDoc = { type: 'doc', content: [{ type: 'paragraph' }] }
 
@@ -14,6 +16,9 @@ export interface RichTextEditorProps {
   content: TiptapDoc | null
   onChange?: (doc: TiptapDoc) => void
   editable?: boolean
+  /** Enables the `[[` wiki-link mention node — omit to render plain rich
+   * text with no entity-linking capability. */
+  campaignId?: string
 }
 
 /**
@@ -21,7 +26,15 @@ export interface RichTextEditorProps {
  * different document (e.g. restoring a draft) remount via a `key` change
  * rather than expecting a live prop update to push into TipTap.
  */
-export function RichTextEditor({ label, content, onChange, editable = true }: RichTextEditorProps) {
+export function RichTextEditor({
+  label,
+  content,
+  onChange,
+  editable = true,
+  campaignId,
+}: RichTextEditorProps) {
+  const navigate = useNavigate()
+
   const editor = useEditor({
     extensions: [
       StarterKit,
@@ -30,6 +43,14 @@ export function RichTextEditor({ label, content, onChange, editable = true }: Ri
       TableRow,
       TableHeader,
       TableCell,
+      ...(campaignId
+        ? [
+            EntityMention.configure({
+              campaignId,
+              onNavigate: (entityId) => navigate(`/app/campaign/${campaignId}/world/${entityId}`),
+            }),
+          ]
+        : []),
     ],
     content: (content ?? EMPTY_DOC) as JSONContent,
     editable,
@@ -127,6 +148,12 @@ function RichTextToolbar({ editor }: { editor: Editor }) {
           if (url) editor.chain().focus().setLink({ href: url }).run()
         }}
       />
+      {editor.extensionManager.extensions.some((ext) => ext.name === 'entityMention') && (
+        <ToolbarButton
+          label="Link entity"
+          onClick={() => editor.chain().focus().insertContent('[[').run()}
+        />
+      )}
       <ToolbarButton
         label="Table"
         onClick={() =>

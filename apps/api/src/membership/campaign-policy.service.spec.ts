@@ -84,4 +84,27 @@ describe('CampaignPolicyService', () => {
     expect(policy.canEditEntities('player')).toBe(false);
     expect(policy.canEditEntities('viewer')).toBe(false);
   });
+
+  describe('canViewVisibility', () => {
+    it('lets everyone see public content regardless of role', () => {
+      for (const role of [
+        'owner',
+        'gm',
+        'editor',
+        'player',
+        'viewer',
+      ] as const) {
+        expect(policy.canViewVisibility('public', role, false)).toBe(true);
+      }
+    });
+
+    it('gates gm_only content the same way as canViewGmContent', () => {
+      expect(policy.canViewVisibility('gm_only', 'owner', false)).toBe(true);
+      expect(policy.canViewVisibility('gm_only', 'gm', false)).toBe(true);
+      expect(policy.canViewVisibility('gm_only', 'editor', true)).toBe(true);
+      expect(policy.canViewVisibility('gm_only', 'editor', false)).toBe(false);
+      expect(policy.canViewVisibility('gm_only', 'player', false)).toBe(false);
+      expect(policy.canViewVisibility('gm_only', 'viewer', false)).toBe(false);
+    });
+  });
 });

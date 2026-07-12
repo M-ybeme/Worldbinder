@@ -6,7 +6,9 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import type {
+  Backlink,
   EntityDetail,
+  EntityRelationshipView,
   EntitySummary,
   TiptapDoc,
 } from '@worldbinder/contracts';
@@ -21,6 +23,8 @@ import { DRIZZLE, type Database } from '../database/database.module';
 import { entities, entityTags, tags } from '../database/schema';
 import { CampaignPolicyService } from '../membership/campaign-policy.service';
 import type { CampaignMembership } from '../membership/guards/campaign-membership.guard';
+import { RelationshipsService } from '../relationships/relationships.service';
+import { WikiLinksService } from './wiki-links.service';
 
 type EntityRow = typeof entities.$inferSelect;
 
@@ -29,6 +33,8 @@ export class EntitiesService {
   constructor(
     @Inject(DRIZZLE) private readonly db: Database,
     private readonly policy: CampaignPolicyService,
+    private readonly relationships: RelationshipsService,
+    private readonly wikiLinks: WikiLinksService,
   ) {}
 
   async create(
@@ -66,6 +72,25 @@ export class EntitiesService {
 
       if (input.tags && input.tags.length > 0) {
         await syncTags(tx, campaignId, row.id, input.tags);
+      }
+
+      if (input.publicContentJson !== undefined) {
+        await this.wikiLinks.refreshLinks(
+          tx,
+          campaignId,
+          row.id,
+          'public',
+          input.publicContentJson,
+        );
+      }
+      if (input.gmContentJson !== undefined) {
+        await this.wikiLinks.refreshLinks(
+          tx,
+          campaignId,
+          row.id,
+          'gm',
+          input.gmContentJson,
+        );
       }
 
       return row;
@@ -139,6 +164,24 @@ export class EntitiesService {
     return this.toDetail(entity, membership, tagNames);
   }
 
+  async getRelationships(
+    campaignId: string,
+    entityId: string,
+    membership: CampaignMembership,
+  ): Promise<EntityRelationshipView[]> {
+    await this.requireVisibleEntity(campaignId, entityId, membership);
+    return this.relationships.neighborhood(campaignId, entityId, membership);
+  }
+
+  async getBacklinks(
+    campaignId: string,
+    entityId: string,
+    membership: CampaignMembership,
+  ): Promise<Backlink[]> {
+    await this.requireVisibleEntity(campaignId, entityId, membership);
+    return this.wikiLinks.backlinks(campaignId, entityId, membership);
+  }
+
   async update(
     campaignId: string,
     entityId: string,
@@ -208,6 +251,25 @@ export class EntitiesService {
 
       if (input.tags !== undefined) {
         await syncTags(tx, campaignId, entityId, input.tags);
+      }
+
+      if (input.publicContentJson !== undefined) {
+        await this.wikiLinks.refreshLinks(
+          tx,
+          campaignId,
+          entityId,
+          'public',
+          input.publicContentJson,
+        );
+      }
+      if (input.gmContentJson !== undefined) {
+        await this.wikiLinks.refreshLinks(
+          tx,
+          campaignId,
+          entityId,
+          'gm',
+          input.gmContentJson,
+        );
       }
 
       return row;
@@ -289,12 +351,11 @@ export class EntitiesService {
     membership: CampaignMembership,
   ): Promise<EntityRow> {
     const entity = await this.requireEntity(campaignId, entityId);
-    const canSee =
-      entity.visibility === 'public' ||
-      this.policy.canViewGmContent(
-        membership.role,
-        membership.editorSecretAccess,
-      );
+    const canSee = this.policy.canViewVisibility(
+      entity.visibility,
+      membership.role,
+      membership.editorSecretAccess,
+    );
     if (!canSee) throw new NotFoundException('Entity not found');
     return entity;
   }

@@ -12,10 +12,15 @@ const entitiesQueryKey = (campaignId: string, query: ListEntitiesQuery) =>
 const entityQueryKey = (campaignId: string, entityId: string) =>
   [...entitiesListKey(campaignId), entityId] as const
 
-export function useEntitiesQuery(campaignId: string, query: ListEntitiesQuery = {}) {
+export function useEntitiesQuery(
+  campaignId: string,
+  query: ListEntitiesQuery = {},
+  options: { enabled?: boolean } = {},
+) {
   return useQuery({
     queryKey: entitiesQueryKey(campaignId, query),
     queryFn: () => entitiesApi.listEntities(campaignId, query),
+    enabled: options.enabled ?? true,
   })
 }
 

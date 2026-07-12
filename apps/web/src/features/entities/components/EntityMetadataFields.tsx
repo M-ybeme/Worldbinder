@@ -1,24 +1,36 @@
 import type { EntityType } from '@worldbinder/contracts'
 import { Select, TextField } from '@worldbinder/ui'
+import { EntityPicker } from './EntityPicker'
 
 export interface EntityMetadataFieldsProps {
+  campaignId: string
   entityType: EntityType
   value: Record<string, unknown>
   onChange: (metadata: Record<string, unknown>) => void
 }
 
-/**
- * Cross-entity reference fields (currentLocationEntityId, leaderEntityId,
- * etc.) aren't exposed here — a proper entity-reference picker belongs with
- * Milestone 4's relationship UI. The backend already stores these fields if
- * set via the API directly; this form just doesn't offer a picker for them yet.
- */
-export function EntityMetadataFields({ entityType, value, onChange }: EntityMetadataFieldsProps) {
+export function EntityMetadataFields({
+  campaignId,
+  entityType,
+  value,
+  onChange,
+}: EntityMetadataFieldsProps) {
   const str = (key: string): string =>
     typeof value[key] === 'string' ? (value[key] as string) : ''
 
   const set = (key: string) => (val: string) =>
     onChange({ ...value, [key]: val === '' ? undefined : val })
+
+  const entityRef = (key: string, label: string, refType?: EntityType) => (
+    <EntityPicker
+      key={key}
+      campaignId={campaignId}
+      label={label}
+      entityType={refType}
+      value={str(key) || undefined}
+      onChange={(id) => onChange({ ...value, [key]: id })}
+    />
+  )
 
   switch (entityType) {
     case 'character':
@@ -55,6 +67,7 @@ export function EntityMetadataFields({ entityType, value, onChange }: EntityMeta
             value={str('lifeStatus')}
             onChange={(e) => set('lifeStatus')(e.target.value)}
           />
+          {entityRef('currentLocationEntityId', 'Current location', 'location')}
         </>
       )
     case 'location':
@@ -79,25 +92,34 @@ export function EntityMetadataFields({ entityType, value, onChange }: EntityMeta
             value={str('government')}
             onChange={(e) => set('government')(e.target.value)}
           />
+          {entityRef('parentLocationEntityId', 'Parent location', 'location')}
         </>
       )
     case 'faction':
       return (
-        <TextField
-          id="metadata-factionType"
-          label="Faction type"
-          value={str('factionType')}
-          onChange={(e) => set('factionType')(e.target.value)}
-        />
+        <>
+          <TextField
+            id="metadata-factionType"
+            label="Faction type"
+            value={str('factionType')}
+            onChange={(e) => set('factionType')(e.target.value)}
+          />
+          {entityRef('leaderEntityId', 'Leader', 'character')}
+          {entityRef('headquartersLocationEntityId', 'Headquarters', 'location')}
+        </>
       )
     case 'organization':
       return (
-        <TextField
-          id="metadata-organizationType"
-          label="Organization type"
-          value={str('organizationType')}
-          onChange={(e) => set('organizationType')(e.target.value)}
-        />
+        <>
+          <TextField
+            id="metadata-organizationType"
+            label="Organization type"
+            value={str('organizationType')}
+            onChange={(e) => set('organizationType')(e.target.value)}
+          />
+          {entityRef('leaderEntityId', 'Leader', 'character')}
+          {entityRef('headquartersLocationEntityId', 'Headquarters', 'location')}
+        </>
       )
     case 'item':
       return (
@@ -114,6 +136,8 @@ export function EntityMetadataFields({ entityType, value, onChange }: EntityMeta
             value={str('rarity')}
             onChange={(e) => set('rarity')(e.target.value)}
           />
+          {entityRef('currentOwnerEntityId', 'Current owner')}
+          {entityRef('currentLocationEntityId', 'Current location', 'location')}
         </>
       )
     case 'deity':
@@ -158,12 +182,15 @@ export function EntityMetadataFields({ entityType, value, onChange }: EntityMeta
       )
     case 'event':
       return (
-        <TextField
-          id="metadata-eventType"
-          label="Event type"
-          value={str('eventType')}
-          onChange={(e) => set('eventType')(e.target.value)}
-        />
+        <>
+          <TextField
+            id="metadata-eventType"
+            label="Event type"
+            value={str('eventType')}
+            onChange={(e) => set('eventType')(e.target.value)}
+          />
+          {entityRef('locationEntityId', 'Location', 'location')}
+        </>
       )
     case 'quest':
       return (
@@ -186,6 +213,7 @@ export function EntityMetadataFields({ entityType, value, onChange }: EntityMeta
             value={str('questStatus')}
             onChange={(e) => set('questStatus')(e.target.value)}
           />
+          {entityRef('questGiverEntityId', 'Quest giver', 'character')}
         </>
       )
     case 'lore':

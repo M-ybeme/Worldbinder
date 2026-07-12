@@ -1,6 +1,7 @@
 import { Button, FormMessage } from '@worldbinder/ui'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useCampaignOutletContext } from '../../campaigns/hooks/useCampaignContext'
+import { RelatedContentPanel } from '../../relationships/components/RelatedContentPanel'
 import { RichTextEditor } from '../components/RichTextEditor'
 import { useDeleteEntityMutation, useEntityQuery } from '../hooks/useEntities'
 import { clearDraft } from '../lib/draftDb'
@@ -70,15 +71,28 @@ export function EntityDetailPage() {
 
       {entity.summary && <p>{entity.summary}</p>}
 
-      <RichTextEditor label="Content" content={entity.publicContentJson} editable={false} />
+      <RichTextEditor
+        label="Content"
+        content={entity.publicContentJson}
+        editable={false}
+        campaignId={campaign.id}
+      />
 
       {'gmContentJson' in entity && (
         <RichTextEditor
           label="GM-only content"
           content={entity.gmContentJson ?? null}
           editable={false}
+          campaignId={campaign.id}
         />
       )}
+
+      <RelatedContentPanel
+        campaignId={campaign.id}
+        entityId={entity.id}
+        canEdit={canManage}
+        campaignRole={campaign.role}
+      />
     </section>
   )
 }

@@ -6,6 +6,22 @@ Every push to `main` should add an entry here. This is meant to be an honest rec
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-07-12
+
+### Added
+
+- **Milestone 4 — Relationships, Wiki Links, and Backlinks.** Typed relationships between entities (14 built-in types plus per-campaign custom types), `[[wiki-link]]` mentions inside rich text, backlink tracking, and the incoming/outgoing/backlinks panels that surface them on the entity detail page — both API and web UI.
+- New schema: `relationship_types` (built-ins have `campaign_id = null`, shared across every campaign; custom types are per-campaign), `entity_relationships` (no reverse row is ever stored — the reverse direction is a query projection using the type's `reverseLabel`), `entity_wiki_links`, plus a `wiki_link_section` enum. `relationship_types.key` uniqueness needed two *partial* unique indexes rather than one composite constraint, since Postgres treats every `NULL` as distinct in an ordinary unique index and would otherwise let two built-in rows share a key.
+- `relationships` module (`apps/api/src/relationships/`): relationship-type list/create, relationship create/update/delete, and a "neighborhood" query (`GET .../entities/:entityId/relationships`) that returns both directions already labeled and visibility-filtered. Built-ins are provisioned idempotently via `RelationshipTypesService.onModuleInit` (`onConflictDoNothing` targeting the primary key — the partial-unique-index-on-`key` approach doesn't work as an `ON CONFLICT` arbiter without repeating its predicate, and hand-editing a migration to `INSERT` seed rows isn't allowed, so each built-in type has a fixed id instead).
+- `entities/wiki-links.service.ts`: extracts `entityMention` nodes from TipTap JSON on every entity save, validates every mention resolves to a live entity in the same campaign (a cross-campaign or dangling mention is a hard `400`, not a silent drop — same tenant-isolation stance as ADR-0008), and full-replaces the stored links per content section (same pattern as tag sync). Backlinks and relationships share one visibility predicate now: `CampaignPolicyService.canViewVisibility` (`EntitiesService.requireVisibleEntity` was refactored onto it too) — a public relationship or backlink pointing at a `gm_only` entity is invisible to anyone who can't see that entity, not just entities themselves.
+- Frontend: a `[[`-triggered entity-mention autocomplete in `RichTextEditor` (new `@tiptap/suggestion`-based `entityMention` node, hand-rolled popup rather than pulling in `tippy.js`), a new `packages/ui` `Combobox` primitive plus an `EntityPicker` built on it (now also used to fill in the `*EntityId` cross-reference metadata fields — `currentLocationEntityId`, `leaderEntityId`, etc. — that Milestone 3 explicitly left unwired), and a `RelatedContentPanel` on the entity detail page combining relationships (with an inline "+ Relationship" create form) and backlinks.
+- 4 new unit tests (`checkRelationshipTypeCompatibility`, factored out of `RelationshipsService` specifically so compatibility logic doesn't need a database to test) plus 5 (`WikiLinksService.extractMentions`) plus 2 (`CampaignPolicyService.canViewVisibility`), and 15 new integration tests (`relationships.e2e-spec.ts`, `wiki-links.e2e-spec.ts`) covering reverse-label projection, cross-campaign rejection, duplicate/symmetric-duplicate detection, type-compatibility rejection, backlink refresh-on-update, and the visibility-leak cases (hidden relationship, public relationship to a hidden entity, GM-only-section backlink). Extended `apps/web/e2e/relationships.spec.ts`: relationship creation + reverse projection, a `[[` mention creating a backlink, and a player confirmed unable to see a `gm_only` relationship.
+- Scope note: no `/world/relationships` graph or list view this milestone — relationships surface as per-entity panels only, matching the milestone's actual deliverables rather than the later portfolio "relationship graph" polish item (roadmap §30).
+
+### Fixed
+
+- `@tiptap/suggestion`'s `allowSpaces` defaults to `false`, which silently closes the mention popup the instant the user types a space — fatal for a picker whose whole purpose is searching multi-word entity names ("Westvale Village"). Found via a real browser run (typing `[[Duke Ren` looked fine; `[[Duke Renald` didn't), not by the Jest/unit suites, which don't drive a real ProseMirror `contentEditable`. Fixed by setting `allowSpaces: true` on the extension's `Suggestion` config.
+
 ## [0.4.0] - 2026-07-11
 
 ### Added

@@ -12,7 +12,12 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import type { EntityDetail, EntitySummary } from '@worldbinder/contracts';
+import type {
+  Backlink,
+  EntityDetail,
+  EntityRelationshipView,
+  EntitySummary,
+} from '@worldbinder/contracts';
 import {
   createEntitySchema,
   listEntitiesQuerySchema,
@@ -68,6 +73,24 @@ export class EntitiesController {
     @CurrentMembership() membership: CampaignMembership,
   ): Promise<EntityDetail> {
     return this.entities.getById(campaignId, entityId, membership);
+  }
+
+  @Get(':entityId/relationships')
+  getRelationships(
+    @Param('campaignId', ParseUUIDPipe) campaignId: string,
+    @Param('entityId', ParseUUIDPipe) entityId: string,
+    @CurrentMembership() membership: CampaignMembership,
+  ): Promise<EntityRelationshipView[]> {
+    return this.entities.getRelationships(campaignId, entityId, membership);
+  }
+
+  @Get(':entityId/backlinks')
+  getBacklinks(
+    @Param('campaignId', ParseUUIDPipe) campaignId: string,
+    @Param('entityId', ParseUUIDPipe) entityId: string,
+    @CurrentMembership() membership: CampaignMembership,
+  ): Promise<Backlink[]> {
+    return this.entities.getBacklinks(campaignId, entityId, membership);
   }
 
   @RequireCampaignRole('owner', 'gm', 'editor')

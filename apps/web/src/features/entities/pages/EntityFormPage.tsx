@@ -337,13 +337,19 @@ export function EntityFormPage() {
           onChange={(e) => setStatus(e.target.value as EntityStatus)}
         />
 
-        <EntityMetadataFields entityType={entityType} value={metadata} onChange={setMetadata} />
+        <EntityMetadataFields
+          campaignId={campaign.id}
+          entityType={entityType}
+          value={metadata}
+          onChange={setMetadata}
+        />
 
         <RichTextEditor
           key={`public-${formKey}`}
           label="Public content"
           content={publicContent}
           onChange={setPublicContent}
+          campaignId={campaign.id}
         />
 
         {showGmContent && (
@@ -352,6 +358,7 @@ export function EntityFormPage() {
             label="GM-only content"
             content={gmContent}
             onChange={setGmContent}
+            campaignId={campaign.id}
           />
         )}
 

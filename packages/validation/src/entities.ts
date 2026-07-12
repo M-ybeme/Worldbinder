@@ -24,6 +24,11 @@ const schemaVersion1 = z.literal(1).default(1)
 // TipTap JSON is the canonical content format (roadmap §10.4). Only the
 // document envelope is validated here — deep per-node-type validation of
 // arbitrary TipTap content isn't warranted for v1.
+//
+// Wiki-links (Milestone 4) are represented inline as
+// `{ type: 'entityMention', attrs: { entityId: string, label: string } }`
+// nodes, extracted server-side by `WikiLinksService` — not validated here
+// for the same reason.
 export const tiptapDocSchema = z
   .object({ type: z.literal('doc'), content: z.array(z.unknown()) })
   .passthrough()

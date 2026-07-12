@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import type { CampaignRole } from '@worldbinder/contracts';
+import type { CampaignRole, EntityVisibility } from '@worldbinder/contracts';
 
 const MANAGEMENT_ROLES: CampaignRole[] = ['owner', 'gm'];
 const ENTITY_EDITOR_ROLES: CampaignRole[] = ['owner', 'gm', 'editor'];
@@ -72,5 +72,22 @@ export class CampaignPolicyService {
    */
   canEditEntities(role: CampaignRole): boolean {
     return ENTITY_EDITOR_ROLES.includes(role);
+  }
+
+  /**
+   * Shared two-tier visibility check (ADR-0009): `public` is visible to
+   * every member, `gm_only` follows the same GM-content rule as entities.
+   * Used for entities themselves, relationships, and wiki-link backlinks so
+   * "hidden content does not leak" means the same thing everywhere it's
+   * checked (roadmap §13, Milestone 4 exit criteria).
+   */
+  canViewVisibility(
+    visibility: EntityVisibility,
+    role: CampaignRole,
+    editorSecretAccess: boolean,
+  ): boolean {
+    return (
+      visibility === 'public' || this.canViewGmContent(role, editorSecretAccess)
+    );
   }
 }
