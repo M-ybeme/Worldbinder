@@ -1973,7 +1973,7 @@ Each milestone must end in working software, passing tests, and updated document
 
 ---
 
-## Milestone 7 — Search
+## Milestone 7 — Search [Done]
 
 ### Deliverables
 
@@ -1993,7 +1993,7 @@ Each milestone must end in working software, passing tests, and updated document
 
 ---
 
-## Milestone 8 — Revisions and Audit
+## Milestone 8 — Revisions and Audit [Done]
 
 ### Deliverables
 

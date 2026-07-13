@@ -11,6 +11,7 @@ import type {
   EntityDetail,
   EntityRelationshipView,
   EntitySummary,
+  EntityType,
   TiptapDoc,
 } from '@worldbinder/contracts';
 import type {
@@ -20,11 +21,16 @@ import type {
 } from '@worldbinder/validation';
 import { and, desc, eq, ilike, inArray, isNull, type SQL } from 'drizzle-orm';
 import { randomBytes } from 'node:crypto';
+import { CampaignAuditService } from '../audit/campaign-audit.service';
 import { DRIZZLE, type Database } from '../database/database.module';
 import { entities, entityTags, tags } from '../database/schema';
 import { CampaignPolicyService } from '../membership/campaign-policy.service';
 import type { CampaignMembership } from '../membership/guards/campaign-membership.guard';
 import { RelationshipsService } from '../relationships/relationships.service';
+import {
+  RevisionRecorderService,
+  type RevisionWriteOptions,
+} from '../revisions/revision-recorder.service';
 import {
   buildWeightedTsvector,
   extractPlainText,
@@ -42,6 +48,8 @@ export class EntitiesService {
     private readonly relationships: RelationshipsService,
     private readonly wikiLinks: WikiLinksService,
     private readonly sessions: SessionsService,
+    private readonly revisionRecorder: RevisionRecorderService,
+    private readonly audit: CampaignAuditService,
   ) {}
 
   async create(
@@ -110,6 +118,15 @@ export class EntitiesService {
           input.gmContentJson,
         );
       }
+
+      await this.revisionRecorder.recordRevision(tx, {
+        campaignId,
+        resourceType: 'entity',
+        resourceId: row.id,
+        actorUserId: userId,
+        snapshot: toEntityRevisionSnapshot(row, input.tags ?? []),
+        allowMerge: true,
+      });
 
       return row;
     });
@@ -215,6 +232,7 @@ export class EntitiesService {
     membership: CampaignMembership,
     userId: string,
     input: UpdateEntityInput,
+    revisionOptions?: RevisionWriteOptions,
   ): Promise<EntityDetail> {
     this.assertCanEdit(membership);
     this.assertCanWriteGmContent(membership, input.gmContentJson);
@@ -337,6 +355,16 @@ export class EntitiesService {
         })
         .where(eq(entities.id, entityId));
 
+      await this.revisionRecorder.recordRevision(tx, {
+        campaignId,
+        resourceType: 'entity',
+        resourceId: entityId,
+        actorUserId: userId,
+        snapshot: toEntityRevisionSnapshot(row, tagNames),
+        changeSummary: revisionOptions?.changeSummary,
+        allowMerge: revisionOptions?.allowMerge ?? true,
+      });
+
       return row;
     });
 
@@ -363,6 +391,15 @@ export class EntitiesService {
       .returning({ id: entities.id });
 
     if (!updated) throw new NotFoundException('Entity not found');
+
+    await this.audit.record({
+      campaignId,
+      type: 'destructive_action',
+      actorUserId: membership.userId,
+      targetResourceType: 'entity',
+      targetResourceId: entityId,
+      metadata: { action: 'delete' },
+    });
   }
 
   private assertCanEdit(membership: CampaignMembership): void {
@@ -535,6 +572,68 @@ function buildEntitySearchVectors(fields: {
     public: buildWeightedTsvector({ a, b, c: [publicContentText] }),
     gm: buildWeightedTsvector({ a, b, c: [publicContentText, gmContentText] }),
   };
+}
+
+/** Always the full GM-inclusive shape (roadmap §9.10) — unlike `toDetail()`,
+ * never gates `gmContentJson` by viewer. Field-omission for non-GM revision
+ * viewers happens at read time in `RevisionsService.list()`, not here. */
+function toEntityRevisionSnapshot(
+  entity: EntityRow,
+  tagNames: string[],
+): Record<string, unknown> {
+  return {
+    entityType: entity.entityType,
+    name: entity.name,
+    summary: entity.summary,
+    aliases: entity.aliasesJson ?? [],
+    tags: tagNames,
+    status: entity.status,
+    visibility: entity.visibility,
+    publicContentJson: entity.publicContentJson,
+    gmContentJson: entity.gmContentJson,
+    metadataJson: entity.metadataJson,
+  };
+}
+
+/** Maps a stored snapshot back into an `UpdateEntityInput` for
+ * `RevisionsService.restore()` to pass into the real `update()` — reused
+ * rather than a raw table write so restore gets tag sync, wiki-link
+ * refresh, tsvector rebuild, and permission checks for free. `canViewGm`
+ * is the *restoring actor's* current permission, not the snapshot's: if
+ * they can't view GM content, `gmContentJson` is omitted entirely from the
+ * mapped input (same as it never being sent), not silently overwritten —
+ * that portion of the resource just isn't touched by this restore. */
+export function entitySnapshotToUpdateInput(
+  snapshot: Record<string, unknown>,
+  canViewGm: boolean,
+  updatedAt: string,
+): UpdateEntityInput {
+  const s = snapshot as {
+    entityType: EntityType;
+    name: string;
+    summary: string | null;
+    aliases: string[];
+    tags: string[];
+    status: EntitySummary['status'];
+    visibility: EntitySummary['visibility'];
+    publicContentJson: TiptapDoc | null;
+    gmContentJson: TiptapDoc | null;
+    metadataJson: Record<string, unknown> | null;
+  };
+
+  return {
+    entityType: s.entityType,
+    updatedAt,
+    name: s.name,
+    summary: s.summary ?? undefined,
+    aliases: s.aliases,
+    tags: s.tags,
+    status: s.status,
+    visibility: s.visibility,
+    metadata: s.metadataJson ?? undefined,
+    publicContentJson: s.publicContentJson ?? undefined,
+    ...(canViewGm ? { gmContentJson: s.gmContentJson } : {}),
+  } as UpdateEntityInput;
 }
 
 function slugify(input: string): string {

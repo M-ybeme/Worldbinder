@@ -2,7 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { Button, FormMessage, TextField } from '@worldbinder/ui'
 import { updateCampaignSchema, type UpdateCampaignInput } from '@worldbinder/validation'
 import { useForm } from 'react-hook-form'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useCampaignOutletContext } from '../hooks/useCampaignContext'
 import {
   useArchiveCampaignMutation,
@@ -69,6 +69,11 @@ export function CampaignSettingsPage() {
           {updateCampaign.isPending ? 'Saving…' : 'Save settings'}
         </Button>
       </form>
+
+      <h2>Activity log</h2>
+      <p>
+        <Link to={`/app/campaign/${campaign.id}/audit`}>View campaign activity</Link>
+      </p>
 
       <h2>Archive</h2>
       {campaign.status === 'archived' ? (

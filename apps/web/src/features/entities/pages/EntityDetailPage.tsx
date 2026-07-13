@@ -2,6 +2,7 @@ import { Button, FormMessage } from '@worldbinder/ui'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useCampaignOutletContext } from '../../campaigns/hooks/useCampaignContext'
 import { RelatedContentPanel } from '../../relationships/components/RelatedContentPanel'
+import { RevisionHistoryPanel } from '../../revisions/components/RevisionHistoryPanel'
 import { RichTextEditor } from '../components/RichTextEditor'
 import {
   useDeleteEntityMutation,
@@ -114,6 +115,14 @@ export function EntityDetailPage() {
           </ul>
         </div>
       </div>
+
+      <RevisionHistoryPanel
+        campaignId={campaign.id}
+        resourceType="entity"
+        resourceId={entity.id}
+        canRestore={canManage}
+        onRestored={() => void entityQuery.refetch()}
+      />
     </section>
   )
 }

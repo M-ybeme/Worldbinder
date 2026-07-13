@@ -5,6 +5,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useCampaignOutletContext } from '../../campaigns/hooks/useCampaignContext'
 import { EntityPicker } from '../../entities/components/EntityPicker'
 import { RichTextEditor } from '../../entities/components/RichTextEditor'
+import { RevisionHistoryPanel } from '../../revisions/components/RevisionHistoryPanel'
 import {
   useCompleteSessionMutation,
   useDeleteSessionMutation,
@@ -288,6 +289,14 @@ export function SessionDetailPage() {
           )}
         </div>
       </div>
+
+      <RevisionHistoryPanel
+        campaignId={campaign.id}
+        resourceType="session"
+        resourceId={session.id}
+        canRestore={canManage}
+        onRestored={() => void sessionQuery.refetch()}
+      />
     </section>
   )
 }

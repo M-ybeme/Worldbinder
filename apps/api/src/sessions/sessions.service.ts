@@ -10,8 +10,10 @@ import type {
   CampaignSessionDetail,
   CampaignSessionSummary,
   EntitySummary,
+  EntityVisibility,
   PlotThreadSessionAction,
   SessionParticipant,
+  SessionStatus,
   TiptapDoc,
   WorldDate,
 } from '@worldbinder/contracts';
@@ -22,6 +24,7 @@ import type {
   UpdateSessionInput,
 } from '@worldbinder/validation';
 import { and, eq, inArray, isNull, sql, type SQL } from 'drizzle-orm';
+import { CampaignAuditService } from '../audit/campaign-audit.service';
 import { DRIZZLE, type Database } from '../database/database.module';
 import {
   campaignMembers,
@@ -40,6 +43,10 @@ import { CampaignPolicyService } from '../membership/campaign-policy.service';
 import type { CampaignMembership } from '../membership/guards/campaign-membership.guard';
 import { PlotThreadsService } from '../plot-threads/plot-threads.service';
 import {
+  RevisionRecorderService,
+  type RevisionWriteOptions,
+} from '../revisions/revision-recorder.service';
+import {
   buildWeightedTsvector,
   extractPlainText,
 } from '../search/search-vector.util';
@@ -47,12 +54,24 @@ import {
 type SessionRow = typeof sessions.$inferSelect;
 type EntityRow = typeof entities.$inferSelect;
 
+interface SessionJoinState {
+  participantIds: string[];
+  featuredEntityIds: string[];
+  locationEntityIds: string[];
+  plotThreadChanges: {
+    plotThreadId: string;
+    action: PlotThreadSessionAction;
+  }[];
+}
+
 @Injectable()
 export class SessionsService {
   constructor(
     @Inject(DRIZZLE) private readonly db: Database,
     private readonly policy: CampaignPolicyService,
     private readonly plotThreads: PlotThreadsService,
+    private readonly revisionRecorder: RevisionRecorderService,
+    private readonly audit: CampaignAuditService,
   ) {}
 
   async create(
@@ -88,7 +107,7 @@ export class SessionsService {
           searchVectorPublic: vectors.public,
           searchVectorGm: vectors.gm,
         })
-        .returning({ id: sessions.id });
+        .returning();
 
       if (!row) throw new Error('Failed to create session');
 
@@ -125,6 +144,16 @@ export class SessionsService {
           input.plotThreadChanges,
         );
       }
+
+      const joinState = await this.getSessionJoinState(tx, row.id);
+      await this.revisionRecorder.recordRevision(tx, {
+        campaignId,
+        resourceType: 'session',
+        resourceId: row.id,
+        actorUserId: userId,
+        snapshot: toSessionRevisionSnapshot(row, joinState),
+        allowMerge: true,
+      });
 
       return row.id;
     });
@@ -175,6 +204,7 @@ export class SessionsService {
     membership: CampaignMembership,
     userId: string,
     input: UpdateSessionInput,
+    revisionOptions?: RevisionWriteOptions,
   ): Promise<CampaignSessionDetail> {
     this.assertCanEdit(membership);
 
@@ -250,7 +280,7 @@ export class SessionsService {
             isNull(sessions.deletedAt),
           ),
         )
-        .returning({ id: sessions.id });
+        .returning();
 
       if (!row) throw new NotFoundException('Session not found');
 
@@ -287,6 +317,17 @@ export class SessionsService {
           input.plotThreadChanges,
         );
       }
+
+      const joinState = await this.getSessionJoinState(tx, sessionId);
+      await this.revisionRecorder.recordRevision(tx, {
+        campaignId,
+        resourceType: 'session',
+        resourceId: sessionId,
+        actorUserId: userId,
+        snapshot: toSessionRevisionSnapshot(row, joinState),
+        changeSummary: revisionOptions?.changeSummary,
+        allowMerge: revisionOptions?.allowMerge ?? true,
+      });
     });
 
     return this.getById(campaignId, sessionId, membership);
@@ -296,6 +337,7 @@ export class SessionsService {
     campaignId: string,
     sessionId: string,
     membership: CampaignMembership,
+    userId: string,
   ): Promise<void> {
     this.assertCanEdit(membership);
 
@@ -312,6 +354,15 @@ export class SessionsService {
       .returning({ id: sessions.id });
 
     if (!updated) throw new NotFoundException('Session not found');
+
+    await this.audit.record({
+      campaignId,
+      type: 'destructive_action',
+      actorUserId: userId,
+      targetResourceType: 'session',
+      targetResourceId: sessionId,
+      metadata: { action: 'delete' },
+    });
   }
 
   /**
@@ -328,6 +379,7 @@ export class SessionsService {
     campaignId: string,
     sessionId: string,
     membership: CampaignMembership,
+    userId: string,
     input: CompleteSessionInput,
   ): Promise<CampaignSessionDetail> {
     this.assertCanEdit(membership);
@@ -372,6 +424,7 @@ export class SessionsService {
           playedAt: input.playedAt
             ? new Date(input.playedAt)
             : (existing.playedAt ?? new Date()),
+          updatedByUserId: userId,
           updatedAt: new Date(),
           searchVectorPublic: vectors.public,
           searchVectorGm: vectors.gm,
@@ -383,7 +436,7 @@ export class SessionsService {
             isNull(sessions.deletedAt),
           ),
         )
-        .returning({ id: sessions.id });
+        .returning();
 
       if (!row) throw new NotFoundException('Session not found');
 
@@ -393,6 +446,17 @@ export class SessionsService {
           .set({ currentWorldDateJson: worldEndDate, updatedAt: new Date() })
           .where(eq(campaigns.id, campaignId));
       }
+
+      const joinState = await this.getSessionJoinState(tx, sessionId);
+      await this.revisionRecorder.recordRevision(tx, {
+        campaignId,
+        resourceType: 'session',
+        resourceId: sessionId,
+        actorUserId: userId,
+        snapshot: toSessionRevisionSnapshot(row, joinState),
+        changeSummary: 'Session completed',
+        allowMerge: true,
+      });
     });
 
     return this.getById(campaignId, sessionId, membership);
@@ -410,6 +474,7 @@ export class SessionsService {
     sessionId: string,
     membership: CampaignMembership,
     entityId: string,
+    userId: string,
   ): Promise<EntitySummary> {
     this.assertCanReveal(membership);
     await this.requireSession(campaignId, sessionId);
@@ -441,6 +506,18 @@ export class SessionsService {
 
       await tx.insert(sessionReveals).values({ sessionId, entityId });
       return row;
+    });
+
+    // targetResourceId is the revealed entity, not the session — the
+    // interesting audit fact is *what* became visible, and no content
+    // body is stored here (roadmap §11.14), just the id.
+    await this.audit.record({
+      campaignId,
+      type: 'content_revealed',
+      actorUserId: userId,
+      targetResourceType: 'entity',
+      targetResourceId: entityId,
+      metadata: { sessionId },
     });
 
     return toEntitySummary(revealed);
@@ -502,6 +579,51 @@ export class SessionsService {
       .from(sessions)
       .where(eq(sessions.campaignId, campaignId));
     return Number(row?.max ?? 0) + 1;
+  }
+
+  /** Reads the four join tables `update()`'s `sync*` methods full-replace
+   * — read fresh, inside the same `tx`, after any sync has run this write.
+   * A session's revision snapshot needs this alongside its row columns, or
+   * restoring a session revision would silently leave participants/
+   * featured entities/locations/plot-thread links at their *current*
+   * state instead of the historical one (unlike entities/plot-threads,
+   * where a single extra join — tags/entityIds — covers the gap). */
+  private async getSessionJoinState(
+    tx: Database,
+    sessionId: string,
+  ): Promise<SessionJoinState> {
+    const [participantRows, featuredRows, locationRows, plotThreadRows] =
+      await Promise.all([
+        tx
+          .select({ campaignMemberId: sessionParticipants.campaignMemberId })
+          .from(sessionParticipants)
+          .where(eq(sessionParticipants.sessionId, sessionId)),
+        tx
+          .select({ entityId: sessionEntities.entityId })
+          .from(sessionEntities)
+          .where(eq(sessionEntities.sessionId, sessionId)),
+        tx
+          .select({ entityId: sessionLocations.entityId })
+          .from(sessionLocations)
+          .where(eq(sessionLocations.sessionId, sessionId)),
+        tx
+          .select({
+            plotThreadId: sessionPlotThreads.plotThreadId,
+            action: sessionPlotThreads.action,
+          })
+          .from(sessionPlotThreads)
+          .where(eq(sessionPlotThreads.sessionId, sessionId)),
+      ]);
+
+    return {
+      participantIds: participantRows.map((r) => r.campaignMemberId),
+      featuredEntityIds: featuredRows.map((r) => r.entityId),
+      locationEntityIds: locationRows.map((r) => r.entityId),
+      plotThreadChanges: plotThreadRows.map((r) => ({
+        plotThreadId: r.plotThreadId,
+        action: r.action,
+      })),
+    };
   }
 
   private async syncParticipants(
@@ -871,6 +993,82 @@ function buildSessionSearchVectors(fields: {
   return {
     public: buildWeightedTsvector({ a, c: [recapText] }),
     gm: buildWeightedTsvector({ a, c: [recapText, plannedText, gmText] }),
+  };
+}
+
+/** Always the full GM-inclusive shape plus join-table state (roadmap
+ * §9.10) — unlike `toDetail()`, never gates `plannedContentJson`/
+ * `gmContentJson` by viewer. Field-omission for non-GM revision viewers
+ * happens at read time in `RevisionsService.list()`, not here. */
+function toSessionRevisionSnapshot(
+  session: SessionRow,
+  joinState: SessionJoinState,
+): Record<string, unknown> {
+  return {
+    title: session.title,
+    status: session.status,
+    scheduledAt: session.scheduledAt?.toISOString() ?? null,
+    playedAt: session.playedAt?.toISOString() ?? null,
+    worldStartDateJson: session.worldStartDateJson,
+    worldEndDateJson: session.worldEndDateJson,
+    plannedContentJson: session.plannedContentJson,
+    recapContentJson: session.recapContentJson,
+    gmContentJson: session.gmContentJson,
+    visibility: session.visibility,
+    ...joinState,
+  };
+}
+
+/** Maps a stored snapshot back into an `UpdateSessionInput` for
+ * `RevisionsService.restore()`, reused rather than a raw table write so
+ * restore gets join-table full-replace sync (with its plot-thread-link
+ * side effects), tsvector rebuild, and permission checks for free. Same
+ * GM-field-omission rule as `entitySnapshotToUpdateInput`. */
+export function sessionSnapshotToUpdateInput(
+  snapshot: Record<string, unknown>,
+  canViewGm: boolean,
+  updatedAt: string,
+): UpdateSessionInput {
+  const s = snapshot as {
+    title: string;
+    status: SessionStatus;
+    scheduledAt: string | null;
+    playedAt: string | null;
+    worldStartDateJson: WorldDate | null;
+    worldEndDateJson: WorldDate | null;
+    plannedContentJson: TiptapDoc | null;
+    recapContentJson: TiptapDoc | null;
+    gmContentJson: TiptapDoc | null;
+    visibility: EntityVisibility;
+    participantIds: string[];
+    featuredEntityIds: string[];
+    locationEntityIds: string[];
+    plotThreadChanges: {
+      plotThreadId: string;
+      action: PlotThreadSessionAction;
+    }[];
+  };
+
+  return {
+    updatedAt,
+    title: s.title,
+    status: s.status,
+    scheduledAt: s.scheduledAt,
+    playedAt: s.playedAt,
+    worldStartDateJson: s.worldStartDateJson ?? undefined,
+    worldEndDateJson: s.worldEndDateJson ?? undefined,
+    recapContentJson: s.recapContentJson,
+    visibility: s.visibility,
+    participantIds: s.participantIds,
+    featuredEntityIds: s.featuredEntityIds,
+    locationEntityIds: s.locationEntityIds,
+    plotThreadChanges: s.plotThreadChanges,
+    ...(canViewGm
+      ? {
+          plannedContentJson: s.plannedContentJson,
+          gmContentJson: s.gmContentJson,
+        }
+      : {}),
   };
 }
 

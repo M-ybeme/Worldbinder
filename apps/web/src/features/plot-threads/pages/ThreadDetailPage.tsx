@@ -2,6 +2,7 @@ import { Button, FormMessage } from '@worldbinder/ui'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useCampaignOutletContext } from '../../campaigns/hooks/useCampaignContext'
 import { RichTextEditor } from '../../entities/components/RichTextEditor'
+import { RevisionHistoryPanel } from '../../revisions/components/RevisionHistoryPanel'
 import { useDeletePlotThreadMutation, usePlotThreadQuery } from '../hooks/usePlotThreads'
 
 const MANAGEMENT_ROLES = new Set(['owner', 'gm', 'editor'])
@@ -104,6 +105,14 @@ export function ThreadDetailPage() {
           </ul>
         </div>
       </div>
+
+      <RevisionHistoryPanel
+        campaignId={campaign.id}
+        resourceType="plot_thread"
+        resourceId={thread.id}
+        canRestore={canManage}
+        onRestored={() => void threadQuery.refetch()}
+      />
     </section>
   )
 }

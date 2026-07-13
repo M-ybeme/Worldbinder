@@ -45,3 +45,5 @@ export type {
   PlotThreadSummary,
 } from './plot-threads.js'
 export type { SearchResourceType, SearchResponse, SearchResult, SearchSnippet } from './search.js'
+export type { RevisionResourceType, RevisionSummary } from './revisions.js'
+export type { CampaignAuditEvent, CampaignAuditEventType } from './audit.js'

@@ -657,3 +657,87 @@ export const sessionPlotThreads = pgTable(
   },
   (table) => [unique().on(table.sessionId, table.plotThreadId)],
 );
+
+// Milestone 8 — Revisions. Only entities/sessions/plot_threads are
+// revisioned (long-form content with a public/GM split); relationships are
+// small structured links, excluded by design (see CHANGELOG).
+export const resourceRevisionTypeEnum = pgEnum('resource_revision_type', [
+  'entity',
+  'session',
+  'plot_thread',
+]);
+
+export const resourceRevisions = pgTable(
+  'resource_revisions',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    campaignId: uuid('campaign_id')
+      .notNull()
+      .references(() => campaigns.id, { onDelete: 'cascade' }),
+    resourceType: resourceRevisionTypeEnum('resource_type').notNull(),
+    // No FK: polymorphic across three source tables, same shape as
+    // securityEvents/campaignAuditEvents' unconstrained target ids.
+    resourceId: uuid('resource_id').notNull(),
+    revisionNumber: integer('revision_number').notNull(),
+    // Always the full GM-inclusive shape, regardless of who triggered the
+    // write — field-omission for non-GM viewers happens at read time
+    // (RevisionsService.list()), not by storing two snapshot variants.
+    snapshotJson: jsonb('snapshot_json').notNull(),
+    changeSummary: text('change_summary'),
+    createdByUserId: uuid('created_by_user_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index('resource_revisions_lookup_idx').on(
+      table.campaignId,
+      table.resourceType,
+      table.resourceId,
+      table.revisionNumber,
+    ),
+  ],
+);
+
+// Milestone 8 — campaign-scoped audit/activity log. Deliberately separate
+// from securityEvents (apps/api/src/audit/audit.service.ts), which is
+// auth-only (global, not campaign-scoped) and stays untouched.
+export const campaignAuditEventTypeEnum = pgEnum('campaign_audit_event_type', [
+  'member_role_changed',
+  'member_removed',
+  'content_revealed',
+  'revision_restored',
+  'campaign_archived',
+  'campaign_deleted',
+  'destructive_action',
+]);
+
+export const campaignAuditEvents = pgTable(
+  'campaign_audit_events',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    campaignId: uuid('campaign_id')
+      .notNull()
+      .references(() => campaigns.id, { onDelete: 'cascade' }),
+    type: campaignAuditEventTypeEnum('type').notNull(),
+    actorUserId: uuid('actor_user_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    // No FK: polymorphic target (a member, an entity, a session...).
+    targetResourceType: text('target_resource_type'),
+    targetResourceId: uuid('target_resource_id'),
+    // Structured details only — never content bodies (roadmap §11.14).
+    metadataJson: jsonb('metadata_json'),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index('campaign_audit_events_campaign_idx').on(
+      table.campaignId,
+      table.createdAt,
+    ),
+  ],
+);

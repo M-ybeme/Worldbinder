@@ -101,3 +101,9 @@ export type {
 
 export { searchQuerySchema, searchResourceTypeSchema } from './search.js'
 export type { SearchQuery, SearchResourceType } from './search.js'
+
+export { revisionResourceTypeSchema } from './revisions.js'
+export type { RevisionResourceType } from './revisions.js'
+
+export { auditQuerySchema } from './audit.js'
+export type { AuditQuery } from './audit.js'

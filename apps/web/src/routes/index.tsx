@@ -4,6 +4,7 @@ import { AccountLayout } from '../features/account/components/AccountLayout'
 import { ProfilePage } from '../features/account/pages/ProfilePage'
 import { SecurityPage } from '../features/account/pages/SecurityPage'
 import { SessionsPage } from '../features/account/pages/SessionsPage'
+import { AuditPage } from '../features/audit/pages/AuditPage'
 import { RedirectIfAuthenticated } from '../features/auth/components/RedirectIfAuthenticated'
 import { RequireAuth } from '../features/auth/components/RequireAuth'
 import { ForgotPasswordPage } from '../features/auth/pages/ForgotPasswordPage'
@@ -89,6 +90,7 @@ export const router = createBrowserRouter([
                   { path: 'threads/:threadId', element: <ThreadDetailPage /> },
                   { path: 'threads/:threadId/edit', element: <ThreadFormPage /> },
                   { path: 'search', element: <SearchResultsPage /> },
+                  { path: 'audit', element: <AuditPage /> },
                 ],
               },
             ],

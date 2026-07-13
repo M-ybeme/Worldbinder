@@ -9,8 +9,10 @@ import {
 import type {
   CampaignSessionSummary,
   EntitySummary,
+  EntityVisibility,
   PlayerFacingThreadStatus,
   PlotThreadDetail,
+  PlotThreadImportance,
   PlotThreadSessionAction,
   PlotThreadStatus,
   PlotThreadSummary,
@@ -21,6 +23,7 @@ import type {
   UpdatePlotThreadInput,
 } from '@worldbinder/validation';
 import { and, desc, eq, inArray, isNull, sql, type SQL } from 'drizzle-orm';
+import { CampaignAuditService } from '../audit/campaign-audit.service';
 import { DRIZZLE, type Database } from '../database/database.module';
 import {
   entities,
@@ -31,6 +34,10 @@ import {
 } from '../database/schema';
 import { CampaignPolicyService } from '../membership/campaign-policy.service';
 import type { CampaignMembership } from '../membership/guards/campaign-membership.guard';
+import {
+  RevisionRecorderService,
+  type RevisionWriteOptions,
+} from '../revisions/revision-recorder.service';
 import {
   buildWeightedTsvector,
   extractPlainText,
@@ -112,6 +119,8 @@ export class PlotThreadsService {
   constructor(
     @Inject(DRIZZLE) private readonly db: Database,
     private readonly policy: CampaignPolicyService,
+    private readonly revisionRecorder: RevisionRecorderService,
+    private readonly audit: CampaignAuditService,
   ) {}
 
   async create(
@@ -146,13 +155,23 @@ export class PlotThreadsService {
           searchVectorPublic: vectors.public,
           searchVectorGm: vectors.gm,
         })
-        .returning({ id: plotThreads.id });
+        .returning();
 
       if (!row) throw new Error('Failed to create plot thread');
 
       if (input.entityIds) {
         await this.syncEntities(tx, campaignId, row.id, input.entityIds);
       }
+
+      const entityIds = await this.getThreadEntityIds(tx, row.id);
+      await this.revisionRecorder.recordRevision(tx, {
+        campaignId,
+        resourceType: 'plot_thread',
+        resourceId: row.id,
+        actorUserId: userId,
+        snapshot: toPlotThreadRevisionSnapshot(row, entityIds),
+        allowMerge: true,
+      });
 
       return row.id;
     });
@@ -223,6 +242,7 @@ export class PlotThreadsService {
     membership: CampaignMembership,
     userId: string,
     input: UpdatePlotThreadInput,
+    revisionOptions?: RevisionWriteOptions,
   ): Promise<PlotThreadDetail> {
     this.assertCanManage(membership);
     this.assertCanWriteGmContent(membership, input.gmContentJson);
@@ -297,13 +317,24 @@ export class PlotThreadsService {
             isNull(plotThreads.deletedAt),
           ),
         )
-        .returning({ id: plotThreads.id });
+        .returning();
 
       if (!row) throw new NotFoundException('Plot thread not found');
 
       if (input.entityIds !== undefined) {
         await this.syncEntities(tx, campaignId, threadId, input.entityIds);
       }
+
+      const entityIds = await this.getThreadEntityIds(tx, threadId);
+      await this.revisionRecorder.recordRevision(tx, {
+        campaignId,
+        resourceType: 'plot_thread',
+        resourceId: threadId,
+        actorUserId: userId,
+        snapshot: toPlotThreadRevisionSnapshot(row, entityIds),
+        changeSummary: revisionOptions?.changeSummary,
+        allowMerge: revisionOptions?.allowMerge ?? true,
+      });
     });
 
     return this.getById(campaignId, threadId, membership);
@@ -329,6 +360,15 @@ export class PlotThreadsService {
       .returning({ id: plotThreads.id });
 
     if (!updated) throw new NotFoundException('Plot thread not found');
+
+    await this.audit.record({
+      campaignId,
+      type: 'destructive_action',
+      actorUserId: membership.userId,
+      targetResourceType: 'plot_thread',
+      targetResourceId: threadId,
+      metadata: { action: 'delete' },
+    });
   }
 
   /**
@@ -554,6 +594,21 @@ export class PlotThreadsService {
       .values(uniqueIds.map((entityId) => ({ plotThreadId, entityId })));
   }
 
+  /** Read fresh, inside the same `tx`, after `syncEntities` has run this
+   * write — a plot-thread revision snapshot needs the current related-
+   * entity set alongside its row columns, same reasoning as sessions'
+   * `getSessionJoinState`. */
+  private async getThreadEntityIds(
+    tx: Database,
+    plotThreadId: string,
+  ): Promise<string[]> {
+    const rows = await tx
+      .select({ entityId: plotThreadEntities.entityId })
+      .from(plotThreadEntities)
+      .where(eq(plotThreadEntities.plotThreadId, plotThreadId));
+    return rows.map((row) => row.entityId);
+  }
+
   private async sessionNumberFor(
     tx: Database,
     sessionId: string,
@@ -704,6 +759,62 @@ function buildPlotThreadSearchVectors(fields: {
   return {
     public: buildWeightedTsvector({ a, b, c: [publicContentText] }),
     gm: buildWeightedTsvector({ a, b, c: [publicContentText, gmContentText] }),
+  };
+}
+
+/** Always the full GM-inclusive shape plus related-entity ids (roadmap
+ * §9.10) — unlike `toDetail()`, never gates `gmContentJson` by viewer.
+ * Deliberately excludes the denormalized session-link fields
+ * (`introducedSessionId`/`lastReferencedSessionId`/`resolvedSessionId`) —
+ * those are managed by `applySessionLink`, not editable via `update()`,
+ * and aren't part of `UpdatePlotThreadInput` for restore to map back to. */
+function toPlotThreadRevisionSnapshot(
+  thread: PlotThreadRow,
+  entityIds: string[],
+): Record<string, unknown> {
+  return {
+    title: thread.title,
+    summary: thread.summary,
+    publicContentJson: thread.publicContentJson,
+    gmContentJson: thread.gmContentJson,
+    status: thread.status,
+    importance: thread.importance,
+    visibility: thread.visibility,
+    entityIds,
+  };
+}
+
+/** Maps a stored snapshot back into an `UpdatePlotThreadInput` for
+ * `RevisionsService.restore()`, reused rather than a raw table write so
+ * restore gets related-entity full-replace sync, tsvector rebuild, and
+ * permission checks for free. Same GM-field-omission rule as
+ * `entitySnapshotToUpdateInput`. */
+export function plotThreadSnapshotToUpdateInput(
+  snapshot: Record<string, unknown>,
+  canViewGm: boolean,
+  updatedAt: string,
+): UpdatePlotThreadInput {
+  const s = snapshot as {
+    title: string;
+    summary: string | null;
+    publicContentJson: TiptapDoc | null;
+    gmContentJson: TiptapDoc | null;
+    status: PlotThreadStatus;
+    importance: PlotThreadImportance;
+    visibility: EntityVisibility;
+    entityIds: string[];
+  };
+
+  return {
+    updatedAt,
+    title: s.title,
+    summary: s.summary ?? undefined,
+    publicContentJson: s.publicContentJson ?? undefined,
+    status: s.status,
+    importance: s.importance,
+    visibility: s.visibility,
+    entityIds: s.entityIds,
+    ...(canViewGm ? { gmContentJson: s.gmContentJson } : {}),
   };
 }
 

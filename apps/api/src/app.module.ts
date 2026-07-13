@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import cookieParser from 'cookie-parser';
 import { LoggerModule } from 'nestjs-pino';
+import { CampaignAuditViewModule } from './audit/campaign-audit-view.module';
 import { AuthModule } from './auth/auth.module';
 import { CampaignsModule } from './campaigns/campaigns.module';
 import { ConfigModule } from './config/config.module';
@@ -16,6 +17,7 @@ import { MembershipModule } from './membership/membership.module';
 import { PlotThreadsModule } from './plot-threads/plot-threads.module';
 import { RedisModule } from './redis/redis.module';
 import { RelationshipsModule } from './relationships/relationships.module';
+import { RevisionsModule } from './revisions/revisions.module';
 import { SearchModule } from './search/search.module';
 import { SessionsModule } from './sessions/sessions.module';
 
@@ -47,6 +49,8 @@ import { SessionsModule } from './sessions/sessions.module';
     SessionsModule,
     EntitiesModule,
     SearchModule,
+    RevisionsModule,
+    CampaignAuditViewModule,
   ],
 })
 export class AppModule implements NestModule {

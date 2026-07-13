@@ -19,6 +19,7 @@ import type {
 } from '@worldbinder/validation';
 import { and, desc, eq, isNotNull, isNull, sql } from 'drizzle-orm';
 import { randomBytes } from 'node:crypto';
+import { CampaignAuditService } from '../audit/campaign-audit.service';
 import { DRIZZLE, type Database } from '../database/database.module';
 import {
   campaignMembers,
@@ -42,6 +43,7 @@ export class CampaignsService {
   constructor(
     @Inject(DRIZZLE) private readonly db: Database,
     private readonly policy: CampaignPolicyService,
+    private readonly audit: CampaignAuditService,
   ) {}
 
   async create(
@@ -166,6 +168,12 @@ export class CampaignsService {
       .returning({ id: campaigns.id });
 
     if (!updated) throw new NotFoundException('Campaign not found');
+
+    await this.audit.record({
+      campaignId,
+      type: 'campaign_archived',
+      actorUserId: membership.userId,
+    });
   }
 
   async restore(
@@ -198,6 +206,12 @@ export class CampaignsService {
       .returning({ id: campaigns.id });
 
     if (!updated) throw new NotFoundException('Campaign not found');
+
+    await this.audit.record({
+      campaignId,
+      type: 'campaign_deleted',
+      actorUserId: membership.userId,
+    });
   }
 
   /**

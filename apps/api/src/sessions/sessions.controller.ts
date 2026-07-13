@@ -98,9 +98,10 @@ export class SessionsController {
     @Param('campaignId', ParseUUIDPipe) campaignId: string,
     @Param('sessionId', ParseUUIDPipe) sessionId: string,
     @CurrentMembership() membership: CampaignMembership,
+    @CurrentUser() user: AccessTokenPayload,
   ): Promise<{ message: string }> {
     return this.sessions
-      .delete(campaignId, sessionId, membership)
+      .delete(campaignId, sessionId, membership, user.sub)
       .then(() => ({ message: 'Session deleted' }));
   }
 
@@ -112,8 +113,15 @@ export class SessionsController {
     @Body(new ZodValidationPipe(completeSessionSchema))
     body: CompleteSessionInput,
     @CurrentMembership() membership: CampaignMembership,
+    @CurrentUser() user: AccessTokenPayload,
   ): Promise<CampaignSessionDetail> {
-    return this.sessions.complete(campaignId, sessionId, membership, body);
+    return this.sessions.complete(
+      campaignId,
+      sessionId,
+      membership,
+      user.sub,
+      body,
+    );
   }
 
   @RequireCampaignRole('owner', 'gm')
@@ -124,12 +132,14 @@ export class SessionsController {
     @Param('sessionId', ParseUUIDPipe) sessionId: string,
     @Body(new ZodValidationPipe(revealEntitySchema)) body: RevealEntityInput,
     @CurrentMembership() membership: CampaignMembership,
+    @CurrentUser() user: AccessTokenPayload,
   ): Promise<EntitySummary> {
     return this.sessions.reveal(
       campaignId,
       sessionId,
       membership,
       body.entityId,
+      user.sub,
     );
   }
 }

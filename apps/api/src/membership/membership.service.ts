@@ -18,6 +18,7 @@ import type {
   UpdateMemberRoleInput,
 } from '@worldbinder/validation';
 import { and, desc, eq, isNull } from 'drizzle-orm';
+import { CampaignAuditService } from '../audit/campaign-audit.service';
 import { TokenService } from '../auth/token.service';
 import { RateLimiterService } from '../common/rate-limiter.service';
 import { DRIZZLE, type Database } from '../database/database.module';
@@ -43,6 +44,7 @@ export class MembershipService {
     private readonly mail: MailService,
     private readonly policy: CampaignPolicyService,
     private readonly rateLimiter: RateLimiterService,
+    private readonly audit: CampaignAuditService,
   ) {}
 
   async listMembers(campaignId: string): Promise<MembershipSummary[]> {
@@ -298,6 +300,15 @@ export class MembershipService {
         updatedAt: new Date(),
       })
       .where(eq(campaignMembers.id, memberId));
+
+    await this.audit.record({
+      campaignId,
+      type: 'member_role_changed',
+      actorUserId: actor.userId,
+      targetResourceType: 'campaign_member',
+      targetResourceId: memberId,
+      metadata: { fromRole: target.role, toRole: input.role },
+    });
   }
 
   async removeMember(
@@ -315,6 +326,15 @@ export class MembershipService {
       .update(campaignMembers)
       .set({ status: 'removed', updatedAt: new Date() })
       .where(eq(campaignMembers.id, memberId));
+
+    await this.audit.record({
+      campaignId,
+      type: 'member_removed',
+      actorUserId: actor.userId,
+      targetResourceType: 'campaign_member',
+      targetResourceId: memberId,
+      metadata: { removedRole: target.role },
+    });
   }
 
   private async getActiveMember(campaignId: string, memberId: string) {
