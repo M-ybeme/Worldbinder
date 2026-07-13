@@ -109,6 +109,14 @@ describe('CampaignPolicyService', () => {
     expect(policy.canManageAttachments('viewer')).toBe(false);
   });
 
+  it('allows owner, GM, and editor to manage maps but not player or viewer', () => {
+    expect(policy.canManageMaps('owner')).toBe(true);
+    expect(policy.canManageMaps('gm')).toBe(true);
+    expect(policy.canManageMaps('editor')).toBe(true);
+    expect(policy.canManageMaps('player')).toBe(false);
+    expect(policy.canManageMaps('viewer')).toBe(false);
+  });
+
   it('restricts revealing content to owner and GM, unlike session/entity editing', () => {
     expect(policy.canRevealContent('owner')).toBe(true);
     expect(policy.canRevealContent('gm')).toBe(true);

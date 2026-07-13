@@ -20,6 +20,9 @@ import { CampaignsListPage } from '../features/campaigns/pages/CampaignsListPage
 import { EntityDetailPage } from '../features/entities/pages/EntityDetailPage'
 import { EntityFormPage } from '../features/entities/pages/EntityFormPage'
 import { WorldListPage } from '../features/entities/pages/WorldListPage'
+import { MapDetailPage } from '../features/maps/pages/MapDetailPage'
+import { MapFormPage } from '../features/maps/pages/MapFormPage'
+import { MapListPage } from '../features/maps/pages/MapListPage'
 import { AcceptInvitationPage } from '../features/membership/pages/AcceptInvitationPage'
 import { MembersPage } from '../features/membership/pages/MembersPage'
 import { ThreadDetailPage } from '../features/plot-threads/pages/ThreadDetailPage'
@@ -89,6 +92,10 @@ export const router = createBrowserRouter([
                   { path: 'threads/new', element: <ThreadFormPage /> },
                   { path: 'threads/:threadId', element: <ThreadDetailPage /> },
                   { path: 'threads/:threadId/edit', element: <ThreadFormPage /> },
+                  { path: 'maps', element: <MapListPage /> },
+                  { path: 'maps/new', element: <MapFormPage /> },
+                  { path: 'maps/:mapId', element: <MapDetailPage /> },
+                  { path: 'maps/:mapId/edit', element: <MapFormPage /> },
                   { path: 'search', element: <SearchResultsPage /> },
                   { path: 'audit', element: <AuditPage /> },
                 ],

@@ -37,6 +37,7 @@ export function CampaignLayout() {
         <NavLink to={`/app/campaign/${campaign.id}/world`}>World</NavLink>
         <NavLink to={`/app/campaign/${campaign.id}/sessions`}>Sessions</NavLink>
         <NavLink to={`/app/campaign/${campaign.id}/threads`}>Threads</NavLink>
+        <NavLink to={`/app/campaign/${campaign.id}/maps`}>Maps</NavLink>
         <NavLink to={`/app/campaign/${campaign.id}/search`}>Search</NavLink>
         <NavLink to={`/app/campaign/${campaign.id}/members`}>Members</NavLink>
         {canManage && <NavLink to={`/app/campaign/${campaign.id}/settings`}>Settings</NavLink>}

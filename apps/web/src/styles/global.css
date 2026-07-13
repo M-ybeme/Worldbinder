@@ -483,3 +483,162 @@ body {
   margin-top: 1rem;
   font-size: 0.85rem;
 }
+
+.wb-map-list {
+  list-style: none;
+  margin: 1rem 0 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.wb-map-list__card a {
+  display: block;
+  border: 1px solid var(--wb-border);
+  border-radius: 8px;
+  background: var(--wb-muted-bg);
+  padding: 0.75rem;
+  color: inherit;
+  text-decoration: none;
+}
+
+.wb-map-list__card img {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  border-radius: 6px;
+  margin-bottom: 0.5rem;
+}
+
+.wb-map-canvas {
+  position: relative;
+  margin-top: 1rem;
+  max-width: 900px;
+  border: 1px solid var(--wb-border);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--wb-muted-bg);
+  /* Coordinates are normalized 0-1 (roadmap §9.12) and the container's
+     aspect-ratio is set from the image's stored dimensions, so left/top
+     percentages stay aligned to the same visual point regardless of
+     viewport width — no resize-observer or JS recalculation needed. */
+}
+
+.wb-map-canvas--empty {
+  aspect-ratio: 16 / 9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 1rem;
+}
+
+.wb-map-canvas__image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.wb-map-pin {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  font-size: 1.4rem;
+  line-height: 1;
+  color: var(--wb-accent);
+  touch-action: none;
+}
+
+.wb-map-pin[data-visibility='gm_only'] {
+  color: var(--wb-error);
+}
+
+.wb-map-pin:focus-visible {
+  outline: 2px solid var(--wb-accent);
+  outline-offset: 3px;
+  border-radius: 50%;
+}
+
+.wb-map-pin[data-manage-mode] {
+  cursor: grab;
+}
+
+.wb-map-layer-toggles {
+  margin-top: 1rem;
+  border: 1px solid var(--wb-border);
+  border-radius: 8px;
+  padding: 0.6rem 0.75rem;
+}
+
+.wb-map-layer-toggles ul {
+  list-style: none;
+  margin: 0.35rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  font-size: 0.85rem;
+}
+
+.wb-map-pin-list {
+  margin-top: 1.5rem;
+}
+
+.wb-map-pin-list ul {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.wb-map-pin-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.wb-map-pin-list button {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--wb-accent);
+  cursor: pointer;
+  font-size: 0.95rem;
+  text-decoration: underline;
+}
+
+.wb-map-pin-form {
+  margin-top: 1rem;
+  padding: 0.75rem;
+  border: 1px solid var(--wb-border);
+  border-radius: 8px;
+  background: var(--wb-muted-bg);
+}
+
+.wb-map-layer-manager {
+  margin-top: 1.5rem;
+}
+
+.wb-map-layer-manager ul {
+  list-style: none;
+  margin: 0.5rem 0 1rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.wb-map-layer-manager li {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.9rem;
+}

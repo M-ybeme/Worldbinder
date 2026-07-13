@@ -3,6 +3,7 @@ import {
   type AnyPgColumn,
   boolean,
   customType,
+  doublePrecision,
   index,
   integer,
   jsonb,
@@ -829,5 +830,88 @@ export const resourceAttachments = pgTable(
       table.resourceType,
       table.resourceId,
     ),
+  ],
+);
+
+export const maps = pgTable(
+  'maps',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    campaignId: uuid('campaign_id')
+      .notNull()
+      .references(() => campaigns.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    description: text('description'),
+    // Direct reference, not a resource_attachments join — one map has at
+    // most one background image, same shape as campaigns.coverAttachmentId.
+    imageAttachmentId: uuid('image_attachment_id').references(
+      () => attachments.id,
+      { onDelete: 'set null' },
+    ),
+    visibility: entityVisibilityEnum('visibility').notNull().default('public'),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    // No deletedAt (roadmap §9.12's literal column list) — maps hard-delete,
+    // unlike entities/sessions/plot_threads. Deleting cascades to layers/pins.
+  },
+  (table) => [index('maps_campaign_id_idx').on(table.campaignId)],
+);
+
+export const mapLayers = pgTable(
+  'map_layers',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    mapId: uuid('map_id')
+      .notNull()
+      .references(() => maps.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    displayOrder: integer('display_order').notNull().default(0),
+    visibility: entityVisibilityEnum('visibility').notNull().default('public'),
+    // No timestamps — §9.12's literal column list omits them for this table.
+  },
+  (table) => [index('map_layers_map_id_idx').on(table.mapId)],
+);
+
+export const mapPins = pgTable(
+  'map_pins',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    mapId: uuid('map_id')
+      .notNull()
+      .references(() => maps.id, { onDelete: 'cascade' }),
+    // Nullable + set null: deleting a layer ungroups its pins rather than
+    // deleting them — layers are an optional organizational feature.
+    layerId: uuid('layer_id').references(() => mapLayers.id, {
+      onDelete: 'set null',
+    }),
+    // Column name describes "the location on the map," not a type
+    // constraint — accepts any entity type (Character/Faction/Event/Quest/
+    // Location per ui-ux.md), unlike session_locations' service-enforced
+    // entityType === 'location' narrowing. Nullable: a pin can be a
+    // freestanding labeled marker with no entity link.
+    locationEntityId: uuid('location_entity_id').references(() => entities.id, {
+      onDelete: 'set null',
+    }),
+    label: text('label'),
+    // Normalized 0-1 so pins stay positioned across responsive image sizes
+    // (roadmap §9.12).
+    xNormalized: doublePrecision('x_normalized').notNull(),
+    yNormalized: doublePrecision('y_normalized').notNull(),
+    visibility: entityVisibilityEnum('visibility').notNull().default('public'),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index('map_pins_map_id_idx').on(table.mapId),
+    index('map_pins_layer_id_idx').on(table.layerId),
+    index('map_pins_location_entity_id_idx').on(table.locationEntityId),
   ],
 );

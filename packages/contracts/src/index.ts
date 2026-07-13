@@ -59,3 +59,4 @@ export {
   PROCESS_ATTACHMENT_JOB_NAME,
 } from './jobs.js'
 export type { ProcessAttachmentJobData } from './jobs.js'
+export type { MapDetail, MapLayerSummary, MapPinSummary, MapSummary } from './maps.js'

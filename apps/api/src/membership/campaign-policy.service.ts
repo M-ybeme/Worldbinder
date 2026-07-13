@@ -100,6 +100,13 @@ export class CampaignPolicyService {
     return ENTITY_EDITOR_ROLES.includes(role);
   }
 
+  /** Same actor set as canEditEntities/canEditSessions/canManagePlotThreads/
+   * canManageAttachments — kept as its own method per the existing
+   * "distinct capability that could diverge later" convention. */
+  canManageMaps(role: CampaignRole): boolean {
+    return ENTITY_EDITOR_ROLES.includes(role);
+  }
+
   /**
    * Shared two-tier visibility check (ADR-0009): `public` is visible to
    * every member, `gm_only` follows the same GM-content rule as entities.

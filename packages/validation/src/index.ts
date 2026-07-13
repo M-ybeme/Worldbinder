@@ -126,3 +126,22 @@ export type {
   LinkAttachmentInput,
   PresignAttachmentInput,
 } from './attachments.js'
+
+export {
+  createMapLayerSchema,
+  createMapPinSchema,
+  createMapSchema,
+  repositionMapPinSchema,
+  updateMapLayerSchema,
+  updateMapPinSchema,
+  updateMapSchema,
+} from './maps.js'
+export type {
+  CreateMapInput,
+  CreateMapLayerInput,
+  CreateMapPinInput,
+  RepositionMapPinInput,
+  UpdateMapInput,
+  UpdateMapLayerInput,
+  UpdateMapPinInput,
+} from './maps.js'

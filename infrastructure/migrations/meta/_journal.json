@@ -71,6 +71,13 @@
       "when": 1783909180620,
       "tag": "0009_moaning_squadron_supreme",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1783914188841,
+      "tag": "0010_early_sage",
+      "breakpoints": true
     }
   ]
 }
