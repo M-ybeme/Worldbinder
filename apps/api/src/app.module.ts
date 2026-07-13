@@ -6,6 +6,7 @@ import {
 import cookieParser from 'cookie-parser';
 import { LoggerModule } from 'nestjs-pino';
 import { CampaignAuditViewModule } from './audit/campaign-audit-view.module';
+import { AttachmentsModule } from './attachments/attachments.module';
 import { AuthModule } from './auth/auth.module';
 import { CampaignsModule } from './campaigns/campaigns.module';
 import { ConfigModule } from './config/config.module';
@@ -51,6 +52,7 @@ import { SessionsModule } from './sessions/sessions.module';
     SearchModule,
     RevisionsModule,
     CampaignAuditViewModule,
+    AttachmentsModule,
   ],
 })
 export class AppModule implements NestModule {

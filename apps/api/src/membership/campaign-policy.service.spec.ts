@@ -101,6 +101,14 @@ describe('CampaignPolicyService', () => {
     expect(policy.canManagePlotThreads('viewer')).toBe(false);
   });
 
+  it('allows owner, GM, and editor to manage attachments but not player or viewer', () => {
+    expect(policy.canManageAttachments('owner')).toBe(true);
+    expect(policy.canManageAttachments('gm')).toBe(true);
+    expect(policy.canManageAttachments('editor')).toBe(true);
+    expect(policy.canManageAttachments('player')).toBe(false);
+    expect(policy.canManageAttachments('viewer')).toBe(false);
+  });
+
   it('restricts revealing content to owner and GM, unlike session/entity editing', () => {
     expect(policy.canRevealContent('owner')).toBe(true);
     expect(policy.canRevealContent('gm')).toBe(true);

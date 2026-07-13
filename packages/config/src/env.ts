@@ -50,6 +50,17 @@ export const apiEnvSchema = z.object({
   SMTP_USER: z.string().optional(),
   SMTP_PASSWORD: z.string().optional(),
   MAIL_FROM: z.string().default('Worldbinder <noreply@worldbinder.local>'),
+
+  // Object storage (MinIO locally; Cloudflare R2 or AWS S3 in production —
+  // distinct var names from the compose-facing MINIO_ROOT_USER/PASSWORD,
+  // same split as SMTP_* app vars vs MAILPIT_* compose vars).
+  STORAGE_ENDPOINT: z.string().url().default('http://127.0.0.1:9000'),
+  STORAGE_REGION: z.string().default('us-east-1'),
+  STORAGE_BUCKET: z.string().default('worldbinder-dev'),
+  STORAGE_ACCESS_KEY_ID: z.string().default('worldbinder'),
+  STORAGE_SECRET_ACCESS_KEY: z.string().default('worldbinder-dev-secret'),
+  // MinIO needs path-style requests; real S3/R2 typically don't.
+  STORAGE_FORCE_PATH_STYLE: booleanString('true'),
 })
 
 export type ApiEnv = z.infer<typeof apiEnvSchema>
@@ -59,6 +70,13 @@ export const workerEnvSchema = z.object({
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
   DATABASE_URL: z.string().url(),
   REDIS_URL: z.string().url(),
+
+  STORAGE_ENDPOINT: z.string().url().default('http://127.0.0.1:9000'),
+  STORAGE_REGION: z.string().default('us-east-1'),
+  STORAGE_BUCKET: z.string().default('worldbinder-dev'),
+  STORAGE_ACCESS_KEY_ID: z.string().default('worldbinder'),
+  STORAGE_SECRET_ACCESS_KEY: z.string().default('worldbinder-dev-secret'),
+  STORAGE_FORCE_PATH_STYLE: booleanString('true'),
 })
 
 export type WorkerEnv = z.infer<typeof workerEnvSchema>

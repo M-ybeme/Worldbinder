@@ -107,3 +107,22 @@ export type { RevisionResourceType } from './revisions.js'
 
 export { auditQuerySchema } from './audit.js'
 export type { AuditQuery } from './audit.js'
+
+export {
+  ALLOWED_ATTACHMENT_MIME_TYPES,
+  ATTACHMENT_MAX_SIZE_BYTES,
+  looksLikeText,
+  sniffMimeType,
+} from './attachment-detection.js'
+export type { AllowedAttachmentMimeType } from './attachment-detection.js'
+
+export {
+  attachmentResourceTypeSchema,
+  linkAttachmentSchema,
+  presignAttachmentSchema,
+} from './attachments.js'
+export type {
+  AttachmentResourceType,
+  LinkAttachmentInput,
+  PresignAttachmentInput,
+} from './attachments.js'

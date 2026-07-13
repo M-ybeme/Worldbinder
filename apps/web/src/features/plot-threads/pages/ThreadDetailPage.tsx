@@ -1,5 +1,6 @@
 import { Button, FormMessage } from '@worldbinder/ui'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import { AttachmentsPanel } from '../../attachments/components/AttachmentsPanel'
 import { useCampaignOutletContext } from '../../campaigns/hooks/useCampaignContext'
 import { RichTextEditor } from '../../entities/components/RichTextEditor'
 import { RevisionHistoryPanel } from '../../revisions/components/RevisionHistoryPanel'
@@ -105,6 +106,13 @@ export function ThreadDetailPage() {
           </ul>
         </div>
       </div>
+
+      <AttachmentsPanel
+        campaignId={campaign.id}
+        resourceType="plot_thread"
+        resourceId={thread.id}
+        canManage={canManage}
+      />
 
       <RevisionHistoryPanel
         campaignId={campaign.id}

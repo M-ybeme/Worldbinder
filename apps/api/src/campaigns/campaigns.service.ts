@@ -22,6 +22,7 @@ import { randomBytes } from 'node:crypto';
 import { CampaignAuditService } from '../audit/campaign-audit.service';
 import { DRIZZLE, type Database } from '../database/database.module';
 import {
+  attachments,
   campaignMembers,
   campaigns,
   entities,
@@ -34,6 +35,7 @@ import {
   isNeglected,
   projectPlayerFacingStatus,
 } from '../plot-threads/plot-threads.service';
+import { StorageService } from '../storage/storage.service';
 
 type PlotThreadRow = typeof plotThreads.$inferSelect;
 type SessionRow = typeof sessions.$inferSelect;
@@ -44,6 +46,7 @@ export class CampaignsService {
     @Inject(DRIZZLE) private readonly db: Database,
     private readonly policy: CampaignPolicyService,
     private readonly audit: CampaignAuditService,
+    private readonly storage: StorageService,
   ) {}
 
   async create(
@@ -92,7 +95,9 @@ export class CampaignsService {
       )
       .orderBy(desc(campaigns.updatedAt));
 
-    return rows.map(({ campaign, role }) => this.toSummary(campaign, role));
+    return Promise.all(
+      rows.map(({ campaign, role }) => this.toSummary(campaign, role)),
+    );
   }
 
   async getById(
@@ -113,7 +118,8 @@ export class CampaignsService {
       input.description !== undefined ||
       input.systemName !== undefined ||
       input.settingsJson !== undefined ||
-      input.currentWorldDateJson !== undefined;
+      input.currentWorldDateJson !== undefined ||
+      input.coverAttachmentId !== undefined;
 
     if (hasNameChange && !this.policy.canRenameCampaign(membership.role)) {
       throw new ForbiddenException('Only the owner can rename this campaign');
@@ -123,6 +129,16 @@ export class CampaignsService {
     }
     if (!hasNameChange && !hasOtherFields) {
       return this.getById(campaignId, membership);
+    }
+
+    if (
+      input.coverAttachmentId !== undefined &&
+      input.coverAttachmentId !== null
+    ) {
+      await this.requireReadyImageAttachment(
+        campaignId,
+        input.coverAttachmentId,
+      );
     }
 
     const [updated] = await this.db
@@ -140,6 +156,9 @@ export class CampaignsService {
           : {}),
         ...(input.currentWorldDateJson !== undefined
           ? { currentWorldDateJson: input.currentWorldDateJson }
+          : {}),
+        ...(input.coverAttachmentId !== undefined
+          ? { coverAttachmentId: input.coverAttachmentId }
           : {}),
         updatedAt: new Date(),
       })
@@ -422,10 +441,72 @@ export class CampaignsService {
     throw new Error('Failed to generate a unique campaign slug');
   }
 
-  private toSummary(
+  /** Direct DRIZZLE read of `attachments`, not an injected AttachmentsService
+   * — same "read a sibling table directly" precedent as getDashboard() —
+   * avoids a CampaignsModule <-> AttachmentsModule dependency entirely. */
+  private async requireReadyImageAttachment(
+    campaignId: string,
+    attachmentId: string,
+  ): Promise<void> {
+    const [attachment] = await this.db
+      .select({
+        campaignId: attachments.campaignId,
+        status: attachments.status,
+        detectedMimeType: attachments.detectedMimeType,
+      })
+      .from(attachments)
+      .where(
+        and(eq(attachments.id, attachmentId), isNull(attachments.deletedAt)),
+      );
+
+    if (!attachment || attachment.campaignId !== campaignId) {
+      throw new NotFoundException('Attachment not found in this campaign');
+    }
+    if (attachment.status !== 'ready') {
+      throw new ForbiddenException(
+        'Attachment is not ready to be used as a cover image',
+      );
+    }
+    if (!attachment.detectedMimeType?.startsWith('image/')) {
+      throw new ForbiddenException('Cover image must be an image attachment');
+    }
+  }
+
+  /** Freshly signed on every request, same ~15min expiry as
+   * StorageService.presignDownload's other callers — no visibility gate: a
+   * campaign's own name/description already has none, so the cover image
+   * isn't gated by attachments.visibility either (see attachments module
+   * doc comments for the full reasoning). */
+  private async resolveCoverImageUrl(
+    coverAttachmentId: string | null,
+  ): Promise<string | null> {
+    if (!coverAttachmentId) return null;
+
+    const [attachment] = await this.db
+      .select({
+        storageKey: attachments.storageKey,
+        originalFilename: attachments.originalFilename,
+        status: attachments.status,
+      })
+      .from(attachments)
+      .where(
+        and(
+          eq(attachments.id, coverAttachmentId),
+          isNull(attachments.deletedAt),
+        ),
+      );
+
+    if (!attachment || attachment.status !== 'ready') return null;
+    return this.storage.presignDownload(
+      attachment.storageKey,
+      attachment.originalFilename,
+    );
+  }
+
+  private async toSummary(
     campaign: typeof campaigns.$inferSelect,
     role: CampaignMembership['role'],
-  ): CampaignSummary {
+  ): Promise<CampaignSummary> {
     return {
       id: campaign.id,
       name: campaign.name,
@@ -434,18 +515,21 @@ export class CampaignsService {
       systemName: campaign.systemName,
       status: campaign.status,
       role,
+      coverImageUrl: await this.resolveCoverImageUrl(
+        campaign.coverAttachmentId,
+      ),
       createdAt: campaign.createdAt.toISOString(),
       updatedAt: campaign.updatedAt.toISOString(),
       archivedAt: campaign.archivedAt?.toISOString() ?? null,
     };
   }
 
-  private toDetail(
+  private async toDetail(
     campaign: typeof campaigns.$inferSelect,
     role: CampaignMembership['role'],
-  ): CampaignDetail {
+  ): Promise<CampaignDetail> {
     return {
-      ...this.toSummary(campaign, role),
+      ...(await this.toSummary(campaign, role)),
       settingsJson: campaign.settingsJson as Record<string, unknown> | null,
       currentWorldDateJson: campaign.currentWorldDateJson as WorldDate | null,
     };

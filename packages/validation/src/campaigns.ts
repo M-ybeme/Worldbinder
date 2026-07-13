@@ -16,5 +16,6 @@ export const updateCampaignSchema = z.object({
   systemName: z.string().trim().max(150).nullable().optional(),
   settingsJson: z.record(z.string(), z.unknown()).nullable().optional(),
   currentWorldDateJson: worldDateSchema.nullable().optional(),
+  coverAttachmentId: z.string().uuid().nullable().optional(),
 })
 export type UpdateCampaignInput = z.infer<typeof updateCampaignSchema>

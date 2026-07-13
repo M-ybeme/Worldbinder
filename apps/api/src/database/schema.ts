@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm';
 import {
+  type AnyPgColumn,
   boolean,
   customType,
   index,
@@ -150,7 +151,12 @@ export const campaigns = pgTable('campaigns', {
   description: text('description'),
   systemName: text('system_name'),
   status: campaignStatusEnum('status').notNull().default('draft'),
-  coverAttachmentId: uuid('cover_attachment_id'),
+  // FK added in Milestone 9 once the attachments table exists — this column
+  // was an unconstrained stub since Milestone 2.
+  coverAttachmentId: uuid('cover_attachment_id').references(
+    (): AnyPgColumn => attachments.id,
+    { onDelete: 'set null' },
+  ),
   currentWorldDateJson: jsonb('current_world_date_json'),
   settingsJson: jsonb('settings_json'),
   createdAt: timestamp('created_at', { withTimezone: true })
@@ -738,6 +744,90 @@ export const campaignAuditEvents = pgTable(
     index('campaign_audit_events_campaign_idx').on(
       table.campaignId,
       table.createdAt,
+    ),
+  ],
+);
+
+// Milestone 9 — Attachments. Presigned uploads to S3-compatible storage,
+// verified server-side by the worker (magic-byte detection, hashing, image
+// dimensions) before becoming Ready.
+export const attachmentStatusEnum = pgEnum('attachment_status', [
+  'pending',
+  'uploaded',
+  'processing',
+  'ready',
+  'rejected',
+  'deleted',
+]);
+
+export const attachments = pgTable(
+  'attachments',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    campaignId: uuid('campaign_id')
+      .notNull()
+      .references(() => campaigns.id, { onDelete: 'cascade' }),
+    // Nullable + set null (not entities.createdByUserId's notNull+cascade
+    // pattern): if this cascaded and a user row were hard-deleted, Postgres
+    // would delete the attachment row at the FK level with no application
+    // code running, so the cleanup job would never fire and the underlying
+    // storage object would become permanently unreachable garbage.
+    uploadedByUserId: uuid('uploaded_by_user_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    // Opaque (`attachments/{campaignId}/{attachmentId}`) — never derived
+    // from the client-supplied filename (roadmap §16.2 "keep storage keys
+    // opaque"). originalFilename below is display-only.
+    storageKey: text('storage_key').notNull().unique(),
+    originalFilename: text('original_filename').notNull(),
+    // Declared at presign time; overwritten with the worker's real
+    // magic-byte-detected value once processed. Never trusted for
+    // authorization until then.
+    detectedMimeType: text('detected_mime_type'),
+    sizeBytes: integer('size_bytes').notNull(),
+    sha256: text('sha256'),
+    width: integer('width'),
+    height: integer('height'),
+    status: attachmentStatusEnum('status').notNull().default('pending'),
+    // Only consulted for attachments with no resource_attachments link yet
+    // (e.g. a campaign cover image) — see AttachmentsService doc comment.
+    // Schema-complete but not enforced by any read path in Milestone 9.
+    visibility: entityVisibilityEnum('visibility').notNull().default('public'),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    deletedAt: timestamp('deleted_at', { withTimezone: true }),
+  },
+  (table) => [
+    index('attachments_campaign_id_idx').on(table.campaignId),
+    // Backs the cleanup sweep's scan for stuck pending/uploaded/processing rows.
+    index('attachments_status_idx').on(table.status),
+  ],
+);
+
+export const resourceAttachments = pgTable(
+  'resource_attachments',
+  {
+    attachmentId: uuid('attachment_id')
+      .notNull()
+      .references(() => attachments.id, { onDelete: 'cascade' }),
+    // Plain text, not resourceRevisionTypeEnum reused or a new enum: same
+    // "more resource types expected later" reasoning as
+    // entityWikiLinks.sourceResourceType — an enum here would create a
+    // DB-level coupling between two otherwise-unrelated features.
+    resourceType: text('resource_type').notNull(),
+    resourceId: uuid('resource_id').notNull(),
+    displayOrder: integer('display_order').notNull().default(0),
+    caption: text('caption'),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    unique().on(table.attachmentId, table.resourceType, table.resourceId),
+    index('resource_attachments_resource_idx').on(
+      table.resourceType,
+      table.resourceId,
     ),
   ],
 );

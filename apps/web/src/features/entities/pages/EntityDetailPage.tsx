@@ -1,5 +1,6 @@
 import { Button, FormMessage } from '@worldbinder/ui'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import { AttachmentsPanel } from '../../attachments/components/AttachmentsPanel'
 import { useCampaignOutletContext } from '../../campaigns/hooks/useCampaignContext'
 import { RelatedContentPanel } from '../../relationships/components/RelatedContentPanel'
 import { RevisionHistoryPanel } from '../../revisions/components/RevisionHistoryPanel'
@@ -115,6 +116,13 @@ export function EntityDetailPage() {
           </ul>
         </div>
       </div>
+
+      <AttachmentsPanel
+        campaignId={campaign.id}
+        resourceType="entity"
+        resourceId={entity.id}
+        canManage={canManage}
+      />
 
       <RevisionHistoryPanel
         campaignId={campaign.id}

@@ -14,6 +14,12 @@ export interface CampaignSummary {
   systemName: string | null
   status: CampaignStatus
   role: CampaignRole
+  /** Freshly signed on every request, ~15min expiry — same as attachment
+   * download URLs. No visibility gate: any active member can already see
+   * the campaign's name/description, so the cover image isn't gated by
+   * `attachments.visibility` either. Null if no cover is set or it isn't
+   * `ready` yet. */
+  coverImageUrl: string | null
   createdAt: string
   updatedAt: string
   archivedAt: string | null

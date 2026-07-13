@@ -1,8 +1,13 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Button, FormMessage, TextField } from '@worldbinder/ui'
+import { Button, FileDropzone, FormMessage, TextField } from '@worldbinder/ui'
 import { updateCampaignSchema, type UpdateCampaignInput } from '@worldbinder/validation'
+import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { Link, useNavigate } from 'react-router-dom'
+import {
+  useUnlinkedAttachmentsQuery,
+  useUploadUnlinkedAttachmentMutation,
+} from '../../attachments/hooks/useAttachments'
 import { useCampaignOutletContext } from '../hooks/useCampaignContext'
 import {
   useArchiveCampaignMutation,
@@ -11,10 +16,13 @@ import {
   useUpdateCampaignMutation,
 } from '../hooks/useCampaigns'
 
+const MANAGEMENT_ROLES = new Set(['owner', 'gm'])
+
 export function CampaignSettingsPage() {
   const { campaign } = useCampaignOutletContext()
   const navigate = useNavigate()
   const isOwner = campaign.role === 'owner'
+  const canManageSettings = MANAGEMENT_ROLES.has(campaign.role)
 
   const {
     register,
@@ -43,6 +51,29 @@ export function CampaignSettingsPage() {
     updateCampaign.mutate(payload)
   })
 
+  // Cover images aren't linked to a resource via resource_attachments —
+  // campaigns reference one directly via coverAttachmentId — so the upload
+  // flow here is upload-then-poll-until-ready-then-PATCH, rather than the
+  // AttachmentsPanel's upload-and-link flow.
+  const [pendingCoverId, setPendingCoverId] = useState<string | null>(null)
+  const [coverError, setCoverError] = useState<string | null>(null)
+  const uploadCover = useUploadUnlinkedAttachmentMutation(campaign.id)
+  const unlinkedQuery = useUnlinkedAttachmentsQuery(campaign.id, !!pendingCoverId, true)
+
+  useEffect(() => {
+    if (!pendingCoverId) return
+    const pending = unlinkedQuery.data?.find((a) => a.id === pendingCoverId)
+    if (!pending) return
+
+    if (pending.status === 'ready') {
+      updateCampaign.mutate({ coverAttachmentId: pendingCoverId })
+      setPendingCoverId(null)
+    } else if (pending.status === 'rejected') {
+      setCoverError('That file was rejected — it may not be a supported image type.')
+      setPendingCoverId(null)
+    }
+  }, [pendingCoverId, unlinkedQuery.data, updateCampaign])
+
   return (
     <section>
       <h1>Campaign settings</h1>
@@ -69,6 +100,34 @@ export function CampaignSettingsPage() {
           {updateCampaign.isPending ? 'Saving…' : 'Save settings'}
         </Button>
       </form>
+
+      {canManageSettings && (
+        <>
+          <h2>Cover image</h2>
+          {campaign.coverImageUrl && (
+            <img
+              src={campaign.coverImageUrl}
+              alt="Campaign cover"
+              style={{ maxWidth: 240, borderRadius: 6, display: 'block', marginBottom: '0.75rem' }}
+            />
+          )}
+          <FileDropzone
+            label={campaign.coverImageUrl ? 'Replace cover image' : 'Upload a cover image'}
+            accept="image/*"
+            disabled={uploadCover.isPending || !!pendingCoverId}
+            onFilesSelected={(files) => {
+              const file = files[0]
+              if (!file) return
+              setCoverError(null)
+              uploadCover.mutate(file, {
+                onSuccess: (attachmentId) => setPendingCoverId(attachmentId),
+              })
+            }}
+          />
+          {(uploadCover.isPending || pendingCoverId) && <p>Uploading and processing…</p>}
+          <FormMessage message={uploadCover.error?.message ?? coverError} tone="error" />
+        </>
+      )}
 
       <h2>Activity log</h2>
       <p>

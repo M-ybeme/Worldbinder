@@ -2,6 +2,7 @@ import type { WorldDate } from '@worldbinder/contracts'
 import { Button, FormMessage, TextField } from '@worldbinder/ui'
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
+import { AttachmentsPanel } from '../../attachments/components/AttachmentsPanel'
 import { useCampaignOutletContext } from '../../campaigns/hooks/useCampaignContext'
 import { EntityPicker } from '../../entities/components/EntityPicker'
 import { RichTextEditor } from '../../entities/components/RichTextEditor'
@@ -289,6 +290,13 @@ export function SessionDetailPage() {
           )}
         </div>
       </div>
+
+      <AttachmentsPanel
+        campaignId={campaign.id}
+        resourceType="session"
+        resourceId={session.id}
+        canManage={canManage}
+      />
 
       <RevisionHistoryPanel
         campaignId={campaign.id}

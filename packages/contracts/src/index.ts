@@ -47,3 +47,15 @@ export type {
 export type { SearchResourceType, SearchResponse, SearchResult, SearchSnippet } from './search.js'
 export type { RevisionResourceType, RevisionSummary } from './revisions.js'
 export type { CampaignAuditEvent, CampaignAuditEventType } from './audit.js'
+export type {
+  AttachmentResourceType,
+  AttachmentStatus,
+  AttachmentSummary,
+  PresignedUploadResponse,
+} from './attachments.js'
+export {
+  ATTACHMENT_PROCESSING_QUEUE_NAME,
+  CLEANUP_ABANDONED_ATTACHMENTS_JOB_NAME,
+  PROCESS_ATTACHMENT_JOB_NAME,
+} from './jobs.js'
+export type { ProcessAttachmentJobData } from './jobs.js'

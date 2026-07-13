@@ -304,6 +304,51 @@ body {
   font-size: 0.9rem;
 }
 
+.wb-dropzone {
+  position: relative;
+  padding: 1.25rem;
+  border: 1px dashed var(--wb-border);
+  border-radius: 6px;
+  background: var(--wb-field-bg);
+  text-align: center;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.wb-dropzone p {
+  margin: 0;
+  opacity: 0.75;
+}
+
+.wb-dropzone:focus-visible {
+  outline: 2px solid var(--wb-accent);
+  outline-offset: 1px;
+}
+
+.wb-dropzone--active {
+  border-color: var(--wb-accent);
+  background: var(--wb-muted-bg);
+}
+
+.wb-dropzone[aria-disabled='true'] {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.wb-dropzone__input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.wb-attachment-list img {
+  max-width: 120px;
+  max-height: 120px;
+  border-radius: 6px;
+  display: block;
+}
+
 .wb-search-overlay__backdrop {
   position: fixed;
   inset: 0;
