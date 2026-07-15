@@ -6,6 +6,16 @@ Every push to `main` should add an entry here. This is meant to be an honest rec
 
 ## [Unreleased]
 
+## [0.13.4] - 2026-07-15
+
+### Added
+
+- **Milestone 13, Phase 4 — Responsive/tablet layout.** Before this, `global.css` had exactly one `@media` query in the whole app (`prefers-color-scheme: dark`) — zero viewport breakpoints, and several `display: flex` rows with no `flex-wrap`. Most of the app turned out to already be responsive by construction (fixed `max-width`s on block elements shrink naturally with no explicit `width`; `.wb-map-list` already uses CSS Grid `auto-fill`; map pins are positioned by normalized percentage, not pixels) — the real, concrete defect was the handful of unwrapped flex rows that would force horizontal page scroll below a certain width.
+- **The one confirmed blocking defect**: `CampaignLayout`'s main nav (`.wb-links`, 8 items — Dashboard/World/Sessions/Threads/Maps/Search/Members/Settings) was a `display: flex` row with no wrap, the same class also used by `AccountLayout`'s nav and auth-page footer links. Added `flex-wrap: wrap` (plus a two-axis `gap` so wrapped rows don't touch). Also added `flex-wrap: wrap` to six other flex rows that carried the same latent risk at smaller sizes or longer content, none individually confirmed overflowing at the tested widths but all safety nets with no downside at wide viewports: `.app-shell__header`, `.wb-session-list li`, `.wb-combobox__option`, `.wb-pagination`, `.wb-map-pin-list li`, `.wb-map-layer-manager li`.
+- **Picked and documented a tablet target**: 768px viewport width (iPad-portrait class), noted in a `global.css` comment above `.wb-links` — the roadmap's own "desktop/tablet" scope, no phone-width (<600px) target implied or tested for further than a sanity check.
+- Full existing suite re-run clean (typecheck, lint, existing web test — this phase touched only CSS). Manually verified via Playwright viewport resizing: `document.documentElement.scrollWidth` vs `clientWidth` (the actual mechanism behind "no horizontal scroll") checked with zero overflow at 768×1024, 1024×768, and 600×900 on the campaign dashboard, world list, and session list; additionally checked 380×900 (well past the tablet scope) to prove the nav-wrap fix does real work, not just pass by coincidence — confirmed the nav visibly wraps to two lines there with still no page-level horizontal scroll.
+- **Scope note**: this is Phase 4 of 8. No new breakpoint-gated CSS was needed beyond the `flex-wrap` fixes — everything else already scaled without a media query, so no dedicated "tablet stylesheet" was built (would have been complexity with no defect to justify it). Visual density at tablet width (e.g. `.wb-related-content`'s dashboard sections, which are single-column even on desktop) is unchanged — a design opportunity, not a defect, and out of scope here. Reduced-motion, onboarding/help content, browser-compatibility pass, and regression-proofing remain, tracked in the roadmap.
+
 ## [0.13.3] - 2026-07-15
 
 ### Added
