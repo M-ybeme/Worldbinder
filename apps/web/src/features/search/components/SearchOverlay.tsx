@@ -29,6 +29,8 @@ export function SearchOverlay({ campaignId }: SearchOverlayProps) {
   const [debouncedQuery, setDebouncedQuery] = useState('')
   const [activeIndex, setActiveIndex] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
+  const previouslyFocusedRef = useRef<HTMLElement | null>(null)
 
   useEffect(() => {
     const handle = setTimeout(() => setDebouncedQuery(query), DEBOUNCE_MS)
@@ -44,6 +46,17 @@ export function SearchOverlay({ campaignId }: SearchOverlayProps) {
     return () => cancelAnimationFrame(handle)
   }, [isOpen])
 
+  // Focus-trap contract for role="dialog" aria-modal="true": capture what
+  // had focus before opening and restore it on close, so keyboard/screen-
+  // reader users land back where they started instead of at the top of body.
+  useEffect(() => {
+    if (!isOpen) return
+    previouslyFocusedRef.current = document.activeElement as HTMLElement | null
+    return () => {
+      previouslyFocusedRef.current?.focus?.()
+    }
+  }, [isOpen])
+
   const trimmedQuery = debouncedQuery.trim()
   const searchResults = useSearchQuery(
     campaignId,
@@ -57,6 +70,10 @@ export function SearchOverlay({ campaignId }: SearchOverlayProps) {
   }, [results.length])
 
   if (!isOpen) return null
+
+  function optionId(index: number): string {
+    return `wb-search-overlay-option-${index}`
+  }
 
   function goTo(index: number): void {
     const result = results[index]
@@ -81,14 +98,40 @@ export function SearchOverlay({ campaignId }: SearchOverlayProps) {
     }
   }
 
+  // Minimal focus trap: keeps Tab from leaving the dialog while it's open.
+  // Scoped to this one dialog rather than a shared primitive — no modal
+  // component exists in packages/ui yet (see roadmap Milestone 13 audit).
+  function handlePanelKeyDown(event: KeyboardEvent<HTMLDivElement>): void {
+    if (event.key !== 'Tab') return
+    const panel = panelRef.current
+    if (!panel) return
+    const focusable = Array.from(
+      panel.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      ),
+    )
+    if (focusable.length === 0) return
+    const first = focusable[0]
+    const last = focusable[focusable.length - 1]
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault()
+      last.focus()
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault()
+      first.focus()
+    }
+  }
+
   return createPortal(
     <div className="wb-search-overlay__backdrop" onMouseDown={close}>
       <div
+        ref={panelRef}
         className="wb-search-overlay__panel"
         role="dialog"
         aria-modal="true"
         aria-label="Search"
         onMouseDown={(event) => event.stopPropagation()}
+        onKeyDown={handlePanelKeyDown}
       >
         <input
           ref={inputRef}
@@ -97,6 +140,7 @@ export function SearchOverlay({ campaignId }: SearchOverlayProps) {
           aria-expanded={results.length > 0}
           aria-controls="wb-search-overlay-listbox"
           aria-autocomplete="list"
+          aria-activedescendant={results.length > 0 ? optionId(activeIndex) : undefined}
           autoComplete="off"
           className="wb-search-overlay__input"
           placeholder="Search campaign knowledge…"
@@ -117,6 +161,7 @@ export function SearchOverlay({ campaignId }: SearchOverlayProps) {
           {results.map((result, index) => (
             <li
               key={`${result.resourceType}-${result.id}`}
+              id={optionId(index)}
               role="option"
               aria-selected={index === activeIndex}
             >

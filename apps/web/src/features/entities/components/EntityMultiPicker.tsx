@@ -1,4 +1,5 @@
 import type { EntityType } from '@worldbinder/contracts'
+import { useState } from 'react'
 import { useEntityQuery } from '../hooks/useEntities'
 import { EntityPicker } from './EntityPicker'
 
@@ -22,16 +23,23 @@ export function EntityMultiPicker({
   onChange,
   entityType,
 }: EntityMultiPickerProps) {
-  const remove = (entityId: string) => onChange(value.filter((id) => id !== entityId))
+  const [announcement, setAnnouncement] = useState('')
+  const remove = (entityId: string) => {
+    onChange(value.filter((id) => id !== entityId))
+    setAnnouncement(`Removed from ${label.toLowerCase()}`)
+  }
   const add = (entityId: string | undefined) => {
-    if (entityId && !value.includes(entityId)) onChange([...value, entityId])
+    if (entityId && !value.includes(entityId)) {
+      onChange([...value, entityId])
+      setAnnouncement(`Added to ${label.toLowerCase()}`)
+    }
   }
 
   return (
     <div className="wb-field">
       <span className="wb-field__label">{label}</span>
       {value.length > 0 && (
-        <div className="wb-entity-multi-picker__chips">
+        <ul className="wb-entity-multi-picker__chips" role="list">
           {value.map((entityId) => (
             <EntityChip
               key={entityId}
@@ -40,7 +48,7 @@ export function EntityMultiPicker({
               onRemove={() => remove(entityId)}
             />
           ))}
-        </div>
+        </ul>
       )}
       <EntityPicker
         campaignId={campaignId}
@@ -49,6 +57,9 @@ export function EntityMultiPicker({
         value={undefined}
         onChange={add}
       />
+      <span className="wb-visually-hidden" role="status" aria-live="polite">
+        {announcement}
+      </span>
     </div>
   )
 }
@@ -64,7 +75,7 @@ function EntityChip({
 }) {
   const entityQuery = useEntityQuery(campaignId, entityId)
   return (
-    <span className="wb-entity-picker__chip">
+    <li className="wb-entity-picker__chip">
       <span>{entityQuery.data?.name ?? 'Loading…'}</span>
       <button
         type="button"
@@ -73,6 +84,6 @@ function EntityChip({
       >
         ×
       </button>
-    </span>
+    </li>
   )
 }

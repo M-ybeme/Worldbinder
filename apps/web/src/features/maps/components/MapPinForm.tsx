@@ -13,6 +13,8 @@ export interface MapPinFormValues {
   locationEntityId: string | undefined
   layerId: string | undefined
   visibility: EntityVisibility
+  xNormalized: number
+  yNormalized: number
 }
 
 export interface MapPinFormProps {
@@ -20,6 +22,9 @@ export interface MapPinFormProps {
   layers: MapLayerSummary[]
   /** Present when editing an existing pin; absent when placing a new one. */
   pin?: MapPinSummary | null
+  /** Starting position (0–1 normalized) — the pin's own position when
+   * editing, or the clicked/default position when placing a new one. */
+  initialPosition: { x: number; y: number }
   onSubmit: (values: MapPinFormValues) => void
   onCancel: () => void
   onDelete?: () => void
@@ -29,13 +34,20 @@ export interface MapPinFormProps {
 
 const NO_LAYER = ''
 
+function clampPercent(value: number): number {
+  return Math.min(100, Math.max(0, value))
+}
+
 /** Inline form (no modal primitive exists in this codebase yet — see
  * RevisionHistoryPanel's precedent) used both for placing a new pin
- * (clicked position pre-filled by the caller) and editing an existing one. */
+ * (clicked position pre-filled by the caller) and editing an existing one.
+ * Position fields are the keyboard equivalent of dragging a pin on the
+ * canvas — dragging has no keyboard analog otherwise. */
 export function MapPinForm({
   campaignId,
   layers,
   pin,
+  initialPosition,
   onSubmit,
   onCancel,
   onDelete,
@@ -48,6 +60,8 @@ export function MapPinForm({
   )
   const [layerId, setLayerId] = useState(pin?.layerId ?? NO_LAYER)
   const [visibility, setVisibility] = useState<EntityVisibility>(pin?.visibility ?? 'public')
+  const [xPercent, setXPercent] = useState(String(Math.round(initialPosition.x * 100)))
+  const [yPercent, setYPercent] = useState(String(Math.round(initialPosition.y * 100)))
 
   const layerOptions = [
     { value: NO_LAYER, label: 'No layer' },
@@ -64,6 +78,8 @@ export function MapPinForm({
           locationEntityId,
           layerId: layerId === NO_LAYER ? undefined : layerId,
           visibility,
+          xNormalized: clampPercent(Number(xPercent) || 0) / 100,
+          yNormalized: clampPercent(Number(yPercent) || 0) / 100,
         })
       }}
       noValidate
@@ -94,6 +110,24 @@ export function MapPinForm({
         options={VISIBILITY_OPTIONS}
         value={visibility}
         onChange={(e) => setVisibility(e.target.value as EntityVisibility)}
+      />
+      <TextField
+        id="pin-x"
+        label="Position — left (%)"
+        type="number"
+        min={0}
+        max={100}
+        value={xPercent}
+        onChange={(e) => setXPercent(e.target.value)}
+      />
+      <TextField
+        id="pin-y"
+        label="Position — top (%)"
+        type="number"
+        min={0}
+        max={100}
+        value={yPercent}
+        onChange={(e) => setYPercent(e.target.value)}
       />
 
       <FormMessage message={error} tone="error" />

@@ -82,6 +82,9 @@ export function Combobox({
         aria-expanded={showDropdown}
         aria-controls={listboxId}
         aria-autocomplete="list"
+        aria-activedescendant={
+          showDropdown && options.length > 0 ? `${listboxId}-option-${activeIndex}` : undefined
+        }
         autoComplete="off"
         className="wb-field__input"
         value={inputValue}
@@ -106,6 +109,7 @@ export function Combobox({
             options.map((option, index) => (
               <li
                 key={option.id}
+                id={`${listboxId}-option-${index}`}
                 role="option"
                 aria-selected={index === activeIndex}
                 className={

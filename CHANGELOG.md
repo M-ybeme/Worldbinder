@@ -6,6 +6,20 @@ Every push to `main` should add an entry here. This is meant to be an honest rec
 
 ## [Unreleased]
 
+## [0.13.2] - 2026-07-15
+
+### Added
+
+- **Milestone 13, Phase 2 — Keyboard and screen-reader fixes.** Closes the concrete gaps the pre-implementation audit found (see `WORLDBINDER_V1_ROADMAP.md`'s Milestone 13 phase breakdown), not just restyling.
+- **`MapPinMarker` keyboard-activation bug fixed**: a real, focusable `<button aria-label>` on the map canvas was wired only to `onPointerDown`/`onPointerMove`/`onPointerUp` — Enter/Space (which dispatch a native `click`, not pointer events) silently did nothing. Added a dedicated `onActivate` prop, invoked from a new `onKeyDown` handler, wired through `MapCanvas` to the same `onPinActivate` callback pointer clicks already use. Canvas pins are now keyboard-operable directly, not only via the separate `AccessiblePinList`.
+- **Map pin reposition has a keyboard equivalent for the first time**: dragging a pin was the only way to move it. `MapPinForm` gained "Position — left (%)"/"Position — top (%)" number fields (`MapPinFormValues.xNormalized`/`yNormalized`), pre-filled from the pin's current position when editing or the clicked/default position when placing; `MapDetailPage.handlePinFormSubmit` now calls the existing narrow `useRepositionMapPinMutation` alongside the regular update when the form's position differs from the pin's stored one. A new "+ New pin" button (manage mode) opens the placement form at a centered default position, so placing a pin no longer strictly requires clicking the canvas either.
+- **`SearchOverlay` focus trap and restore**: it declared `role="dialog" aria-modal="true"` but implemented neither — Tab could escape to the page behind the backdrop, and closing never returned focus to whatever triggered Ctrl/Cmd+K. Added a minimal `Tab`-wrapping focus trap scoped to the panel (no shared modal primitive exists in `packages/ui` yet — still true as of this milestone) and a `previouslyFocusedRef` that restores focus on close.
+- **`aria-activedescendant` added to `SearchOverlay` and `packages/ui`'s `Combobox`**: both implement `role="combobox"`/`listbox`/`option` but never told screen readers which option arrow keys had moved to. Each option now has a stable id and the input's `aria-activedescendant` tracks the active index.
+- **Visible focus indicator restored**: `.wb-search-overlay__input:focus-visible { outline: none }` removed the keyboard focus ring with no replacement (WCAG 2.4.7) — now outlines with `--wb-accent`, matching every other focusable field in the app.
+- **Silent chip add/remove fixed**: `TagInput` and `EntityMultiPicker`'s chip rows had no `role="list"` and no live-region announcement, so adding or removing a tag/entity was invisible to screen-reader users. Both chip containers are now `<ul role="list">`/`<li>` (was `<span>`/`<div>`) with a `wb-visually-hidden` `role="status" aria-live="polite"` region announcing each change. New `.wb-visually-hidden` utility class in `global.css` (the app's first screen-reader-only utility).
+- Full existing suite re-run clean (typecheck, lint, existing web test). Manually verified end to end against the running dev stack (Playwright-driven): confirmed `aria-activedescendant` updates as arrow keys move through search results, confirmed Escape closes the search dialog, confirmed a canvas pin focused via Tab and activated via Enter opens the edit form (previously did nothing), confirmed the new position fields are pre-filled with the pin's real coordinates (30/40 on a test pin) and are independently editable, confirmed the "+ New pin" button opens the placement form, and confirmed the search input now shows a visible focus ring. No new console errors.
+- **Scope note**: this is Phase 2 of 8. `MapCanvas`'s pointer-drag reposition itself remains pointer-only by design (the new form fields are the keyboard path, not a replacement); the still-outstanding phases (contrast, responsive/tablet layout, reduced-motion, onboarding/help, browser-compatibility pass, regression-proofing via `eslint-plugin-jsx-a11y`) are tracked in the roadmap, not yet done.
+
 ## [0.13.1] - 2026-07-14
 
 ### Added

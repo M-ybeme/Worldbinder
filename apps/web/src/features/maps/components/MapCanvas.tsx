@@ -1,5 +1,10 @@
 import type { MapPinSummary } from '@worldbinder/contracts'
-import { useRef, useState, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from 'react'
+import {
+  useRef,
+  useState,
+  type MouseEvent as ReactMouseEvent,
+  type PointerEvent as ReactPointerEvent,
+} from 'react'
 import { MapPinMarker } from './MapPinMarker'
 
 export interface MapCanvasProps {
@@ -108,15 +113,15 @@ export function MapCanvas({
     <div
       ref={containerRef}
       className="wb-map-canvas"
-      style={imageWidth && imageHeight ? { aspectRatio: `${imageWidth} / ${imageHeight}` } : undefined}
+      style={
+        imageWidth && imageHeight ? { aspectRatio: `${imageWidth} / ${imageHeight}` } : undefined
+      }
       onClick={handleCanvasClick}
     >
       <img src={imageUrl} alt="" className="wb-map-canvas__image" draggable={false} />
       {pins.map((pin) => {
         const position =
-          dragPosition?.pinId === pin.id
-            ? dragPosition
-            : { x: pin.xNormalized, y: pin.yNormalized }
+          dragPosition?.pinId === pin.id ? dragPosition : { x: pin.xNormalized, y: pin.yNormalized }
         return (
           <MapPinMarker
             key={pin.id}
@@ -127,6 +132,7 @@ export function MapCanvas({
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
+            onActivate={onPinActivate}
           />
         )
       })}

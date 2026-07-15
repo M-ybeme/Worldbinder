@@ -71,15 +71,19 @@ export function MapDetailPage() {
   }
 
   function handlePinFormSubmit(values: MapPinFormValues) {
-    const payload = { ...values, label: values.label || null }
+    const { xNormalized, yNormalized, ...rest } = values
+    const payload = { ...rest, label: values.label || null }
     if (editingPin) {
       updatePin.mutate(
         { pinId: editingPin.id, input: payload },
         { onSuccess: () => setEditingPin(null) },
       )
-    } else if (placingPosition) {
+      if (xNormalized !== editingPin.xNormalized || yNormalized !== editingPin.yNormalized) {
+        repositionPin.mutate({ pinId: editingPin.id, input: { xNormalized, yNormalized } })
+      }
+    } else {
       createPin.mutate(
-        { ...payload, xNormalized: placingPosition.x, yNormalized: placingPosition.y },
+        { ...payload, xNormalized, yNormalized },
         { onSuccess: () => setPlacingPosition(null) },
       )
     }
@@ -107,7 +111,10 @@ export function MapDetailPage() {
             >
               {manageMode ? 'Done editing' : 'Edit map'}
             </Button>
-            <Link className="wb-button wb-button--secondary" to={`/app/campaign/${campaign.id}/maps/${map.id}/edit`}>
+            <Link
+              className="wb-button wb-button--secondary"
+              to={`/app/campaign/${campaign.id}/maps/${map.id}/edit`}
+            >
               Map settings
             </Link>
             <Button
@@ -125,7 +132,21 @@ export function MapDetailPage() {
         )}
       </header>
       {map.description && <p>{map.description}</p>}
-      {manageMode && <p>Click the map to place a new pin, or drag an existing pin to move it.</p>}
+      {manageMode && (
+        <p>
+          Click the map to place a new pin, or drag an existing pin to move it — the pin form's
+          position fields work without a pointer, too.{' '}
+          <Button
+            variant="secondary"
+            onClick={() => {
+              setEditingPin(null)
+              setPlacingPosition({ x: 0.5, y: 0.5 })
+            }}
+          >
+            + New pin
+          </Button>
+        </p>
+      )}
 
       <MapLayerToggles
         layers={map.layers}
@@ -166,6 +187,11 @@ export function MapDetailPage() {
           campaignId={campaign.id}
           layers={map.layers}
           pin={editingPin}
+          initialPosition={
+            editingPin
+              ? { x: editingPin.xNormalized, y: editingPin.yNormalized }
+              : (placingPosition ?? { x: 0.5, y: 0.5 })
+          }
           onSubmit={handlePinFormSubmit}
           onCancel={() => {
             setEditingPin(null)
@@ -191,7 +217,11 @@ export function MapDetailPage() {
                   variant="secondary"
                   disabled={deleteLayer.isPending}
                   onClick={() => {
-                    if (!window.confirm(`Delete layer "${layer.name}"? Its pins will be ungrouped, not deleted.`))
+                    if (
+                      !window.confirm(
+                        `Delete layer "${layer.name}"? Its pins will be ungrouped, not deleted.`,
+                      )
+                    )
                       return
                     deleteLayer.mutate(layer.id)
                   }}
@@ -220,7 +250,10 @@ export function MapDetailPage() {
               Add layer
             </Button>
           </form>
-          <FormMessage message={createLayer.error?.message ?? deleteLayer.error?.message} tone="error" />
+          <FormMessage
+            message={createLayer.error?.message ?? deleteLayer.error?.message}
+            tone="error"
+          />
         </div>
       )}
     </section>
