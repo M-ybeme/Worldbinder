@@ -4,6 +4,9 @@ import { AccountLayout } from '../features/account/components/AccountLayout'
 import { ProfilePage } from '../features/account/pages/ProfilePage'
 import { SecurityPage } from '../features/account/pages/SecurityPage'
 import { SessionsPage } from '../features/account/pages/SessionsPage'
+import { TimelineEventDetailPage } from '../features/timeline/pages/TimelineEventDetailPage'
+import { TimelineEventFormPage } from '../features/timeline/pages/TimelineEventFormPage'
+import { TimelineListPage } from '../features/timeline/pages/TimelineListPage'
 import { AuditPage } from '../features/audit/pages/AuditPage'
 import { RedirectIfAuthenticated } from '../features/auth/components/RedirectIfAuthenticated'
 import { RequireAuth } from '../features/auth/components/RequireAuth'
@@ -84,6 +87,10 @@ export const router = createBrowserRouter([
                   { path: 'world/new', element: <EntityFormPage /> },
                   { path: 'world/:entityId', element: <EntityDetailPage /> },
                   { path: 'world/:entityId/edit', element: <EntityFormPage /> },
+                  { path: 'world/timeline', element: <TimelineListPage /> },
+                  { path: 'world/timeline/new', element: <TimelineEventFormPage /> },
+                  { path: 'world/timeline/:eventId', element: <TimelineEventDetailPage /> },
+                  { path: 'world/timeline/:eventId/edit', element: <TimelineEventFormPage /> },
                   { path: 'sessions', element: <SessionListPage /> },
                   { path: 'sessions/new', element: <SessionFormPage /> },
                   { path: 'sessions/:sessionId', element: <SessionDetailPage /> },

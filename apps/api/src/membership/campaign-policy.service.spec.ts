@@ -117,6 +117,14 @@ describe('CampaignPolicyService', () => {
     expect(policy.canManageMaps('viewer')).toBe(false);
   });
 
+  it('allows owner, GM, and editor to manage timeline events but not player or viewer', () => {
+    expect(policy.canManageTimeline('owner')).toBe(true);
+    expect(policy.canManageTimeline('gm')).toBe(true);
+    expect(policy.canManageTimeline('editor')).toBe(true);
+    expect(policy.canManageTimeline('player')).toBe(false);
+    expect(policy.canManageTimeline('viewer')).toBe(false);
+  });
+
   it('restricts revealing content to owner and GM, unlike session/entity editing', () => {
     expect(policy.canRevealContent('owner')).toBe(true);
     expect(policy.canRevealContent('gm')).toBe(true);

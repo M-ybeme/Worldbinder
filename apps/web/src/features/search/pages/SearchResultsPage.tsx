@@ -10,6 +10,7 @@ const RESOURCE_TYPE_FILTERS: { value: SearchResourceType; label: string }[] = [
   { value: 'session', label: 'Sessions' },
   { value: 'plot_thread', label: 'Threads' },
   { value: 'relationship', label: 'Relationships' },
+  { value: 'timeline_event', label: 'Timeline' },
 ]
 
 const PAGE_SIZE = 20

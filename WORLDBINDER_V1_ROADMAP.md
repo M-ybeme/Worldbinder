@@ -2034,7 +2034,7 @@ Each milestone must end in working software, passing tests, and updated document
 
 ---
 
-## Milestone 10 — Maps
+## Milestone 10 — Maps [Done]
 
 ### Deliverables
 
@@ -2055,7 +2055,7 @@ Each milestone must end in working software, passing tests, and updated document
 
 ---
 
-## Milestone 11 — Timeline and Calendar
+## Milestone 11 — Timeline and Calendar [Done]
 
 ### Deliverables
 

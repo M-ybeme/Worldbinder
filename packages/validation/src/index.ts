@@ -1,8 +1,25 @@
 export { cursorPaginationQuerySchema } from './pagination.js'
 export type { CursorPaginationQuery } from './pagination.js'
 
-export { worldDateSchema } from './calendar.js'
-export type { WorldDate } from './calendar.js'
+export {
+  calendarConfigSchema,
+  calendarMonthSchema,
+  compareTimelineDates,
+  DEFAULT_CALENDAR_CONFIG,
+  isValidTimelineDate,
+  isValidWorldDate,
+  timelineDatePrecisionSchema,
+  timelineDateSchema,
+  timelineDateToOrdinal,
+  worldDateSchema,
+} from './calendar.js'
+export type {
+  CalendarConfig,
+  CalendarMonth,
+  TimelineDate,
+  TimelineDatePrecision,
+  WorldDate,
+} from './calendar.js'
 
 export {
   changePasswordSchema,
@@ -145,3 +162,14 @@ export type {
   UpdateMapLayerInput,
   UpdateMapPinInput,
 } from './maps.js'
+
+export {
+  createTimelineEventSchema,
+  listTimelineEventsQuerySchema,
+  updateTimelineEventSchema,
+} from './timeline.js'
+export type {
+  CreateTimelineEventInput,
+  ListTimelineEventsQuery,
+  UpdateTimelineEventInput,
+} from './timeline.js'

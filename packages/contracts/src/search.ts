@@ -1,4 +1,5 @@
-export type SearchResourceType = 'entity' | 'session' | 'plot_thread' | 'relationship'
+export type SearchResourceType =
+  'entity' | 'session' | 'plot_thread' | 'relationship' | 'timeline_event'
 
 /** Offsets are into `text` and mark spans to highlight — never embedded
  * markup, so the frontend renders via plain text nodes (no

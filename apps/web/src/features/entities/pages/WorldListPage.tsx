@@ -38,14 +38,18 @@ export function WorldListPage() {
     <section>
       <header className="wb-world-header">
         <h1>World</h1>
-        {canCreate && (
-          <Link
-            className="wb-button wb-button--primary"
-            to={`/app/campaign/${campaign.id}/world/new`}
-          >
-            New entity
-          </Link>
-        )}
+        <div>
+          <Link to={`/app/campaign/${campaign.id}/world/timeline`}>Timeline</Link>
+          {canCreate && (
+            <Link
+              className="wb-button wb-button--primary"
+              to={`/app/campaign/${campaign.id}/world/new`}
+              style={{ marginLeft: '1rem' }}
+            >
+              New entity
+            </Link>
+          )}
+        </div>
       </header>
 
       <div className="wb-world-filters">

@@ -22,6 +22,7 @@ import { RelationshipsModule } from './relationships/relationships.module';
 import { RevisionsModule } from './revisions/revisions.module';
 import { SearchModule } from './search/search.module';
 import { SessionsModule } from './sessions/sessions.module';
+import { TimelineModule } from './timeline/timeline.module';
 
 @Module({
   imports: [
@@ -55,6 +56,7 @@ import { SessionsModule } from './sessions/sessions.module';
     CampaignAuditViewModule,
     AttachmentsModule,
     MapsModule,
+    TimelineModule,
   ],
 })
 export class AppModule implements NestModule {

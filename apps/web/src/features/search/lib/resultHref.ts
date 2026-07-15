@@ -12,5 +12,7 @@ export function resultHref(campaignId: string, result: SearchResult): string {
       return `/app/campaign/${campaignId}/threads/${result.id}`
     case 'relationship':
       return `/app/campaign/${campaignId}/world/${result.linkEntityId}`
+    case 'timeline_event':
+      return `/app/campaign/${campaignId}/world/timeline/${result.id}`
   }
 }

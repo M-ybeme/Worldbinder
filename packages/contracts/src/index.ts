@@ -28,7 +28,13 @@ export type {
   RelationshipType,
 } from './relationships.js'
 export type { Backlink, WikiLinkSection } from './wiki-links.js'
-export type { WorldDate } from './calendar.js'
+export type {
+  CalendarConfig,
+  CalendarMonth,
+  TimelineDate,
+  TimelineDatePrecision,
+  WorldDate,
+} from './calendar.js'
 export type {
   CampaignSessionDetail,
   CampaignSessionSummary,
@@ -60,3 +66,4 @@ export {
 } from './jobs.js'
 export type { ProcessAttachmentJobData } from './jobs.js'
 export type { MapDetail, MapLayerSummary, MapPinSummary, MapSummary } from './maps.js'
+export type { TimelineEventDetail, TimelineEventSummary } from './timeline.js'

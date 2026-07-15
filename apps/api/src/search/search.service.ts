@@ -16,6 +16,7 @@ import {
   plotThreads,
   relationshipTypes,
   sessions,
+  timelineEvents,
 } from '../database/schema';
 import { CampaignPolicyService } from '../membership/campaign-policy.service';
 import type { CampaignMembership } from '../membership/guards/campaign-membership.guard';
@@ -61,31 +62,46 @@ export class SearchService {
     query: SearchQuery,
   ): Promise<SearchResponse> {
     const wantedTypes = new Set<SearchResourceType>(
-      query.types ?? ['entity', 'session', 'plot_thread', 'relationship'],
+      query.types ?? [
+        'entity',
+        'session',
+        'plot_thread',
+        'relationship',
+        'timeline_event',
+      ],
     );
     const q = query.q.trim();
 
-    const [entityResults, sessionResults, threadResults, relationshipResults] =
-      await Promise.all([
-        wantedTypes.has('entity')
-          ? this.searchEntities(campaignId, membership, q)
-          : Promise.resolve([]),
-        wantedTypes.has('session')
-          ? this.searchSessions(campaignId, membership, q)
-          : Promise.resolve([]),
-        wantedTypes.has('plot_thread')
-          ? this.searchPlotThreads(campaignId, membership, q)
-          : Promise.resolve([]),
-        wantedTypes.has('relationship')
-          ? this.searchRelationships(campaignId, membership, q)
-          : Promise.resolve([]),
-      ]);
+    const [
+      entityResults,
+      sessionResults,
+      threadResults,
+      relationshipResults,
+      timelineEventResults,
+    ] = await Promise.all([
+      wantedTypes.has('entity')
+        ? this.searchEntities(campaignId, membership, q)
+        : Promise.resolve([]),
+      wantedTypes.has('session')
+        ? this.searchSessions(campaignId, membership, q)
+        : Promise.resolve([]),
+      wantedTypes.has('plot_thread')
+        ? this.searchPlotThreads(campaignId, membership, q)
+        : Promise.resolve([]),
+      wantedTypes.has('relationship')
+        ? this.searchRelationships(campaignId, membership, q)
+        : Promise.resolve([]),
+      wantedTypes.has('timeline_event')
+        ? this.searchTimelineEvents(campaignId, membership, q)
+        : Promise.resolve([]),
+    ]);
 
     const merged = [
       ...entityResults,
       ...sessionResults,
       ...threadResults,
       ...relationshipResults,
+      ...timelineEventResults,
     ].sort((a, b) => a.tier - b.tier || b.score - a.score);
 
     return {
@@ -411,6 +427,72 @@ export class SearchService {
       tier: TIER_RELATIONSHIP,
       score: Number(row.score),
       linkEntityId: row.sourceEntityId,
+    }));
+  }
+
+  /** Single `searchVector` column, not a public/gm pair — timeline events
+   * have no GM-only sub-content, only the row-level `visibility` column
+   * (same access model as maps, which have no search integration at all;
+   * timeline events do, per roadmap §14.1). */
+  private async searchTimelineEvents(
+    campaignId: string,
+    membership: CampaignMembership,
+    q: string,
+  ): Promise<(SearchResult & RankedRow)[]> {
+    const canViewGm = this.policy.canViewGmContent(
+      membership.role,
+      membership.editorSecretAccess,
+    );
+
+    const conditions = [eq(timelineEvents.campaignId, campaignId)];
+    if (!canViewGm) conditions.push(eq(timelineEvents.visibility, 'public'));
+
+    const tsQuery = sql`plainto_tsquery('english', ${q})`;
+    const prefixPattern = `${q}%`;
+
+    const tierSql = sql<number>`(case
+      when lower(${timelineEvents.title}) = lower(${q}) then ${TIER_EXACT_NAME}
+      when ${timelineEvents.title} ilike ${prefixPattern} then ${TIER_NAME_PREFIX}
+      when similarity(${timelineEvents.title}, ${q}) > ${FUZZY_SIMILARITY_THRESHOLD} then ${TIER_FUZZY_NAME}
+      else ${TIER_CONTENT}
+    end)::int`;
+    const scoreSql = sql<number>`case
+      when lower(${timelineEvents.title}) = lower(${q}) or ${timelineEvents.title} ilike ${prefixPattern} then 1
+      when similarity(${timelineEvents.title}, ${q}) > ${FUZZY_SIMILARITY_THRESHOLD} then similarity(${timelineEvents.title}, ${q})
+      else ts_rank_cd(${timelineEvents.searchVector}, ${tsQuery})
+    end`;
+    const matchCondition = sql`(
+      lower(${timelineEvents.title}) = lower(${q})
+      or ${timelineEvents.title} ilike ${prefixPattern}
+      or similarity(${timelineEvents.title}, ${q}) > ${FUZZY_SIMILARITY_THRESHOLD}
+      or ${timelineEvents.searchVector} @@ ${tsQuery}
+    )`;
+
+    const rows = await this.db
+      .select({
+        id: timelineEvents.id,
+        title: timelineEvents.title,
+        summary: timelineEvents.summary,
+        contentJson: timelineEvents.contentJson,
+        tier: tierSql,
+        score: scoreSql,
+      })
+      .from(timelineEvents)
+      .where(and(...conditions, matchCondition))
+      .orderBy(asc(tierSql), desc(scoreSql))
+      .limit(PER_TABLE_LIMIT);
+
+    return rows.map((row) => ({
+      resourceType: 'timeline_event' as const,
+      id: row.id,
+      title: row.title,
+      subtitle: 'Timeline Event',
+      snippet: buildSnippetForTier(row.tier, q, [
+        row.summary ?? '',
+        extractPlainText(row.contentJson as TiptapDoc | null),
+      ]),
+      tier: Number(row.tier),
+      score: Number(row.score),
     }));
   }
 }

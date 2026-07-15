@@ -1,21 +1,27 @@
 import {
+  ConflictException,
   ForbiddenException,
   Inject,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import type {
+  CalendarConfig,
   CampaignActivityItem,
   CampaignDashboard,
   CampaignDetail,
   CampaignSessionSummary,
   CampaignSummary,
   PlotThreadSummary,
+  TimelineDate,
   WorldDate,
 } from '@worldbinder/contracts';
-import type {
-  CreateCampaignInput,
-  UpdateCampaignInput,
+import {
+  DEFAULT_CALENDAR_CONFIG,
+  isValidTimelineDate,
+  isValidWorldDate,
+  type CreateCampaignInput,
+  type UpdateCampaignInput,
 } from '@worldbinder/validation';
 import { and, desc, eq, isNotNull, isNull, sql } from 'drizzle-orm';
 import { randomBytes } from 'node:crypto';
@@ -28,6 +34,7 @@ import {
   entities,
   plotThreads,
   sessions,
+  timelineEvents,
 } from '../database/schema';
 import { CampaignPolicyService } from '../membership/campaign-policy.service';
 import type { CampaignMembership } from '../membership/guards/campaign-membership.guard';
@@ -119,6 +126,7 @@ export class CampaignsService {
       input.systemName !== undefined ||
       input.settingsJson !== undefined ||
       input.currentWorldDateJson !== undefined ||
+      input.calendarConfigJson !== undefined ||
       input.coverAttachmentId !== undefined;
 
     if (hasNameChange && !this.policy.canRenameCampaign(membership.role)) {
@@ -141,6 +149,14 @@ export class CampaignsService {
       );
     }
 
+    if (input.calendarConfigJson !== undefined) {
+      await this.assertCalendarChangeKeepsExistingDatesValid(
+        campaignId,
+        input.calendarConfigJson,
+        input.currentWorldDateJson,
+      );
+    }
+
     const [updated] = await this.db
       .update(campaigns)
       .set({
@@ -156,6 +172,9 @@ export class CampaignsService {
           : {}),
         ...(input.currentWorldDateJson !== undefined
           ? { currentWorldDateJson: input.currentWorldDateJson }
+          : {}),
+        ...(input.calendarConfigJson !== undefined
+          ? { calendarConfigJson: input.calendarConfigJson }
           : {}),
         ...(input.coverAttachmentId !== undefined
           ? { coverAttachmentId: input.coverAttachmentId }
@@ -441,6 +460,83 @@ export class CampaignsService {
     throw new Error('Failed to generate a unique campaign slug');
   }
 
+  /**
+   * The concrete mechanism behind "existing dates remain interpretable
+   * after allowed calendar changes" (Milestone 11 exit criterion): before
+   * accepting a new calendar config, re-validate every date already stored
+   * under this campaign — its own `currentWorldDateJson`, every session's
+   * world start/end date, every timeline event's start/end date — against
+   * the *new* config, rejecting with 409 if any would become invalid.
+   * Reads `sessions`/`timeline_events` directly (no SessionsModule/
+   * TimelineModule import), same "sibling table read" precedent as
+   * `requireReadyImageAttachment` below.
+   */
+  private async assertCalendarChangeKeepsExistingDatesValid(
+    campaignId: string,
+    newConfigInput: CalendarConfig | null,
+    incomingCurrentWorldDate: WorldDate | null | undefined,
+  ): Promise<void> {
+    const config = newConfigInput ?? DEFAULT_CALENDAR_CONFIG;
+
+    const campaign = await this.requireCampaign(campaignId);
+    const effectiveCurrentWorldDate =
+      incomingCurrentWorldDate !== undefined
+        ? incomingCurrentWorldDate
+        : (campaign.currentWorldDateJson as WorldDate | null);
+    if (
+      effectiveCurrentWorldDate &&
+      !isValidWorldDate(effectiveCurrentWorldDate, config)
+    ) {
+      throw new ConflictException(
+        "This campaign's current in-world date is not valid under the new calendar. Adjust it first.",
+      );
+    }
+
+    const sessionRows = await this.db
+      .select({
+        worldStartDateJson: sessions.worldStartDateJson,
+        worldEndDateJson: sessions.worldEndDateJson,
+      })
+      .from(sessions)
+      .where(
+        and(eq(sessions.campaignId, campaignId), isNull(sessions.deletedAt)),
+      );
+    for (const row of sessionRows) {
+      const start = row.worldStartDateJson as WorldDate | null;
+      const end = row.worldEndDateJson as WorldDate | null;
+      if (
+        (start && !isValidWorldDate(start, config)) ||
+        (end && !isValidWorldDate(end, config))
+      ) {
+        throw new ConflictException(
+          'One or more sessions have a world date that is not valid under the new calendar. Adjust them first.',
+        );
+      }
+    }
+
+    const eventRows = await this.db
+      .select({
+        startDateJson: timelineEvents.startDateJson,
+        endDateJson: timelineEvents.endDateJson,
+        datePrecision: timelineEvents.datePrecision,
+      })
+      .from(timelineEvents)
+      .where(eq(timelineEvents.campaignId, campaignId));
+    for (const row of eventRows) {
+      const start = row.startDateJson as TimelineDate | null;
+      const end = row.endDateJson as TimelineDate | null;
+      if (!start || !row.datePrecision) continue;
+      if (
+        !isValidTimelineDate(start, row.datePrecision, config) ||
+        (end && !isValidTimelineDate(end, row.datePrecision, config))
+      ) {
+        throw new ConflictException(
+          'One or more timeline events have a date that is not valid under the new calendar. Adjust them first.',
+        );
+      }
+    }
+  }
+
   /** Direct DRIZZLE read of `attachments`, not an injected AttachmentsService
    * — same "read a sibling table directly" precedent as getDashboard() —
    * avoids a CampaignsModule <-> AttachmentsModule dependency entirely. */
@@ -532,6 +628,7 @@ export class CampaignsService {
       ...(await this.toSummary(campaign, role)),
       settingsJson: campaign.settingsJson as Record<string, unknown> | null,
       currentWorldDateJson: campaign.currentWorldDateJson as WorldDate | null,
+      calendarConfigJson: campaign.calendarConfigJson as CalendarConfig | null,
     };
   }
 }

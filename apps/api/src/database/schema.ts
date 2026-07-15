@@ -159,6 +159,11 @@ export const campaigns = pgTable('campaigns', {
     { onDelete: 'set null' },
   ),
   currentWorldDateJson: jsonb('current_world_date_json'),
+  // Milestone 11 ("Timeline and Calendar") — null means
+  // DEFAULT_CALENDAR_CONFIG (packages/validation/src/calendar.ts) applies.
+  // Lives directly on campaigns (one config per campaign), mirroring
+  // currentWorldDateJson/coverAttachmentId rather than a separate table.
+  calendarConfigJson: jsonb('calendar_config_json'),
   settingsJson: jsonb('settings_json'),
   createdAt: timestamp('created_at', { withTimezone: true })
     .notNull()
@@ -914,4 +919,88 @@ export const mapPins = pgTable(
     index('map_pins_layer_id_idx').on(table.layerId),
     index('map_pins_location_entity_id_idx').on(table.locationEntityId),
   ],
+);
+
+// Milestone 11 — Timeline and Calendar.
+
+export const timelineDatePrecisionEnum = pgEnum('timeline_date_precision', [
+  'year',
+  'month',
+  'day',
+]);
+
+export const timelineEvents = pgTable(
+  'timeline_events',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    campaignId: uuid('campaign_id')
+      .notNull()
+      .references(() => campaigns.id, { onDelete: 'cascade' }),
+    title: text('title').notNull(),
+    summary: text('summary'),
+    contentJson: jsonb('content_json'),
+    // Null together (roadmap §9.13) — an event with no date lives in the
+    // "Undated" section. datePrecision dictates which of year/month/day
+    // startDateJson/endDateJson actually carry; see
+    // packages/validation/src/calendar.ts's TimelineDate/isValidTimelineDate.
+    startDateJson: jsonb('start_date_json'),
+    endDateJson: jsonb('end_date_json'),
+    datePrecision: timelineDatePrecisionEnum('date_precision'),
+    visibility: entityVisibilityEnum('visibility').notNull().default('public'),
+    // Single column, not entities'/sessions' two-tier public/gm split —
+    // timeline events have no separate GM-only sub-content, only a
+    // row-level visibility (like maps), so one vector suffices.
+    searchVector: tsvector('search_vector'),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    // No deletedAt (roadmap §9.13's literal column list, matching maps'
+    // precedent) — timeline events hard-delete, no revision history.
+  },
+  (table) => [
+    index('timeline_events_campaign_id_idx').on(table.campaignId),
+    index('timeline_events_search_vector_idx').using('gin', table.searchVector),
+  ],
+);
+
+export const timelineEventEntities = pgTable(
+  'timeline_event_entities',
+  {
+    timelineEventId: uuid('timeline_event_id')
+      .notNull()
+      .references(() => timelineEvents.id, { onDelete: 'cascade' }),
+    entityId: uuid('entity_id')
+      .notNull()
+      .references(() => entities.id, { onDelete: 'cascade' }),
+  },
+  (table) => [unique().on(table.timelineEventId, table.entityId)],
+);
+
+export const timelineEventSessions = pgTable(
+  'timeline_event_sessions',
+  {
+    timelineEventId: uuid('timeline_event_id')
+      .notNull()
+      .references(() => timelineEvents.id, { onDelete: 'cascade' }),
+    sessionId: uuid('session_id')
+      .notNull()
+      .references(() => sessions.id, { onDelete: 'cascade' }),
+  },
+  (table) => [unique().on(table.timelineEventId, table.sessionId)],
+);
+
+export const timelineEventTags = pgTable(
+  'timeline_event_tags',
+  {
+    timelineEventId: uuid('timeline_event_id')
+      .notNull()
+      .references(() => timelineEvents.id, { onDelete: 'cascade' }),
+    tagId: uuid('tag_id')
+      .notNull()
+      .references(() => tags.id, { onDelete: 'cascade' }),
+  },
+  (table) => [unique().on(table.timelineEventId, table.tagId)],
 );

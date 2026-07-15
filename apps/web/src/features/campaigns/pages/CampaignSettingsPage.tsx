@@ -1,6 +1,10 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Button, FileDropzone, FormMessage, TextField } from '@worldbinder/ui'
-import { updateCampaignSchema, type UpdateCampaignInput } from '@worldbinder/validation'
+import {
+  DEFAULT_CALENDAR_CONFIG,
+  updateCampaignSchema,
+  type UpdateCampaignInput,
+} from '@worldbinder/validation'
 import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { Link, useNavigate } from 'react-router-dom'
@@ -8,6 +12,7 @@ import {
   useUnlinkedAttachmentsQuery,
   useUploadUnlinkedAttachmentMutation,
 } from '../../attachments/hooks/useAttachments'
+import { CalendarMonthsEditor } from '../../calendar/components/CalendarMonthsEditor'
 import { useCampaignOutletContext } from '../hooks/useCampaignContext'
 import {
   useArchiveCampaignMutation,
@@ -37,6 +42,10 @@ export function CampaignSettingsPage() {
     },
   })
   const updateCampaign = useUpdateCampaignMutation(campaign.id)
+  const [calendarConfig, setCalendarConfig] = useState(
+    campaign.calendarConfigJson ?? DEFAULT_CALENDAR_CONFIG,
+  )
+  const saveCalendarConfig = useUpdateCampaignMutation(campaign.id)
   const archiveCampaign = useArchiveCampaignMutation(campaign.id)
   const restoreCampaign = useRestoreCampaignMutation(campaign.id)
   const deleteCampaign = useDeleteCampaignMutation(campaign.id)
@@ -126,6 +135,27 @@ export function CampaignSettingsPage() {
           />
           {(uploadCover.isPending || pendingCoverId) && <p>Uploading and processing…</p>}
           <FormMessage message={uploadCover.error?.message ?? coverError} tone="error" />
+        </>
+      )}
+
+      {canManageSettings && (
+        <>
+          <h2>Calendar</h2>
+          <p>
+            Configure a custom in-world calendar (month names and lengths) used by session and
+            timeline dates. Changes that would make an already-recorded date invalid are rejected —
+            adjust those dates first.
+          </p>
+          <CalendarMonthsEditor value={calendarConfig} onChange={setCalendarConfig} />
+          <FormMessage message={saveCalendarConfig.error?.message} />
+          {saveCalendarConfig.isSuccess && <FormMessage tone="success" message="Calendar saved." />}
+          <Button
+            type="button"
+            disabled={saveCalendarConfig.isPending}
+            onClick={() => saveCalendarConfig.mutate({ calendarConfigJson: calendarConfig })}
+          >
+            {saveCalendarConfig.isPending ? 'Saving…' : 'Save calendar'}
+          </Button>
         </>
       )}
 

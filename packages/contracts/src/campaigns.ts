@@ -1,4 +1,4 @@
-import type { WorldDate } from './calendar.js'
+import type { CalendarConfig, WorldDate } from './calendar.js'
 import type { PlotThreadSummary } from './plot-threads.js'
 import type { CampaignSessionSummary } from './sessions.js'
 
@@ -28,6 +28,9 @@ export interface CampaignSummary {
 export interface CampaignDetail extends CampaignSummary {
   settingsJson: Record<string, unknown> | null
   currentWorldDateJson: WorldDate | null
+  /** null means `DEFAULT_CALENDAR_CONFIG` (packages/validation) applies —
+   * see Milestone 11 ("Timeline and Calendar"). */
+  calendarConfigJson: CalendarConfig | null
 }
 
 export interface CampaignActivityItem {

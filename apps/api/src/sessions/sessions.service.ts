@@ -7,6 +7,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import type {
+  CalendarConfig,
   CampaignSessionDetail,
   CampaignSessionSummary,
   EntitySummary,
@@ -17,11 +18,13 @@ import type {
   TiptapDoc,
   WorldDate,
 } from '@worldbinder/contracts';
-import type {
-  CompleteSessionInput,
-  CreateSessionInput,
-  PlotThreadChangeInput,
-  UpdateSessionInput,
+import {
+  DEFAULT_CALENDAR_CONFIG,
+  isValidWorldDate,
+  type CompleteSessionInput,
+  type CreateSessionInput,
+  type PlotThreadChangeInput,
+  type UpdateSessionInput,
 } from '@worldbinder/validation';
 import { and, eq, inArray, isNull, sql, type SQL } from 'drizzle-orm';
 import { CampaignAuditService } from '../audit/campaign-audit.service';
@@ -81,6 +84,15 @@ export class SessionsService {
     input: CreateSessionInput,
   ): Promise<CampaignSessionDetail> {
     this.assertCanEdit(membership);
+
+    if (input.worldStartDateJson) {
+      const config = await this.getCalendarConfig(campaignId);
+      if (!isValidWorldDate(input.worldStartDateJson, config)) {
+        throw new BadRequestException(
+          "World start date is not valid for this campaign's calendar",
+        );
+      }
+    }
 
     const vectors = buildSessionSearchVectors({
       title: input.title,
@@ -214,6 +226,31 @@ export class SessionsService {
       membership,
     );
     this.assertNotStale(existing, input.updatedAt);
+
+    const effectiveWorldStart =
+      input.worldStartDateJson !== undefined
+        ? input.worldStartDateJson
+        : (existing.worldStartDateJson as WorldDate | null);
+    const effectiveWorldEnd =
+      input.worldEndDateJson !== undefined
+        ? input.worldEndDateJson
+        : (existing.worldEndDateJson as WorldDate | null);
+    if (effectiveWorldStart || effectiveWorldEnd) {
+      const config = await this.getCalendarConfig(campaignId);
+      if (
+        effectiveWorldStart &&
+        !isValidWorldDate(effectiveWorldStart, config)
+      ) {
+        throw new BadRequestException(
+          "World start date is not valid for this campaign's calendar",
+        );
+      }
+      if (effectiveWorldEnd && !isValidWorldDate(effectiveWorldEnd, config)) {
+        throw new BadRequestException(
+          "World end date is not valid for this campaign's calendar",
+        );
+      }
+    }
 
     // No join-table wrinkle here (unlike entities' tags) — every field the
     // vector needs lives on this row, so the merge can happen inline in
@@ -836,6 +873,21 @@ export class SessionsService {
     );
     if (!canSee) throw new NotFoundException('Session not found');
     return session;
+  }
+
+  /** Direct DRIZZLE read of `campaigns`, not an injected CampaignsService —
+   * same "sibling table read" precedent as `CampaignsService`'s own
+   * `requireReadyImageAttachment`. Null means the campaign hasn't
+   * configured a custom calendar yet (Milestone 11). */
+  private async getCalendarConfig(campaignId: string): Promise<CalendarConfig> {
+    const [row] = await this.db
+      .select({ calendarConfigJson: campaigns.calendarConfigJson })
+      .from(campaigns)
+      .where(eq(campaigns.id, campaignId));
+    return (
+      (row?.calendarConfigJson as CalendarConfig | null) ??
+      DEFAULT_CALENDAR_CONFIG
+    );
   }
 
   private assertNotStale(existing: SessionRow, updatedAt: string): void {

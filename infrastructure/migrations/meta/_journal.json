@@ -78,6 +78,13 @@
       "when": 1783914188841,
       "tag": "0010_early_sage",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1784071397515,
+      "tag": "0011_previous_sinister_six",
+      "breakpoints": true
     }
   ]
 }

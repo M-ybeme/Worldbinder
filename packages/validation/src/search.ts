@@ -1,6 +1,12 @@
 import { z } from 'zod'
 
-export const searchResourceTypeSchema = z.enum(['entity', 'session', 'plot_thread', 'relationship'])
+export const searchResourceTypeSchema = z.enum([
+  'entity',
+  'session',
+  'plot_thread',
+  'relationship',
+  'timeline_event',
+])
 export type SearchResourceType = z.infer<typeof searchResourceTypeSchema>
 
 /** Query params arrive as a single string, a comma-separated string, or

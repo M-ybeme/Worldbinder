@@ -1,5 +1,5 @@
-import type { EntityVisibility, TiptapDoc, WorldDate } from '@worldbinder/contracts'
-import type { PlotThreadChangeInput } from '@worldbinder/validation'
+import type { EntityVisibility, TiptapDoc } from '@worldbinder/contracts'
+import { DEFAULT_CALENDAR_CONFIG, type PlotThreadChangeInput } from '@worldbinder/validation'
 import { Button, FormMessage, Select, TextField } from '@worldbinder/ui'
 import { useEffect, useState, type FormEvent } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
@@ -8,6 +8,12 @@ import { useMembersQuery } from '../../membership/hooks/useCampaignMembers'
 import { EntityMultiPicker } from '../../entities/components/EntityMultiPicker'
 import { RichTextEditor } from '../../entities/components/RichTextEditor'
 import { PlotThreadChangesEditor } from '../../plot-threads/components/PlotThreadChangesEditor'
+import { StructuredDateEditor } from '../../calendar/components/StructuredDateEditor'
+import {
+  EMPTY_STRUCTURED_DATE,
+  structuredToWorldDate,
+  worldDateToStructured,
+} from '../../calendar/lib/structuredDate'
 import {
   useCreateSessionMutation,
   useSessionQuery,
@@ -18,36 +24,6 @@ const VISIBILITY_OPTIONS = [
   { value: 'public', label: 'Public — visible to all campaign members' },
   { value: 'gm_only', label: 'GM only — hidden from players' },
 ]
-
-interface WorldDateDraft {
-  year: string
-  month: string
-  day: string
-  label: string
-}
-
-const EMPTY_WORLD_DATE: WorldDateDraft = { year: '', month: '', day: '', label: '' }
-
-function toWorldDateDraft(date: WorldDate | null | undefined): WorldDateDraft {
-  if (!date) return EMPTY_WORLD_DATE
-  return {
-    year: String(date.year),
-    month: String(date.month),
-    day: String(date.day),
-    label: date.label ?? '',
-  }
-}
-
-function fromWorldDateDraft(draft: WorldDateDraft): WorldDate | undefined {
-  if (!draft.year || !draft.month || !draft.day) return undefined
-  return {
-    schemaVersion: 1,
-    year: Number(draft.year),
-    month: Number(draft.month),
-    day: Number(draft.day),
-    label: draft.label || undefined,
-  }
-}
 
 export function SessionFormPage() {
   const { sessionId } = useParams<{ sessionId: string }>()
@@ -61,11 +37,12 @@ export function SessionFormPage() {
   const updateSession = useUpdateSessionMutation(campaign.id, sessionId ?? '')
 
   const canSetGmContent = campaign.role === 'owner' || campaign.role === 'gm'
+  const calendarConfig = campaign.calendarConfigJson ?? DEFAULT_CALENDAR_CONFIG
 
   const [title, setTitle] = useState('')
   const [visibility, setVisibility] = useState<EntityVisibility>('public')
   const [scheduledAt, setScheduledAt] = useState('')
-  const [worldStartDate, setWorldStartDate] = useState<WorldDateDraft>(EMPTY_WORLD_DATE)
+  const [worldStartDate, setWorldStartDate] = useState(EMPTY_STRUCTURED_DATE)
   const [plannedContent, setPlannedContent] = useState<TiptapDoc | null>(null)
   const [recapContent, setRecapContent] = useState<TiptapDoc | null>(null)
   const [gmContent, setGmContent] = useState<TiptapDoc | null>(null)
@@ -81,7 +58,7 @@ export function SessionFormPage() {
     setTitle(session.title)
     setVisibility(session.visibility)
     setScheduledAt(session.scheduledAt ? session.scheduledAt.slice(0, 16) : '')
-    setWorldStartDate(toWorldDateDraft(session.worldStartDateJson))
+    setWorldStartDate(worldDateToStructured(session.worldStartDateJson))
     setRecapContent(session.recapContentJson)
     if ('plannedContentJson' in session) setPlannedContent(session.plannedContentJson ?? null)
     if ('gmContentJson' in session) setGmContent(session.gmContentJson ?? null)
@@ -109,7 +86,7 @@ export function SessionFormPage() {
     event.preventDefault()
     if (!title.trim()) return
 
-    const worldStartDateJson = fromWorldDateDraft(worldStartDate)
+    const worldStartDateJson = structuredToWorldDate(worldStartDate)
 
     if (isEditMode) {
       if (!updatedAt) return
@@ -180,40 +157,15 @@ export function SessionFormPage() {
           onChange={(e) => setScheduledAt(e.target.value)}
         />
 
-        <fieldset className="wb-field">
-          <legend className="wb-field__label">In-world start date</legend>
-          <TextField
-            id="worldStartYear"
-            label="Year"
-            type="number"
-            value={worldStartDate.year}
-            onChange={(e) => setWorldStartDate((d) => ({ ...d, year: e.target.value }))}
-          />
-          <TextField
-            id="worldStartMonth"
-            label="Month"
-            type="number"
-            min={1}
-            max={12}
-            value={worldStartDate.month}
-            onChange={(e) => setWorldStartDate((d) => ({ ...d, month: e.target.value }))}
-          />
-          <TextField
-            id="worldStartDay"
-            label="Day"
-            type="number"
-            min={1}
-            max={31}
-            value={worldStartDate.day}
-            onChange={(e) => setWorldStartDate((d) => ({ ...d, day: e.target.value }))}
-          />
-          <TextField
-            id="worldStartLabel"
-            label="Label (optional)"
-            value={worldStartDate.label}
-            onChange={(e) => setWorldStartDate((d) => ({ ...d, label: e.target.value }))}
-          />
-        </fieldset>
+        <StructuredDateEditor
+          legend="In-world start date"
+          calendarConfig={calendarConfig}
+          value={worldStartDate}
+          onChange={setWorldStartDate}
+          allowUndated={false}
+          allowApproximate={false}
+          fixedPrecision="day"
+        />
 
         {canSetGmContent && (
           <RichTextEditor
