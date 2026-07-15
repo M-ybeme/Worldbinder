@@ -422,5 +422,79 @@ describe('Auth (e2e)', () => {
 
       expect(lastStatus).toBe(429);
     });
+
+    // Milestone 14 Phase 5 — these five endpoints previously had no rate
+    // limit at all. Each fires the limit check before doing any real
+    // lookup, so a garbage/absent token or wrong password is enough to
+    // exercise it without needing a fresh valid one on every iteration.
+    it('returns 429 after too many verify-email attempts', async () => {
+      let lastStatus = 0;
+      for (let i = 0; i < 25; i += 1) {
+        const res = await request(app.getHttpServer())
+          .post('/auth/verify-email')
+          .send({ token: 'not-a-real-token' });
+        lastStatus = res.status;
+        if (lastStatus === 429) break;
+      }
+      expect(lastStatus).toBe(429);
+    });
+
+    it('returns 429 after too many refresh attempts', async () => {
+      let lastStatus = 0;
+      for (let i = 0; i < 65; i += 1) {
+        const res = await request(app.getHttpServer())
+          .post('/auth/refresh')
+          .set('Cookie', 'worldbinder_refresh=not-a-real-token');
+        lastStatus = res.status;
+        if (lastStatus === 429) break;
+      }
+      expect(lastStatus).toBe(429);
+    });
+
+    it('returns 429 after too many logout attempts', async () => {
+      let lastStatus = 0;
+      for (let i = 0; i < 35; i += 1) {
+        const res = await request(app.getHttpServer())
+          .post('/auth/logout')
+          .set('Cookie', 'worldbinder_refresh=not-a-real-token');
+        lastStatus = res.status;
+        if (lastStatus === 429) break;
+      }
+      expect(lastStatus).toBe(429);
+    });
+
+    it('returns 429 after too many reset-password attempts', async () => {
+      let lastStatus = 0;
+      for (let i = 0; i < 15; i += 1) {
+        const res = await request(app.getHttpServer())
+          .post('/auth/reset-password')
+          .send({ token: 'not-a-real-token', newPassword: 'new-password-123' });
+        lastStatus = res.status;
+        if (lastStatus === 429) break;
+      }
+      expect(lastStatus).toBe(429);
+    });
+
+    it('returns 429 after too many change-password attempts', async () => {
+      const user = await createVerifiedUser('change-password-limit-123');
+      const loginRes = await request(app.getHttpServer())
+        .post('/auth/login')
+        .send({ email: user.email, password: 'change-password-limit-123' });
+      const { accessToken } = loginRes.body as AuthTokenResponse;
+
+      let lastStatus = 0;
+      for (let i = 0; i < 25; i += 1) {
+        const res = await request(app.getHttpServer())
+          .post('/auth/change-password')
+          .set('Authorization', `Bearer ${accessToken}`)
+          .send({
+            currentPassword: 'wrong-password',
+            newPassword: 'new-password-123',
+          });
+        lastStatus = res.status;
+        if (lastStatus === 429) break;
+      }
+      expect(lastStatus).toBe(429);
+    });
   });
 });

@@ -121,7 +121,15 @@ export class AuthService {
     };
   }
 
-  async verifyEmail(rawToken: string): Promise<{ message: string }> {
+  async verifyEmail(
+    rawToken: string,
+    ctx: RequestContext,
+  ): Promise<{ message: string }> {
+    await this.assertWithinLimit(
+      `verify-email:${ctx.ipHash}`,
+      RATE_LIMITS.verifyEmailPerIp,
+    );
+
     const tokenHash = this.tokens.hashOpaqueToken(rawToken);
 
     const [record] = await this.db
@@ -266,6 +274,11 @@ export class AuthService {
     rawRefreshToken: string,
     ctx: RequestContext,
   ): Promise<RefreshResult> {
+    await this.assertWithinLimit(
+      `refresh:${ctx.ipHash}`,
+      RATE_LIMITS.refreshPerIp,
+    );
+
     const tokenHash = this.tokens.hashOpaqueToken(rawRefreshToken);
     const [session] = await this.db
       .select()
@@ -323,7 +336,12 @@ export class AuthService {
     return this.createSession(user, ctx, session.tokenFamilyId);
   }
 
-  async logout(rawRefreshToken: string): Promise<void> {
+  async logout(rawRefreshToken: string, ctx: RequestContext): Promise<void> {
+    await this.assertWithinLimit(
+      `logout:${ctx.ipHash}`,
+      RATE_LIMITS.logoutPerIp,
+    );
+
     const tokenHash = this.tokens.hashOpaqueToken(rawRefreshToken);
     await this.db
       .update(userSessions)
@@ -431,7 +449,13 @@ export class AuthService {
   async resetPassword(
     rawToken: string,
     newPassword: string,
+    ctx: RequestContext,
   ): Promise<{ message: string }> {
+    await this.assertWithinLimit(
+      `reset-password:${ctx.ipHash}`,
+      RATE_LIMITS.resetPasswordPerIp,
+    );
+
     const tokenHash = this.tokens.hashOpaqueToken(rawToken);
 
     const [record] = await this.db
@@ -484,7 +508,13 @@ export class AuthService {
     currentPassword: string,
     newPassword: string,
     keepSessionId: string | undefined,
+    ctx: RequestContext,
   ): Promise<void> {
+    await this.assertWithinLimit(
+      `change-password:${ctx.ipHash}`,
+      RATE_LIMITS.changePasswordPerIp,
+    );
+
     const [credentials] = await this.db
       .select()
       .from(userCredentials)

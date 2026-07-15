@@ -63,8 +63,9 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   verifyEmail(
     @Body(new ZodValidationPipe(verifyEmailSchema)) body: VerifyEmailInput,
+    @Req() req: Request,
   ): Promise<{ message: string }> {
-    return this.auth.verifyEmail(body.token);
+    return this.auth.verifyEmail(body.token, this.buildContext(req));
   }
 
   @Post('resend-verification')
@@ -120,7 +121,7 @@ export class AuthController {
   ): Promise<{ message: string }> {
     const refreshToken = this.readRefreshCookie(req);
     if (refreshToken) {
-      await this.auth.logout(refreshToken);
+      await this.auth.logout(refreshToken, this.buildContext(req));
     }
     this.clearRefreshCookie(res);
     return { message: 'Logged out' };
@@ -140,8 +141,13 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   resetPassword(
     @Body(new ZodValidationPipe(resetPasswordSchema)) body: ResetPasswordInput,
+    @Req() req: Request,
   ): Promise<{ message: string }> {
-    return this.auth.resetPassword(body.token, body.newPassword);
+    return this.auth.resetPassword(
+      body.token,
+      body.newPassword,
+      this.buildContext(req),
+    );
   }
 
   @UseGuards(JwtAuthGuard)
@@ -151,6 +157,7 @@ export class AuthController {
     @Body(new ZodValidationPipe(changePasswordSchema))
     body: ChangePasswordInput,
     @CurrentUser() user: AccessTokenPayload,
+    @Req() req: Request,
   ): Promise<{ message: string }> {
     return this.auth
       .changePassword(
@@ -158,6 +165,7 @@ export class AuthController {
         body.currentPassword,
         body.newPassword,
         user.sid,
+        this.buildContext(req),
       )
       .then(() => ({
         message: 'Password changed. Other sessions have been signed out.',

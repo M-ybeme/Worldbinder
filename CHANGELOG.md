@@ -6,6 +6,16 @@ Every push to `main` should add an entry here. This is meant to be an honest rec
 
 ## [Unreleased]
 
+## [0.14.5] - 2026-07-15
+
+### Added
+
+- **Milestone 14, Phase 5 — Rate-limit tuning.** Rate limiting existed but was applied manually per-call-site, covering only `register`/`login`/`resendVerification`/`forgotPassword` and `inviteMember` — five auth endpoints (`verify-email`, `refresh`, `logout`, `reset-password`, `change-password`) and every non-auth module (entities, sessions, maps, attachments, plot-threads, timeline, exports, imports, campaigns CRUD) had no request-volume control at all.
+- Added rate limits to all five previously-unprotected auth endpoints. `verifyEmailPerIp`/`resetPasswordPerIp` are tuned close to the existing login/forgot-password strictness — both accept an opaque-token guess from an unauthenticated caller, the same shape as credential guessing (`reset-password` in particular had zero throttle on that guess before this). `refreshPerIp`/`logoutPerIp`/`changePasswordPerIp` are generous, since refresh especially is a normal part of every page load. Threaded a `RequestContext` into `verifyEmail`/`resetPassword`/`logout`/`changePassword` (only `refresh` already took one).
+- Added a global per-IP floor (`GlobalRateLimitGuard`, registered as `APP_GUARD`) covering every route with no specific limit. 300 requests/60s — calibrated against this repo's own heaviest e2e spec file (42 requests from the same loopback IP) with comfortable margin, not a real-world traffic estimate; a threshold worth revisiting once real usage exists. Auth's own tighter per-endpoint limits still trip first on their routes — this is a floor for everything else, not a replacement.
+- 9 new tests (4 unit for the guard, 5 integration — one per newly-limited endpoint, following the existing "hammer until 429" pattern already used for login). Full suite re-run clean: 188 API integration tests, 92 unit tests, typecheck, lint.
+- **Scope note**: this is Phase 5 of 13. Database indexing, bundle analysis, load tests, and the storage/email/monitoring/backup/runbook work remain, tracked in the roadmap.
+
 ## [0.14.4] - 2026-07-15
 
 ### Added

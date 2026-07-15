@@ -11,6 +11,7 @@ import { CampaignAuditViewModule } from './audit/campaign-audit-view.module';
 import { AttachmentsModule } from './attachments/attachments.module';
 import { AuthModule } from './auth/auth.module';
 import { CampaignsModule } from './campaigns/campaigns.module';
+import { CommonModule } from './common/common.module';
 import { ConfigModule } from './config/config.module';
 import { EnvService } from './config/env.service';
 import { DatabaseModule } from './database/database.module';
@@ -47,6 +48,11 @@ import { TimelineModule } from './timeline/timeline.module';
     }),
     DatabaseModule,
     RedisModule,
+    // Provides the global per-IP rate-limit floor (APP_GUARD) applied to
+    // every route — explicit here even though AuthModule/MembershipModule
+    // already import it transitively, since this is the module that now
+    // matters application-wide, not just for those two.
+    CommonModule,
     HealthModule,
     AuthModule,
     MembershipModule,
