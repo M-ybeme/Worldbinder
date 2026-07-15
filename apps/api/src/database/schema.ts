@@ -52,50 +52,73 @@ export const userCredentials = pgTable('user_credentials', {
     .defaultNow(),
 });
 
-export const userSessions = pgTable('user_sessions', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  userId: uuid('user_id')
-    .notNull()
-    .references(() => users.id, { onDelete: 'cascade' }),
-  tokenFamilyId: uuid('token_family_id').notNull(),
-  refreshTokenHash: text('refresh_token_hash').notNull(),
-  userAgentSummary: text('user_agent_summary'),
-  ipHash: text('ip_hash'),
-  createdAt: timestamp('created_at', { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  lastUsedAt: timestamp('last_used_at', { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
-  revokedAt: timestamp('revoked_at', { withTimezone: true }),
-});
+export const userSessions = pgTable(
+  'user_sessions',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    tokenFamilyId: uuid('token_family_id').notNull(),
+    refreshTokenHash: text('refresh_token_hash').notNull(),
+    userAgentSummary: text('user_agent_summary'),
+    ipHash: text('ip_hash'),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    lastUsedAt: timestamp('last_used_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    revokedAt: timestamp('revoked_at', { withTimezone: true }),
+  },
+  (table) => [
+    // Backs listSessions/revokeSession/changePassword's bulk-revoke queries.
+    index('user_sessions_user_id_idx').on(table.userId),
+    // Backs the refresh-reuse-detection whole-family-revoke query.
+    index('user_sessions_token_family_id_idx').on(table.tokenFamilyId),
+  ],
+);
 
-export const emailVerificationTokens = pgTable('email_verification_tokens', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  userId: uuid('user_id')
-    .notNull()
-    .references(() => users.id, { onDelete: 'cascade' }),
-  tokenHash: text('token_hash').notNull(),
-  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
-  usedAt: timestamp('used_at', { withTimezone: true }),
-  createdAt: timestamp('created_at', { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-});
+export const emailVerificationTokens = pgTable(
+  'email_verification_tokens',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    tokenHash: text('token_hash').notNull(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    usedAt: timestamp('used_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  // The actual verify-email lookup key.
+  (table) => [
+    index('email_verification_tokens_token_hash_idx').on(table.tokenHash),
+  ],
+);
 
-export const passwordResetTokens = pgTable('password_reset_tokens', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  userId: uuid('user_id')
-    .notNull()
-    .references(() => users.id, { onDelete: 'cascade' }),
-  tokenHash: text('token_hash').notNull(),
-  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
-  usedAt: timestamp('used_at', { withTimezone: true }),
-  createdAt: timestamp('created_at', { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-});
+export const passwordResetTokens = pgTable(
+  'password_reset_tokens',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    tokenHash: text('token_hash').notNull(),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    usedAt: timestamp('used_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  // The actual reset-password lookup key.
+  (table) => [
+    index('password_reset_tokens_token_hash_idx').on(table.tokenHash),
+  ],
+);
 
 export const securityEventTypeEnum = pgEnum('security_event_type', [
   'user_registered',
@@ -197,27 +220,42 @@ export const campaignMembers = pgTable(
       .notNull()
       .defaultNow(),
   },
-  (table) => [unique().on(table.campaignId, table.userId)],
+  (table) => [
+    unique().on(table.campaignId, table.userId),
+    // Backs CampaignsService.list(userId) — "all campaigns this user
+    // belongs to," a hot path the (campaignId, userId) unique constraint's
+    // leftmost prefix doesn't serve since campaignId is unbound there.
+    index('campaign_members_user_id_idx').on(table.userId),
+  ],
 );
 
-export const campaignInvitations = pgTable('campaign_invitations', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  campaignId: uuid('campaign_id')
-    .notNull()
-    .references(() => campaigns.id, { onDelete: 'cascade' }),
-  email: text('email').notNull(),
-  role: campaignRoleEnum('role').notNull(),
-  tokenHash: text('token_hash').notNull(),
-  invitedByUserId: uuid('invited_by_user_id')
-    .notNull()
-    .references(() => users.id, { onDelete: 'cascade' }),
-  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
-  acceptedAt: timestamp('accepted_at', { withTimezone: true }),
-  revokedAt: timestamp('revoked_at', { withTimezone: true }),
-  createdAt: timestamp('created_at', { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-});
+export const campaignInvitations = pgTable(
+  'campaign_invitations',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    campaignId: uuid('campaign_id')
+      .notNull()
+      .references(() => campaigns.id, { onDelete: 'cascade' }),
+    email: text('email').notNull(),
+    role: campaignRoleEnum('role').notNull(),
+    tokenHash: text('token_hash').notNull(),
+    invitedByUserId: uuid('invited_by_user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    acceptedAt: timestamp('accepted_at', { withTimezone: true }),
+    revokedAt: timestamp('revoked_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    index('campaign_invitations_campaign_id_idx').on(table.campaignId),
+    // Backs the accept-invitation-by-token lookup, which isn't scoped to a
+    // known campaignId yet at that point.
+    index('campaign_invitations_token_hash_idx').on(table.tokenHash),
+  ],
+);
 
 export const entityTypeEnum = pgEnum('entity_type', [
   'character',
@@ -326,7 +364,13 @@ export const entityTags = pgTable(
       .notNull()
       .references(() => tags.id, { onDelete: 'cascade' }),
   },
-  (table) => [unique().on(table.entityId, table.tagId)],
+  (table) => [
+    unique().on(table.entityId, table.tagId),
+    // entities.service.ts resolves a tag by name then joins entityTags on
+    // tagId — effectively a tagId-alone filter the unique constraint's
+    // leftmost prefix (entityId first) doesn't serve.
+    index('entity_tags_tag_id_idx').on(table.tagId),
+  ],
 );
 
 export const relationshipTypes = pgTable(
@@ -411,25 +455,41 @@ export const wikiLinkSectionEnum = pgEnum('wiki_link_section', [
   'gm',
 ]);
 
-export const entityWikiLinks = pgTable('entity_wiki_links', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  campaignId: uuid('campaign_id')
-    .notNull()
-    .references(() => campaigns.id, { onDelete: 'cascade' }),
-  // Only 'entity' exists as a source today; sessions/plot-threads will add
-  // more resource types in later milestones, hence a plain text column
-  // rather than an enum tied to today's single value.
-  sourceResourceType: text('source_resource_type').notNull(),
-  sourceResourceId: uuid('source_resource_id').notNull(),
-  sourceSection: wikiLinkSectionEnum('source_section').notNull(),
-  targetEntityId: uuid('target_entity_id')
-    .notNull()
-    .references(() => entities.id, { onDelete: 'cascade' }),
-  displayText: text('display_text').notNull(),
-  createdAt: timestamp('created_at', { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-});
+export const entityWikiLinks = pgTable(
+  'entity_wiki_links',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    campaignId: uuid('campaign_id')
+      .notNull()
+      .references(() => campaigns.id, { onDelete: 'cascade' }),
+    // Only 'entity' exists as a source today; sessions/plot-threads will add
+    // more resource types in later milestones, hence a plain text column
+    // rather than an enum tied to today's single value.
+    sourceResourceType: text('source_resource_type').notNull(),
+    sourceResourceId: uuid('source_resource_id').notNull(),
+    sourceSection: wikiLinkSectionEnum('source_section').notNull(),
+    targetEntityId: uuid('target_entity_id')
+      .notNull()
+      .references(() => entities.id, { onDelete: 'cascade' }),
+    displayText: text('display_text').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    // Backs WikiLinksService's delete-then-rewrite query (source_resource_type + source_resource_id).
+    index('entity_wiki_links_source_idx').on(
+      table.sourceResourceType,
+      table.sourceResourceId,
+    ),
+    // Backs backlinks() — campaignId + targetEntityId, hit on every
+    // entity-detail backlinks fetch.
+    index('entity_wiki_links_target_idx').on(
+      table.campaignId,
+      table.targetEntityId,
+    ),
+  ],
+);
 
 export const sessionStatusEnum = pgEnum('session_status', [
   'planned',
@@ -515,7 +575,12 @@ export const sessionEntities = pgTable(
       .notNull()
       .references(() => entities.id, { onDelete: 'cascade' }),
   },
-  (table) => [unique().on(table.sessionId, table.entityId)],
+  (table) => [
+    unique().on(table.sessionId, table.entityId),
+    // sessions.service.ts's listForEntity query filters by entityId alone,
+    // with sessionId only as an unbound join predicate.
+    index('session_entities_entity_id_idx').on(table.entityId),
+  ],
 );
 
 // Kept as its own table rather than folded into session_entities (which
@@ -532,7 +597,11 @@ export const sessionLocations = pgTable(
       .notNull()
       .references(() => entities.id, { onDelete: 'cascade' }),
   },
-  (table) => [unique().on(table.sessionId, table.entityId)],
+  (table) => [
+    unique().on(table.sessionId, table.entityId),
+    // Same listForEntity call site as session_entities above.
+    index('session_locations_entity_id_idx').on(table.entityId),
+  ],
 );
 
 // An audit trail ("this entity's visibility flipped from gm_only to public
@@ -667,7 +736,12 @@ export const sessionPlotThreads = pgTable(
       .references(() => plotThreads.id, { onDelete: 'cascade' }),
     action: plotThreadSessionActionEnum('action').notNull(),
   },
-  (table) => [unique().on(table.sessionId, table.plotThreadId)],
+  (table) => [
+    unique().on(table.sessionId, table.plotThreadId),
+    // plot-threads.service.ts's toDetail query ("sessions this thread was
+    // referenced in") filters by plotThreadId alone.
+    index('session_plot_threads_plot_thread_id_idx').on(table.plotThreadId),
+  ],
 );
 
 // Milestone 8 — Revisions. Only entities/sessions/plot_threads are
@@ -965,6 +1039,12 @@ export const timelineEvents = pgTable(
   (table) => [
     index('timeline_events_campaign_id_idx').on(table.campaignId),
     index('timeline_events_search_vector_idx').using('gin', table.searchVector),
+    // SearchService calls similarity(timelineEvents.title, q) — the one
+    // search fuzzy-match tier that wasn't index-backed before this.
+    index('timeline_events_title_trgm_idx').using(
+      'gin',
+      sql`${table.title} gin_trgm_ops`,
+    ),
   ],
 );
 
@@ -978,7 +1058,12 @@ export const timelineEventEntities = pgTable(
       .notNull()
       .references(() => entities.id, { onDelete: 'cascade' }),
   },
-  (table) => [unique().on(table.timelineEventId, table.entityId)],
+  (table) => [
+    unique().on(table.timelineEventId, table.entityId),
+    // The unique constraint above only supports timelineEventId-first
+    // lookups; TimelineService.list()'s entityId filter needs its own.
+    index('timeline_event_entities_entity_id_idx').on(table.entityId),
+  ],
 );
 
 export const timelineEventSessions = pgTable(
@@ -991,7 +1076,10 @@ export const timelineEventSessions = pgTable(
       .notNull()
       .references(() => sessions.id, { onDelete: 'cascade' }),
   },
-  (table) => [unique().on(table.timelineEventId, table.sessionId)],
+  (table) => [
+    unique().on(table.timelineEventId, table.sessionId),
+    index('timeline_event_sessions_session_id_idx').on(table.sessionId),
+  ],
 );
 
 export const timelineEventTags = pgTable(
@@ -1004,7 +1092,10 @@ export const timelineEventTags = pgTable(
       .notNull()
       .references(() => tags.id, { onDelete: 'cascade' }),
   },
-  (table) => [unique().on(table.timelineEventId, table.tagId)],
+  (table) => [
+    unique().on(table.timelineEventId, table.tagId),
+    index('timeline_event_tags_tag_id_idx').on(table.tagId),
+  ],
 );
 
 // Milestone 12 — Export and Import. Job-tracking tables, not part of the

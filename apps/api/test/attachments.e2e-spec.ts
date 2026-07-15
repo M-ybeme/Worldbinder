@@ -10,11 +10,16 @@ import type {
 } from '@worldbinder/contracts';
 import { eq, like } from 'drizzle-orm';
 import type Redis from 'ioredis';
+import type { Pool } from 'pg';
 import request from 'supertest';
 import type { App } from 'supertest/types';
 import { AppModule } from '../src/app.module';
 import { PasswordService } from '../src/auth/password.service';
-import { DRIZZLE, type Database } from '../src/database/database.module';
+import {
+  DRIZZLE,
+  PG_POOL,
+  type Database,
+} from '../src/database/database.module';
 import { attachments, campaignMembers, users } from '../src/database/schema';
 import { REDIS } from '../src/redis/redis.module';
 import { createVerifiedUser, uniqueEmail } from './helpers/test-users';
@@ -29,6 +34,7 @@ describe('Attachments (e2e)', () => {
   let app: INestApplication<App>;
   let db: Database;
   let passwords: PasswordService;
+  let pool: Pool;
 
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
@@ -40,6 +46,7 @@ describe('Attachments (e2e)', () => {
 
     db = moduleFixture.get(DRIZZLE);
     passwords = moduleFixture.get(PasswordService);
+    pool = moduleFixture.get(PG_POOL);
 
     const redis: Redis = moduleFixture.get(REDIS);
     const rateLimitKeys = await redis.keys('ratelimit:*');
@@ -494,6 +501,61 @@ describe('Attachments (e2e)', () => {
         .set('Authorization', `Bearer ${tokenA}`)
         .send({ coverAttachmentId: attachmentId });
       expect(res.status).toBe(404);
+    });
+  });
+
+  describe('N+1 regression (Milestone 14 Phase 6)', () => {
+    async function campaignWithReadyCover(
+      token: string,
+      name: string,
+    ): Promise<void> {
+      const campaign = body<CampaignDetail>(
+        await request(app.getHttpServer())
+          .post('/campaigns')
+          .set('Authorization', `Bearer ${token}`)
+          .send({ name }),
+      );
+      const attachmentId = await uploadAndComplete(token, campaign.id);
+      await markReady(attachmentId);
+      await request(app.getHttpServer())
+        .patch(`/campaigns/${campaign.id}`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ coverAttachmentId: attachmentId });
+    }
+
+    /** Counts real SQL round trips (not drizzle query-builder calls) by
+     * spying on the shared pg Pool's `.query`, so the assertion below is
+     * about actual database traffic, not implementation detail. */
+    async function countQueriesDuringList(token: string): Promise<number> {
+      let count = 0;
+      const original = pool.query.bind(pool);
+      const spy = jest
+        .spyOn(pool, 'query')
+        .mockImplementation((...args: unknown[]) => {
+          count += 1;
+          return (original as (...a: unknown[]) => unknown)(...args);
+        });
+
+      await request(app.getHttpServer())
+        .get('/campaigns')
+        .set('Authorization', `Bearer ${token}`);
+
+      spy.mockRestore();
+      return count;
+    }
+
+    it('resolves cover images for a campaign list with a query count that does not scale with the number of campaigns', async () => {
+      const { token } = await createOwnerAndCampaign('N+1 Regression Baseline');
+      await campaignWithReadyCover(token, 'N+1 Regression Cover A');
+
+      const countWithOneCover = await countQueriesDuringList(token);
+
+      await campaignWithReadyCover(token, 'N+1 Regression Cover B');
+      await campaignWithReadyCover(token, 'N+1 Regression Cover C');
+
+      const countWithThreeCovers = await countQueriesDuringList(token);
+
+      expect(countWithThreeCovers).toBe(countWithOneCover);
     });
   });
 });

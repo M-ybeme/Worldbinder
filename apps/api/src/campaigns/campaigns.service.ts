@@ -23,7 +23,7 @@ import {
   type CreateCampaignInput,
   type UpdateCampaignInput,
 } from '@worldbinder/validation';
-import { and, desc, eq, isNotNull, isNull, sql } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNotNull, isNull, sql } from 'drizzle-orm';
 import { randomBytes } from 'node:crypto';
 import { CampaignAuditService } from '../audit/campaign-audit.service';
 import { DRIZZLE, type Database } from '../database/database.module';
@@ -102,8 +102,18 @@ export class CampaignsService {
       )
       .orderBy(desc(campaigns.updatedAt));
 
+    // Milestone 14 Phase 6 — batched, not one attachments query per
+    // campaign in the loop below (the confirmed N+1 the audit found).
+    const coverImageUrlByAttachmentId = await this.resolveCoverImageUrls(
+      rows
+        .map(({ campaign }) => campaign.coverAttachmentId)
+        .filter((id): id is string => id !== null),
+    );
+
     return Promise.all(
-      rows.map(({ campaign, role }) => this.toSummary(campaign, role)),
+      rows.map(({ campaign, role }) =>
+        this.toSummary(campaign, role, coverImageUrlByAttachmentId),
+      ),
     );
   }
 
@@ -573,13 +583,27 @@ export class CampaignsService {
    * campaign's own name/description already has none, so the cover image
    * isn't gated by attachments.visibility either (see attachments module
    * doc comments for the full reasoning). */
+  /** Single-campaign case (toDetail/getById et al.) — one query, fine at
+   * that scale. `list()` uses the batched `resolveCoverImageUrls` below
+   * instead of calling this per row. */
   private async resolveCoverImageUrl(
     coverAttachmentId: string | null,
   ): Promise<string | null> {
     if (!coverAttachmentId) return null;
+    const urls = await this.resolveCoverImageUrls([coverAttachmentId]);
+    return urls.get(coverAttachmentId) ?? null;
+  }
 
-    const [attachment] = await this.db
+  /** Batched — one `attachments` query for every cover image in a list,
+   * not one per campaign (the N+1 Milestone 14 Phase 6 found). */
+  private async resolveCoverImageUrls(
+    coverAttachmentIds: string[],
+  ): Promise<Map<string, string>> {
+    if (coverAttachmentIds.length === 0) return new Map();
+
+    const rows = await this.db
       .select({
+        id: attachments.id,
         storageKey: attachments.storageKey,
         originalFilename: attachments.originalFilename,
         status: attachments.status,
@@ -587,22 +611,39 @@ export class CampaignsService {
       .from(attachments)
       .where(
         and(
-          eq(attachments.id, coverAttachmentId),
+          inArray(attachments.id, coverAttachmentIds),
           isNull(attachments.deletedAt),
         ),
       );
 
-    if (!attachment || attachment.status !== 'ready') return null;
-    return this.storage.presignDownload(
-      attachment.storageKey,
-      attachment.originalFilename,
+    const entries = await Promise.all(
+      rows
+        .filter((row) => row.status === 'ready')
+        .map(
+          async (row) =>
+            [
+              row.id,
+              await this.storage.presignDownload(
+                row.storageKey,
+                row.originalFilename,
+              ),
+            ] as const,
+        ),
     );
+    return new Map(entries);
   }
 
   private async toSummary(
     campaign: typeof campaigns.$inferSelect,
     role: CampaignMembership['role'],
+    coverImageUrlByAttachmentId?: Map<string, string>,
   ): Promise<CampaignSummary> {
+    const coverImageUrl = coverImageUrlByAttachmentId
+      ? campaign.coverAttachmentId
+        ? (coverImageUrlByAttachmentId.get(campaign.coverAttachmentId) ?? null)
+        : null
+      : await this.resolveCoverImageUrl(campaign.coverAttachmentId);
+
     return {
       id: campaign.id,
       name: campaign.name,
@@ -611,9 +652,7 @@ export class CampaignsService {
       systemName: campaign.systemName,
       status: campaign.status,
       role,
-      coverImageUrl: await this.resolveCoverImageUrl(
-        campaign.coverAttachmentId,
-      ),
+      coverImageUrl,
       createdAt: campaign.createdAt.toISOString(),
       updatedAt: campaign.updatedAt.toISOString(),
       archivedAt: campaign.archivedAt?.toISOString() ?? null,

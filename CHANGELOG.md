@@ -6,6 +6,17 @@ Every push to `main` should add an entry here. This is meant to be an honest rec
 
 ## [Unreleased]
 
+## [0.14.6] - 2026-07-15
+
+### Added
+
+- **Milestone 14, Phase 6 — Database query profiling.** Every proposed index was verified against actual service-layer query code before being added, not just guessed from column names — three of the original audit's own findings (`securityEvents.userId`, `campaignImports.resultCampaignId`, `attachments.uploadedByUserId`) turned out to have no real query to benefit from and were deliberately skipped rather than blindly implemented.
+- Migration `0013_sticky_klaw.sql` adds 17 indexes across 14 tables: `entityWikiLinks` (two composites, backing the delete-then-rewrite query and `backlinks()`), `campaignInvitations` (`campaignId`, `tokenHash`), `userSessions` (`userId`, `tokenFamilyId` — the refresh-reuse-detection lookup key), `emailVerificationTokens`/`passwordResetTokens.tokenHash` (the actual verify/reset lookup keys), `timelineEventEntities.entityId`, `timelineEventSessions.sessionId`, a trigram index on `timelineEvents.title` (the one search fuzzy-match tier that wasn't index-backed), `sessionEntities.entityId`, `sessionLocations.entityId`, `sessionPlotThreads.plotThreadId`, `campaignMembers.userId`, `timelineEventTags.tagId`, `entityTags.tagId`. Pure additive `CREATE INDEX` statements, no drops/renames/data-loss risk — reviewed before applying and verified directly against Postgres via `psql \d`.
+- **`campaignMembers.userId` is the highest-value addition beyond the original audit's list**: it backs `CampaignsService.list(userId)` — the campaigns-list-for-this-user query, hit on every login — which the existing `(campaignId, userId)` unique constraint couldn't serve at all, since `campaignId` is unbound in that query.
+- Fixed the confirmed N+1 in `CampaignsService.list()`: cover images for a whole campaign list were resolved with one `attachments` query per campaign; `resolveCoverImageUrls()` now batches them into a single `inArray` query. Added a real regression test that spies on the shared `pg.Pool`'s `.query` to count actual SQL round trips — verified it genuinely fails without the fix (2 vs. 4 queries going from one to three cover-image campaigns) before confirming it passes with the fix in place.
+- Full suite re-run clean: 189 API integration tests, 92 unit tests, typecheck, lint.
+- **Scope note**: this is Phase 6 of 13. Bundle analysis, load tests, and the storage/email/monitoring/backup/runbook work remain, tracked in the roadmap.
+
 ## [0.14.5] - 2026-07-15
 
 ### Added
