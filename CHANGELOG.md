@@ -6,6 +6,14 @@ Every push to `main` should add an entry here. This is meant to be an honest rec
 
 ## [Unreleased]
 
+## [0.14.2] - 2026-07-15
+
+### Added
+
+- **Milestone 14, Phase 2 — Dependency upgrade: nodemailer.** `pnpm audit` had flagged `nodemailer` (pinned `^6.9.16`) as many majors behind the patched line — unpatched SSRF, arbitrary-file-read, and injection CVEs. Bumped to `^9.0.3` (latest) plus `@types/nodemailer@^8.0.1`. `mail.service.ts`'s usage — `createTransport`/`sendMail` with a plain SMTP config — is a small, stable surface unaffected across nodemailer's major versions; no code changes were needed. `pnpm audit` no longer lists nodemailer.
+- Validated all three real email workflows end to end against real Mailpit (not mocked), per the explicit user-directed process: registration verification, password reset, and campaign invitations — all exercised by the existing e2e suite's Mailpit-polling helpers, all pass. Full suite re-run clean: 178 integration tests, 89 unit tests, typecheck, lint.
+- **Scope note**: this is Phase 2 of 13. Per the user's explicit gate, drizzle-orm's upgrade (Phase 3 — dedicated pass: DB snapshot, migration-drift review, full suite, export/import round-trip, manual CRUD checks) is next, and no live Railway provisioning happens until both dependency upgrades are complete and clean.
+
 ## [0.14.1] - 2026-07-15
 
 ### Added

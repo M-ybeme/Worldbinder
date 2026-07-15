@@ -2206,9 +2206,10 @@ A pre-implementation audit (three parallel research passes: security/auth, perfo
 - **Correction**: the initial audit's claim that `CampaignPolicyService.canExportCampaign` was dead code was wrong — `exports.service.ts:107`'s `assertCanExport()` calls it, correctly layered under `ExportsController`'s route-level `@RequireCampaignRole('owner', 'gm')` guard, the same two-layer pattern as everywhere else. No fix needed; verified before assuming the finding was real.
 - Threat model written: `docs/security/threat-model.md` — trust boundaries, the two-tier visibility model (ADR-0009), the auth model (ADR-0007), the Railway/R2/Sentry/email-provider topology, and the specific gaps found across every phase in this milestone as known risks.
 
-**Phase 2 — Dependency upgrade: nodemailer**
+**Phase 2 — Dependency upgrade: nodemailer** [Done — see 0.14.2]
 
 - `pnpm audit` found `nodemailer` pinned `^6.9.16` in `apps/api/package.json` — many majors behind the patched line (7.0.7+/8.0.4+/9.0.1+), unpatched SSRF + arbitrary-file-read + multiple injection CVEs (high/moderate/low across several advisories). Per the user's explicit ordering: upgrade this first, in isolation, and validate every real email workflow (registration verification, password reset, invitations) end to end before touching drizzle-orm.
+- **Resolution**: bumped to `^9.0.3` (latest, past every CVE fix) plus `@types/nodemailer@^8.0.1`. `apps/api/src/mail/mail.service.ts`'s usage (`createTransport`/`sendMail` with a plain SMTP config) is a small, stable surface that hasn't changed across nodemailer's majors — typecheck and lint passed with no code changes needed. `pnpm audit` no longer lists nodemailer at all. Validated all three real email workflows against real Mailpit (not mocked) via the existing e2e suite: registration verification (`auth.e2e-spec.ts`'s `findEmailToken(email, 'Verify')`), password reset (`findEmailToken(user.email, 'Reset')`), and campaign invitations (`membership.e2e-spec.ts`'s emailed-link accept flow) — all pass. Full suite re-run clean: 178 integration tests, 89 unit tests, typecheck, lint.
 
 **Phase 3 — Dependency upgrade: drizzle-orm** (dedicated pass, gated on Phase 2 being clean)
 
