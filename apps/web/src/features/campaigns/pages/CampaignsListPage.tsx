@@ -1,5 +1,12 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Button, FormMessage, TextField } from '@worldbinder/ui'
+import {
+  Button,
+  EmptyState,
+  ErrorState,
+  FormMessage,
+  LoadingState,
+  TextField,
+} from '@worldbinder/ui'
 import { createCampaignSchema, type CreateCampaignInput } from '@worldbinder/validation'
 import { useForm } from 'react-hook-form'
 import { Link } from 'react-router-dom'
@@ -25,19 +32,31 @@ export function CampaignsListPage() {
       <p>
         <Link to="/app/campaigns/import">Import a campaign from an archive</Link>
       </p>
-      {campaignsQuery.isLoading && <p>Loading campaigns…</p>}
-      {campaignsQuery.isError && <FormMessage message={campaignsQuery.error.message} />}
-      <ul className="wb-campaign-list">
-        {campaignsQuery.data?.map((campaign) => (
-          <li key={campaign.id}>
-            <Link to={`/app/campaign/${campaign.id}`}>{campaign.name}</Link>
-            <span className="wb-campaign-list__meta">
-              {campaign.role} · {campaign.status}
-            </span>
-          </li>
-        ))}
-        {campaignsQuery.data?.length === 0 && <li>You aren't a member of any campaigns yet.</li>}
-      </ul>
+      {campaignsQuery.isLoading && <LoadingState label="Loading campaigns…" />}
+      {campaignsQuery.isError && (
+        <ErrorState
+          message={campaignsQuery.error.message}
+          onRetry={() => campaignsQuery.refetch()}
+        />
+      )}
+      {!campaignsQuery.isLoading &&
+        !campaignsQuery.isError &&
+        campaignsQuery.data?.length === 0 && (
+          <EmptyState message="You aren't a member of any campaigns yet. Create one below to get started." />
+        )}
+
+      {!campaignsQuery.isLoading && !campaignsQuery.isError && !!campaignsQuery.data?.length && (
+        <ul className="wb-campaign-list">
+          {campaignsQuery.data.map((campaign) => (
+            <li key={campaign.id}>
+              <Link to={`/app/campaign/${campaign.id}`}>{campaign.name}</Link>
+              <span className="wb-campaign-list__meta">
+                {campaign.role} · {campaign.status}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
 
       <h2>Create a campaign</h2>
       <form className="wb-form" onSubmit={onSubmit} noValidate>

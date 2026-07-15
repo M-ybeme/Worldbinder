@@ -1,4 +1,4 @@
-import { FormMessage } from '@worldbinder/ui'
+import { EmptyState, ErrorState, LoadingState } from '@worldbinder/ui'
 import { Link } from 'react-router-dom'
 import { useCampaignOutletContext } from '../../campaigns/hooks/useCampaignContext'
 import { useSessionsQuery } from '../hooks/useSessions'
@@ -24,23 +24,29 @@ export function SessionListPage() {
         )}
       </header>
 
-      {sessionsQuery.isLoading && <p>Loading sessions…</p>}
-      {sessionsQuery.isError && <FormMessage message={sessionsQuery.error.message} />}
+      {sessionsQuery.isLoading && <LoadingState label="Loading sessions…" />}
+      {sessionsQuery.isError && (
+        <ErrorState message={sessionsQuery.error.message} onRetry={() => sessionsQuery.refetch()} />
+      )}
+      {!sessionsQuery.isLoading && !sessionsQuery.isError && sessionsQuery.data?.length === 0 && (
+        <EmptyState message="No sessions yet." />
+      )}
 
-      <ul className="wb-session-list">
-        {sessionsQuery.data?.map((session) => (
-          <li key={session.id}>
-            <Link to={`/app/campaign/${campaign.id}/sessions/${session.id}`}>
-              Session {session.sessionNumber}: {session.title}
-            </Link>
-            <span className="wb-session-list__meta">
-              {session.status}
-              {session.visibility === 'gm_only' ? ' · GM only' : ''}
-            </span>
-          </li>
-        ))}
-        {sessionsQuery.data?.length === 0 && <li>No sessions yet.</li>}
-      </ul>
+      {!sessionsQuery.isLoading && !sessionsQuery.isError && !!sessionsQuery.data?.length && (
+        <ul className="wb-session-list">
+          {sessionsQuery.data.map((session) => (
+            <li key={session.id}>
+              <Link to={`/app/campaign/${campaign.id}/sessions/${session.id}`}>
+                Session {session.sessionNumber}: {session.title}
+              </Link>
+              <span className="wb-session-list__meta">
+                {session.status}
+                {session.visibility === 'gm_only' ? ' · GM only' : ''}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
     </section>
   )
 }

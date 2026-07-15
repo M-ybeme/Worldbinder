@@ -2112,6 +2112,59 @@ Each milestone must end in working software, passing tests, and updated document
 - Help content
 - Browser compatibility pass
 
+### Phases (audit findings, 2026-07-14)
+
+A pre-implementation audit of the actual repo state (not the aspirational deliverable list above) found this is a genuinely greenfield milestone: no responsive CSS, no shared loading/error/empty components, no modal/focus-trap primitive, real keyboard-accessibility bugs, opacity-based text that likely fails contrast, and no onboarding/help/browser-matrix infrastructure at all. Broken into phases so an irregular-session project can pick this up incrementally without re-auditing each time.
+
+**Phase 1 — Loading/error/empty-state foundations** (covers "Complete loading/error/empty states")
+
+- No shared `Spinner`/`LoadingState`/`ErrorState`/`EmptyState` component exists in `packages/ui` or `apps/web/src/components` (the latter is an empty directory) — every page hand-rolls its own `isLoading`/`isError`/`data?.length === 0` JSX, with drift between copies.
+- Concrete bugs to fix while building the shared components: `CampaignOverviewPage` has no loading or error handling at all for `dashboardQuery` (blank/"—" placeholders are indistinguishable from a real empty state); `EntityDetailPage` conflates `isError` with "not found," so a real 500/network error is misreported to the user as a 404; `ProfilePage` renders `null` with no visible loading affordance while the user is unresolved; `SessionsPage` has no empty-state message for zero sessions; list pages disagree on whether the empty-state check is guarded by `!isLoading` (`MapListPage`, `TimelineListPage`, `ThreadListPage` guard it, `WorldListPage`/`SessionListPage`/`CampaignsListPage` don't).
+- Roll the new shared components out across all list/detail pages and sub-panels (`AttachmentsPanel`, `RelatedContentPanel`, `RevisionHistoryPanel` included) once built.
+
+**Phase 2 — Keyboard and screen-reader fixes** (covers "Keyboard review", "Screen-reader review")
+
+- `MapPinMarker` is a real, focusable `<button aria-label>` (CSS even has a `:focus-visible` style for it) but is wired only to `onPointerDown`/`onPointerMove`/`onPointerUp` — keyboard activation (Enter/Space, which dispatch a native `click`) silently does nothing. Concrete bug, not a style gap.
+- `SearchOverlay` declares `role="dialog" aria-modal="true"` but implements no focus trap and never restores focus to the trigger on close — Tab can escape the "modal" to the page behind the backdrop. No modal/dialog primitive exists anywhere in `packages/ui` (confirmed still true since the Milestone 10 CHANGELOG note); this milestone needs at least a minimal focus-trap utility for `SearchOverlay`.
+- `SearchOverlay` and `Combobox` (and by extension `EntityPicker`/`EntityMultiPicker`) both implement `role="combobox"`/`listbox`/`option` but never set `aria-activedescendant` as arrow keys move the active option.
+- `.wb-search-overlay__input:focus-visible { outline: none }` removes the keyboard focus indicator on the search input with no replacement — a WCAG 2.4.7 gap.
+- `TagInput` and `EntityMultiPicker`'s chip rows have no `role="list"` and no `aria-live` region — adding/removing a tag or chip is silent to screen-reader users.
+- `MapCanvas`'s drag-to-reposition (manage mode) is pointer-only with no keyboard equivalent; `MapPinForm` doesn't expose x/y as editable fields either.
+
+**Phase 3 — Contrast and visual review** (covers "Contrast review")
+
+- Muted/secondary text is done via CSS `opacity` on `--wb-fg` rather than a dedicated color token, and stacks unpredictably with theme and background. `wb-combobox__meta` at `opacity: 0.6` (`global.css`) is the worst offender and likely fails AA's 4.5:1 for normal text; `wb-combobox__status`, `wb-dropzone p`, `wb-search-overlay__status`, `wb-search-result__subtitle`/`snippet`, `status-panel dt`, `wb-session-list__meta` all carry the same risk at varying opacity values.
+- `--wb-border` (`#e5e4e7` light / `#2e303a` dark) is very low contrast for a UI-component boundary (WCAG 1.4.11 wants 3:1) — field/panel borders may be imperceptible to low-vision users.
+- `.wb-banner--warning` is referenced in `EntityFormPage.tsx` and `CampaignSettingsPage.tsx` but **no `.wb-banner` rule exists in `global.css` at all** — currently unstyled. No `--wb-warning` token exists either (only error/success are defined).
+- Fix: introduce real `--wb-muted-fg` (and other needed) tokens computed to pass AA in both themes, replace the opacity-based rules, define the missing banner styles/warning token.
+
+**Phase 4 — Responsive/tablet layout** (covers "Responsive desktop/tablet layout")
+
+- The only `@media` query anywhere in `apps/web/src` is `prefers-color-scheme: dark` — zero viewport breakpoints exist today. Layout is fixed-width, desktop-only.
+- `App.tsx`'s header nav, `CampaignLayout`'s flat 7-link `wb-links` row, and `AccountLayout`'s nav have no wrap/collapse behavior at narrower widths.
+- Fixed, non-fluid `max-width`s: `.app-shell__main` (640px), `.wb-form` (360px), `.wb-search-overlay__panel` (560px), `.wb-map-canvas` (900px).
+- No documented tablet breakpoint target exists anywhere (roadmap or `docs/planning/ui-ux.md`) — this phase needs to pick one (e.g. ~768–1024px) and design/test against it.
+
+**Phase 5 — Reduced-motion support** (covers "Reduced-motion support")
+
+- No `transition`, `animation`, `@keyframes`, or `prefers-reduced-motion` usage exists anywhere in the app today — there is currently nothing to guard. Add the `prefers-reduced-motion: reduce` convention preemptively (disable smooth-scroll, cap any future transitions) so it's in place before later milestones introduce motion, and note honestly in the CHANGELOG that this is a preemptive guard, not a fix to existing motion.
+
+**Phase 6 — Onboarding and help content** (covers "Onboarding", "Help content")
+
+- No tooltip/help/walkthrough/first-run component exists anywhere in the codebase (confirmed via grep). `CampaignsListPage`'s zero-campaign state — the only "onboarding" surface today — is one plain sentence ("You aren't a member of any campaigns yet.") with no dedicated empty state or guided next step.
+- Scope a lightweight first-run experience (not a full product tour) for the zero-campaign state, plus a basic Help page/link with getting-started content, consistent with this codebase's "build up only as real screens need them" philosophy (no tour/walkthrough library).
+
+**Phase 7 — Browser compatibility pass** (covers "Browser compatibility pass")
+
+- `playwright.config.ts` configures only a single `chromium` project — no Firefox/WebKit/mobile-emulation projects. Its own comment calls this "early scaffolding... pulled forward from Milestone 13/20," i.e. the full matrix was always expected to land here.
+- No `browserslist` config exists anywhere (root or `apps/web` `package.json`) and no documented supported-browser list exists in the roadmap or README.
+- Add Firefox + WebKit Playwright projects, run the existing e2e suite against them, and fix any found breakage.
+
+**Phase 8 — Regression-proofing**
+
+- No accessibility-aware tooling or tests exist today: `eslint-plugin-jsx-a11y`, `jest-axe`, and `@axe-core/react` are all absent from every `package.json` in the repo, and a repo-wide grep for `getByRole`/`getByLabelText` in tests returns zero matches — nothing today would catch a broken label, wrong role, or missing `aria-*` wiring, incidentally or otherwise.
+- Add `eslint-plugin-jsx-a11y` to `apps/web`'s eslint config and a handful of `getByRole`/`getByLabelText` tests on the widgets fixed in Phase 2, so these specific bugs can't silently regress.
+
 ### Exit criteria
 
 - Primary workflows meet WCAG 2.2 AA expectations

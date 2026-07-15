@@ -1,5 +1,12 @@
 import type { AttachmentResourceType } from '@worldbinder/contracts'
-import { Button, FileDropzone, FormMessage } from '@worldbinder/ui'
+import {
+  Button,
+  EmptyState,
+  ErrorState,
+  FileDropzone,
+  FormMessage,
+  LoadingState,
+} from '@worldbinder/ui'
 import { useState } from 'react'
 import {
   useAttachmentsForResourceQuery,
@@ -51,8 +58,16 @@ export function AttachmentsPanel({
       <div>
         <h2>Attachments</h2>
 
-        {attachmentsQuery.isLoading && <p>Loading…</p>}
-        {!attachmentsQuery.isLoading && attachments.length === 0 && <p>No attachments yet.</p>}
+        {attachmentsQuery.isLoading && <LoadingState label="Loading attachments…" />}
+        {attachmentsQuery.isError && (
+          <ErrorState
+            message={attachmentsQuery.error.message}
+            onRetry={() => attachmentsQuery.refetch()}
+          />
+        )}
+        {!attachmentsQuery.isLoading && !attachmentsQuery.isError && attachments.length === 0 && (
+          <EmptyState message="No attachments yet." />
+        )}
         <FormMessage message={uploadAndLink.error?.message ?? null} tone="error" />
         <FormMessage message={unlink.error?.message ?? null} tone="error" />
         <FormMessage message={deleteAttachment.error?.message ?? null} tone="error" />

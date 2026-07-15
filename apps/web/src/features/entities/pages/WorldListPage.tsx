@@ -1,4 +1,4 @@
-import { FormMessage, Select, TextField } from '@worldbinder/ui'
+import { EmptyState, ErrorState, LoadingState, Select, TextField } from '@worldbinder/ui'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useCampaignOutletContext } from '../../campaigns/hooks/useCampaignContext'
@@ -69,22 +69,28 @@ export function WorldListPage() {
         <TextField id="tag" label="Tag" value={tag} onChange={(e) => setTag(e.target.value)} />
       </div>
 
-      {entitiesQuery.isLoading && <p>Loading entities…</p>}
-      {entitiesQuery.isError && <FormMessage message={entitiesQuery.error.message} />}
+      {entitiesQuery.isLoading && <LoadingState label="Loading entities…" />}
+      {entitiesQuery.isError && (
+        <ErrorState message={entitiesQuery.error.message} onRetry={() => entitiesQuery.refetch()} />
+      )}
+      {!entitiesQuery.isLoading && !entitiesQuery.isError && entitiesQuery.data?.length === 0 && (
+        <EmptyState message="No entities yet." />
+      )}
 
-      <ul className="wb-entity-list">
-        {entitiesQuery.data?.map((entity) => (
-          <li key={entity.id}>
-            <Link to={`/app/campaign/${campaign.id}/world/${entity.id}`}>{entity.name}</Link>
-            <span className="wb-entity-list__meta">
-              {entity.entityType}
-              {entity.tags.length > 0 ? ` · ${entity.tags.join(', ')}` : ''}
-              {entity.visibility === 'gm_only' ? ' · GM only' : ''}
-            </span>
-          </li>
-        ))}
-        {entitiesQuery.data?.length === 0 && <li>No entities yet.</li>}
-      </ul>
+      {!entitiesQuery.isLoading && !entitiesQuery.isError && !!entitiesQuery.data?.length && (
+        <ul className="wb-entity-list">
+          {entitiesQuery.data.map((entity) => (
+            <li key={entity.id}>
+              <Link to={`/app/campaign/${campaign.id}/world/${entity.id}`}>{entity.name}</Link>
+              <span className="wb-entity-list__meta">
+                {entity.entityType}
+                {entity.tags.length > 0 ? ` · ${entity.tags.join(', ')}` : ''}
+                {entity.visibility === 'gm_only' ? ' · GM only' : ''}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
     </section>
   )
 }

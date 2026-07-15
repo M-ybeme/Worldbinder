@@ -1,5 +1,5 @@
 import type { RevisionResourceType } from '@worldbinder/contracts'
-import { Button, FormMessage } from '@worldbinder/ui'
+import { Button, EmptyState, ErrorState, FormMessage, LoadingState } from '@worldbinder/ui'
 import { useState } from 'react'
 import { useRestoreRevisionMutation, useRevisionsQuery } from '../hooks/useRevisions'
 import { computeFieldDiff, formatFieldValue } from '../lib/computeFieldDiff'
@@ -53,8 +53,16 @@ export function RevisionHistoryPanel({
       <div>
         <h2>Revision History</h2>
 
-        {revisionsQuery.isLoading && <p>Loading…</p>}
-        {!revisionsQuery.isLoading && revisions.length === 0 && <p>No revision history yet.</p>}
+        {revisionsQuery.isLoading && <LoadingState label="Loading revision history…" />}
+        {revisionsQuery.isError && (
+          <ErrorState
+            message={revisionsQuery.error.message}
+            onRetry={() => revisionsQuery.refetch()}
+          />
+        )}
+        {!revisionsQuery.isLoading && !revisionsQuery.isError && revisions.length === 0 && (
+          <EmptyState message="No revision history yet." />
+        )}
         <FormMessage message={restoreRevision.error?.message ?? null} tone="error" />
 
         <ul className="wb-relationship-list">

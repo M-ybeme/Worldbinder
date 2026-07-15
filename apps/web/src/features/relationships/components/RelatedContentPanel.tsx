@@ -1,5 +1,5 @@
 import type { CampaignRole, EntityRelationshipView, EntityVisibility } from '@worldbinder/contracts'
-import { Button, FormMessage, Select } from '@worldbinder/ui'
+import { Button, EmptyState, ErrorState, FormMessage, LoadingState, Select } from '@worldbinder/ui'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { EntityPicker } from '../../entities/components/EntityPicker'
@@ -144,7 +144,17 @@ export function RelatedContentPanel({
           </div>
         )}
 
-        {relationships.length === 0 && !showForm && <p>No relationships yet.</p>}
+        {relationshipsQuery.isLoading && <LoadingState label="Loading relationships…" />}
+        {relationshipsQuery.isError && (
+          <ErrorState
+            message={relationshipsQuery.error.message}
+            onRetry={() => relationshipsQuery.refetch()}
+          />
+        )}
+        {!relationshipsQuery.isLoading &&
+          !relationshipsQuery.isError &&
+          relationships.length === 0 &&
+          !showForm && <EmptyState message="No relationships yet." />}
 
         {outgoing.length > 0 && (
           <>
@@ -163,8 +173,17 @@ export function RelatedContentPanel({
 
       <div>
         <h2>Backlinks</h2>
-        {backlinks.length === 0 && <p>No backlinks yet.</p>}
-        {backlinks.length > 0 && (
+        {backlinksQuery.isLoading && <LoadingState label="Loading backlinks…" />}
+        {backlinksQuery.isError && (
+          <ErrorState
+            message={backlinksQuery.error.message}
+            onRetry={() => backlinksQuery.refetch()}
+          />
+        )}
+        {!backlinksQuery.isLoading && !backlinksQuery.isError && backlinks.length === 0 && (
+          <EmptyState message="No backlinks yet." />
+        )}
+        {!backlinksQuery.isLoading && !backlinksQuery.isError && backlinks.length > 0 && (
           <ul className="wb-backlink-list">
             {backlinks.map((link) => (
               <li key={`${link.sourceEntity.id}-${link.section}`}>

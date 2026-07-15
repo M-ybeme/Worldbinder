@@ -1,4 +1,5 @@
 import type { CampaignActivityItem, WorldDate } from '@worldbinder/contracts'
+import { ErrorState, LoadingState } from '@worldbinder/ui'
 import { Link } from 'react-router-dom'
 import { useCampaignOutletContext } from '../hooks/useCampaignContext'
 import { useCampaignDashboardQuery } from '../hooks/useCampaigns'
@@ -41,100 +42,119 @@ export function CampaignOverviewPage() {
         <dt>Your role</dt>
         <dd>{campaign.role}</dd>
         <dt>Current in-world date</dt>
-        <dd>{formatWorldDate(dashboard?.currentWorldDateJson) ?? '—'}</dd>
+        <dd>
+          {dashboardQuery.isLoading
+            ? '…'
+            : (formatWorldDate(dashboard?.currentWorldDateJson) ?? '—')}
+        </dd>
       </dl>
 
-      <div className="wb-related-content">
-        <div>
-          <h2>Sessions</h2>
-          <p>
-            Upcoming:{' '}
-            {dashboard?.upcomingSession ? (
-              <Link to={`/app/campaign/${campaign.id}/sessions/${dashboard.upcomingSession.id}`}>
-                Session {dashboard.upcomingSession.sessionNumber}: {dashboard.upcomingSession.title}
-              </Link>
-            ) : (
-              'None scheduled'
-            )}
-          </p>
-          <p>
-            Last played:{' '}
-            {dashboard?.lastPlayedSession ? (
-              <Link to={`/app/campaign/${campaign.id}/sessions/${dashboard.lastPlayedSession.id}`}>
-                Session {dashboard.lastPlayedSession.sessionNumber}:{' '}
-                {dashboard.lastPlayedSession.title}
-              </Link>
-            ) : (
-              'None yet'
-            )}
-          </p>
-        </div>
+      {dashboardQuery.isLoading && <LoadingState label="Loading dashboard…" />}
+      {dashboardQuery.isError && (
+        <ErrorState
+          message={dashboardQuery.error.message}
+          onRetry={() => dashboardQuery.refetch()}
+        />
+      )}
 
-        <div>
-          <h2>Active Plot Threads</h2>
-          {dashboard && dashboard.activeThreads.length === 0 && <p>No active plot threads.</p>}
-          <ul className="wb-relationship-list">
-            {dashboard?.activeThreads.map((thread) => (
-              <li key={thread.id}>
-                <Link to={`/app/campaign/${campaign.id}/threads/${thread.id}`}>{thread.title}</Link>
-                {thread.importance ? ` · ${thread.importance}` : ''}
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        {dashboard && dashboard.neglectedThreads.length > 0 && (
+      {!dashboardQuery.isLoading && !dashboardQuery.isError && (
+        <div className="wb-related-content">
           <div>
-            <h2>Dormant Threads Requiring Attention</h2>
+            <h2>Sessions</h2>
+            <p>
+              Upcoming:{' '}
+              {dashboard?.upcomingSession ? (
+                <Link to={`/app/campaign/${campaign.id}/sessions/${dashboard.upcomingSession.id}`}>
+                  Session {dashboard.upcomingSession.sessionNumber}:{' '}
+                  {dashboard.upcomingSession.title}
+                </Link>
+              ) : (
+                'None scheduled'
+              )}
+            </p>
+            <p>
+              Last played:{' '}
+              {dashboard?.lastPlayedSession ? (
+                <Link
+                  to={`/app/campaign/${campaign.id}/sessions/${dashboard.lastPlayedSession.id}`}
+                >
+                  Session {dashboard.lastPlayedSession.sessionNumber}:{' '}
+                  {dashboard.lastPlayedSession.title}
+                </Link>
+              ) : (
+                'None yet'
+              )}
+            </p>
+          </div>
+
+          <div>
+            <h2>Active Plot Threads</h2>
+            {dashboard && dashboard.activeThreads.length === 0 && <p>No active plot threads.</p>}
             <ul className="wb-relationship-list">
-              {dashboard.neglectedThreads.map((thread) => (
+              {dashboard?.activeThreads.map((thread) => (
                 <li key={thread.id}>
                   <Link to={`/app/campaign/${campaign.id}/threads/${thread.id}`}>
                     {thread.title}
                   </Link>
+                  {thread.importance ? ` · ${thread.importance}` : ''}
                 </li>
               ))}
             </ul>
           </div>
-        )}
 
-        <div>
-          <h2>Recent Activity</h2>
-          {dashboard && dashboard.recentActivity.length === 0 && <p>Nothing yet.</p>}
-          <ul className="wb-relationship-list">
-            {dashboard?.recentActivity.map((item) => (
-              <li key={`${item.resourceType}-${item.id}`}>
-                <Link to={activityLink(campaign.id, item)}>{item.title}</Link>
-                {` · ${item.resourceType.replace('_', ' ')}`}
-              </li>
-            ))}
-          </ul>
-        </div>
+          {dashboard && dashboard.neglectedThreads.length > 0 && (
+            <div>
+              <h2>Dormant Threads Requiring Attention</h2>
+              <ul className="wb-relationship-list">
+                {dashboard.neglectedThreads.map((thread) => (
+                  <li key={thread.id}>
+                    <Link to={`/app/campaign/${campaign.id}/threads/${thread.id}`}>
+                      {thread.title}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
 
-        <div>
-          <h2>Quick Actions</h2>
-          <div className="wb-entity-header__actions">
-            <Link
-              className="wb-button wb-button--secondary"
-              to={`/app/campaign/${campaign.id}/world/new`}
-            >
-              New Entity
-            </Link>
-            <Link
-              className="wb-button wb-button--secondary"
-              to={`/app/campaign/${campaign.id}/sessions/new`}
-            >
-              New Session
-            </Link>
-            <Link
-              className="wb-button wb-button--secondary"
-              to={`/app/campaign/${campaign.id}/threads/new`}
-            >
-              New Plot Thread
-            </Link>
+          <div>
+            <h2>Recent Activity</h2>
+            {dashboard && dashboard.recentActivity.length === 0 && <p>Nothing yet.</p>}
+            <ul className="wb-relationship-list">
+              {dashboard?.recentActivity.map((item) => (
+                <li key={`${item.resourceType}-${item.id}`}>
+                  <Link to={activityLink(campaign.id, item)}>{item.title}</Link>
+                  {` · ${item.resourceType.replace('_', ' ')}`}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div>
+            <h2>Quick Actions</h2>
+            <div className="wb-entity-header__actions">
+              <Link
+                className="wb-button wb-button--secondary"
+                to={`/app/campaign/${campaign.id}/world/new`}
+              >
+                New Entity
+              </Link>
+              <Link
+                className="wb-button wb-button--secondary"
+                to={`/app/campaign/${campaign.id}/sessions/new`}
+              >
+                New Session
+              </Link>
+              <Link
+                className="wb-button wb-button--secondary"
+                to={`/app/campaign/${campaign.id}/threads/new`}
+              >
+                New Plot Thread
+              </Link>
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </section>
   )
 }

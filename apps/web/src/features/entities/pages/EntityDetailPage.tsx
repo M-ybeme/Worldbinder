@@ -1,9 +1,10 @@
-import { Button, FormMessage } from '@worldbinder/ui'
+import { Button, EmptyState, ErrorState, LoadingState } from '@worldbinder/ui'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { AttachmentsPanel } from '../../attachments/components/AttachmentsPanel'
 import { useCampaignOutletContext } from '../../campaigns/hooks/useCampaignContext'
 import { RelatedContentPanel } from '../../relationships/components/RelatedContentPanel'
 import { RevisionHistoryPanel } from '../../revisions/components/RevisionHistoryPanel'
+import { ApiError } from '../../../lib/apiClient'
 import { RichTextEditor } from '../components/RichTextEditor'
 import {
   useDeleteEntityMutation,
@@ -24,10 +25,13 @@ export function EntityDetailPage() {
   const deleteEntity = useDeleteEntityMutation(campaign.id)
   const canManage = MANAGEMENT_ROLES.has(campaign.role)
 
-  if (entityQuery.isLoading) return <p>Loading…</p>
-  if (entityQuery.isError || !entityQuery.data) {
-    return <FormMessage message="This entry could not be found." />
+  if (entityQuery.isLoading) return <LoadingState label="Loading entity…" />
+  if (entityQuery.isError) {
+    const isNotFound = entityQuery.error instanceof ApiError && entityQuery.error.status === 404
+    if (isNotFound) return <EmptyState message="This entry could not be found." />
+    return <ErrorState message={entityQuery.error.message} onRetry={() => entityQuery.refetch()} />
   }
+  if (!entityQuery.data) return null
 
   const entity = entityQuery.data
 

@@ -159,6 +159,65 @@ body {
   background: color-mix(in srgb, var(--wb-success) 12%, transparent);
 }
 
+.wb-loading-state {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin: 1rem 0;
+  color: var(--wb-fg);
+}
+
+.wb-loading-state__spinner {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+  border: 2px solid var(--wb-border);
+  border-top-color: var(--wb-accent);
+  border-radius: 50%;
+  animation: wb-spin 0.8s linear infinite;
+}
+
+@keyframes wb-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wb-loading-state__spinner {
+    animation: none;
+    border-top-color: var(--wb-border);
+  }
+}
+
+.wb-error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.6rem;
+  margin: 1rem 0;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  color: var(--wb-error);
+  background: color-mix(in srgb, var(--wb-error) 12%, transparent);
+}
+
+.wb-error-state p {
+  margin: 0;
+}
+
+.wb-empty-state {
+  margin: 1rem 0;
+  padding: 1rem;
+  border: 1px dashed var(--wb-border);
+  border-radius: 8px;
+  color: var(--wb-fg);
+}
+
+.wb-empty-state p {
+  margin: 0;
+}
+
 .wb-links {
   display: flex;
   gap: 1rem;

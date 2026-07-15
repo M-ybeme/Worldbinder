@@ -1,6 +1,6 @@
 import type { TimelineEventSummary } from '@worldbinder/contracts'
 import { DEFAULT_CALENDAR_CONFIG } from '@worldbinder/validation'
-import { FormMessage, TextField } from '@worldbinder/ui'
+import { EmptyState, ErrorState, LoadingState, TextField } from '@worldbinder/ui'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useCampaignOutletContext } from '../../campaigns/hooks/useCampaignContext'
@@ -62,15 +62,21 @@ export function TimelineListPage() {
         <TextField label="Filter by tag" value={tag} onChange={(e) => setTag(e.target.value)} />
       </div>
 
-      {eventsQuery.isLoading && <p>Loading timeline…</p>}
-      {eventsQuery.isError && <FormMessage message={eventsQuery.error.message} />}
+      {eventsQuery.isLoading && <LoadingState label="Loading timeline…" />}
+      {eventsQuery.isError && (
+        <ErrorState message={eventsQuery.error.message} onRetry={() => eventsQuery.refetch()} />
+      )}
+      {!eventsQuery.isLoading && !eventsQuery.isError && dated.length === 0 && (
+        <EmptyState message="No dated events yet." />
+      )}
 
-      <ul className="wb-session-list">
-        {dated.map((event) => (
-          <EventRow key={event.id} campaignId={campaign.id} event={event} />
-        ))}
-        {dated.length === 0 && !eventsQuery.isLoading && <li>No dated events yet.</li>}
-      </ul>
+      {!eventsQuery.isLoading && !eventsQuery.isError && dated.length > 0 && (
+        <ul className="wb-session-list">
+          {dated.map((event) => (
+            <EventRow key={event.id} campaignId={campaign.id} event={event} />
+          ))}
+        </ul>
+      )}
 
       {undated.length > 0 && (
         <>

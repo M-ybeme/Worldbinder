@@ -1,9 +1,10 @@
+import { LoadingState } from '@worldbinder/ui'
 import { useAuthStore } from '../../auth/store/authStore'
 
 export function ProfilePage() {
   const user = useAuthStore((state) => state.user)
 
-  if (!user) return null
+  if (!user) return <LoadingState label="Loading profile…" />
 
   return (
     <section>

@@ -1,5 +1,5 @@
 import type { MapSummary } from '@worldbinder/contracts'
-import { FormMessage } from '@worldbinder/ui'
+import { EmptyState, ErrorState, LoadingState } from '@worldbinder/ui'
 import { Link } from 'react-router-dom'
 import { useCampaignOutletContext } from '../../campaigns/hooks/useCampaignContext'
 import { useMapsQuery } from '../hooks/useMaps'
@@ -12,9 +12,7 @@ function MapCard({ campaignId, map }: { campaignId: string; map: MapSummary }) {
       <Link to={`/app/campaign/${campaignId}/maps/${map.id}`}>
         {map.imageUrl && <img src={map.imageUrl} alt="" />}
         <span>{map.name}</span>
-        {map.visibility === 'gm_only' && (
-          <span className="wb-session-list__meta"> · GM only</span>
-        )}
+        {map.visibility === 'gm_only' && <span className="wb-session-list__meta"> · GM only</span>}
       </Link>
     </li>
   )
@@ -31,21 +29,30 @@ export function MapListPage() {
       <header className="wb-world-header">
         <h1>Maps</h1>
         {canCreate && (
-          <Link className="wb-button wb-button--primary" to={`/app/campaign/${campaign.id}/maps/new`}>
+          <Link
+            className="wb-button wb-button--primary"
+            to={`/app/campaign/${campaign.id}/maps/new`}
+          >
             New map
           </Link>
         )}
       </header>
 
-      {mapsQuery.isLoading && <p>Loading maps…</p>}
-      {mapsQuery.isError && <FormMessage message={mapsQuery.error.message} />}
+      {mapsQuery.isLoading && <LoadingState label="Loading maps…" />}
+      {mapsQuery.isError && (
+        <ErrorState message={mapsQuery.error.message} onRetry={() => mapsQuery.refetch()} />
+      )}
+      {!mapsQuery.isLoading && !mapsQuery.isError && maps.length === 0 && (
+        <EmptyState message="No maps yet." />
+      )}
 
-      <ul className="wb-map-list">
-        {maps.map((map) => (
-          <MapCard key={map.id} campaignId={campaign.id} map={map} />
-        ))}
-        {maps.length === 0 && !mapsQuery.isLoading && <li>No maps yet.</li>}
-      </ul>
+      {!mapsQuery.isLoading && !mapsQuery.isError && maps.length > 0 && (
+        <ul className="wb-map-list">
+          {maps.map((map) => (
+            <MapCard key={map.id} campaignId={campaign.id} map={map} />
+          ))}
+        </ul>
+      )}
     </section>
   )
 }

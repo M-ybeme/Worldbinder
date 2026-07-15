@@ -1,5 +1,5 @@
 import type { PlotThreadSummary } from '@worldbinder/contracts'
-import { FormMessage } from '@worldbinder/ui'
+import { EmptyState, ErrorState, LoadingState } from '@worldbinder/ui'
 import { Link } from 'react-router-dom'
 import { useCampaignOutletContext } from '../../campaigns/hooks/useCampaignContext'
 import { usePlotThreadsQuery } from '../hooks/usePlotThreads'
@@ -45,35 +45,47 @@ export function ThreadListPage() {
         )}
       </header>
 
-      {threadsQuery.isLoading && <p>Loading plot threads…</p>}
-      {threadsQuery.isError && <FormMessage message={threadsQuery.error.message} />}
-
-      {neglected.length > 0 && (
-        <>
-          <h2>Neglected</h2>
-          <ul className="wb-session-list">
-            {neglected.map((thread) => (
-              <ThreadRow key={thread.id} campaignId={campaign.id} thread={thread} />
-            ))}
-          </ul>
-        </>
+      {threadsQuery.isLoading && <LoadingState label="Loading plot threads…" />}
+      {threadsQuery.isError && (
+        <ErrorState message={threadsQuery.error.message} onRetry={() => threadsQuery.refetch()} />
       )}
 
-      <h2>Unresolved</h2>
-      <ul className="wb-session-list">
-        {unresolved.map((thread) => (
-          <ThreadRow key={thread.id} campaignId={campaign.id} thread={thread} />
-        ))}
-        {unresolved.length === 0 && !threadsQuery.isLoading && <li>No unresolved threads.</li>}
-      </ul>
+      {!threadsQuery.isLoading && !threadsQuery.isError && (
+        <>
+          {neglected.length > 0 && (
+            <>
+              <h2>Neglected</h2>
+              <ul className="wb-session-list">
+                {neglected.map((thread) => (
+                  <ThreadRow key={thread.id} campaignId={campaign.id} thread={thread} />
+                ))}
+              </ul>
+            </>
+          )}
 
-      <h2>All threads</h2>
-      <ul className="wb-session-list">
-        {threads.map((thread) => (
-          <ThreadRow key={thread.id} campaignId={campaign.id} thread={thread} />
-        ))}
-        {threads.length === 0 && !threadsQuery.isLoading && <li>No plot threads yet.</li>}
-      </ul>
+          <h2>Unresolved</h2>
+          {unresolved.length === 0 ? (
+            <EmptyState message="No unresolved threads." />
+          ) : (
+            <ul className="wb-session-list">
+              {unresolved.map((thread) => (
+                <ThreadRow key={thread.id} campaignId={campaign.id} thread={thread} />
+              ))}
+            </ul>
+          )}
+
+          <h2>All threads</h2>
+          {threads.length === 0 ? (
+            <EmptyState message="No plot threads yet." />
+          ) : (
+            <ul className="wb-session-list">
+              {threads.map((thread) => (
+                <ThreadRow key={thread.id} campaignId={campaign.id} thread={thread} />
+              ))}
+            </ul>
+          )}
+        </>
+      )}
     </section>
   )
 }
