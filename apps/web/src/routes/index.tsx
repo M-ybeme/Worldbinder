@@ -13,6 +13,7 @@ import { ImportCampaignPage } from '../features/imports/pages/ImportCampaignPage
 import { RedirectIfAuthenticated } from '../features/auth/components/RedirectIfAuthenticated'
 import { RequireAuth } from '../features/auth/components/RequireAuth'
 import { ForgotPasswordPage } from '../features/auth/pages/ForgotPasswordPage'
+import { HelpPage } from '../features/help/pages/HelpPage'
 import { LoginPage } from '../features/auth/pages/LoginPage'
 import { RegisterPage } from '../features/auth/pages/RegisterPage'
 import { ResetPasswordPage } from '../features/auth/pages/ResetPasswordPage'
@@ -46,6 +47,7 @@ export const router = createBrowserRouter([
     children: [
       { index: true, element: <StatusPage /> },
       { path: 'verify-email', element: <VerifyEmailPage /> },
+      { path: 'help', element: <HelpPage /> },
       {
         element: <RedirectIfAuthenticated />,
         children: [

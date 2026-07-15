@@ -6,9 +6,17 @@ Every push to `main` should add an entry here. This is meant to be an honest rec
 
 ## [Unreleased]
 
-### Notes
+## [0.13.5] - 2026-07-15
 
-- **Milestone 13, Phase 5 — Reduced-motion support: confirmed done, no code change needed.** Re-checked the whole app for `animation`/`transition`/`@keyframes`/`scroll-behavior`/`scrollIntoView`/animation libraries — the only motion anywhere is `LoadingState`'s spinner from 0.13.1's `@keyframes wb-spin`, which already has a `prefers-reduced-motion: reduce` guard. Marked `[Done]` in the roadmap rather than inventing a preemptive guard with nothing to guard.
+### Added
+
+- **Milestone 13, Phase 6 — Onboarding and help content.** No tooltip/help/walkthrough/first-run component existed anywhere before this; the only "onboarding" surface was one plain sentence on a zero-campaign list.
+- New `apps/web/src/features/help/pages/HelpPage.tsx` at a public `/help` route (accessible whether or not the visitor is registered, on purpose): a getting-started checklist, a "where things live" map of every nav item to what it's for, an explanation of public/GM-only visibility, and a role reference (Owner/GM/Editor/Player/Viewer, copied accurately from roadmap §5, not paraphrased from memory). Deliberately static content, not a guided-tour library — one page of real content doesn't justify building tour infrastructure, consistent with this codebase's "build up only as real screens need them" philosophy.
+- `CampaignsListPage`'s zero-campaign `EmptyState` now uses the `action` slot (built in Phase 1, previously unused anywhere) to link to the new Help page.
+- **Caught and fixed a real, visible pre-existing bug while wiring up the new Help link**: `App.tsx`'s header nav (`.app-shell__nav`) had zero CSS at all, so its `<Link>`s rendered directly adjacent with no separating whitespace — "CampaignsAccount" concatenated, confirmed in Phase 1's own verification screenshots but not flagged as in-scope at the time. Adding a third "Help" link would have compounded it to "CampaignsAccountHelp", so fixed it now: `.app-shell__nav { display: flex; flex-wrap: wrap; gap: 1rem }`.
+- **Also fixed while in the area**: `MembersPage` still had the pre-shared-component ad hoc `<p>Loading members…</p>` pattern from before Phase 1 (missed in that pass since it wasn't in the original list-page sweep) — now uses `LoadingState`/`ErrorState`/`EmptyState` like every other list page.
+- Full existing suite re-run clean (typecheck, lint, existing web test). Manually verified end to end (Playwright-driven): confirmed `/help` renders both logged-out and logged-in, confirmed the header nav now shows visibly spaced "Campaigns / Account / Help" instead of concatenated text, and read through the rendered Help page content for accuracy against the actual nav labels and roadmap's role definitions. No new console errors.
+- **Scope note**: this is Phase 6 of 8. The exit criterion "new users can complete onboarding without external help" is addressed by the Help page's content, not validated with a real first-time user — no such user was available to test with in this session. Phase 5 (reduced-motion) was confirmed already done with no code change: the only motion anywhere in the app is `LoadingState`'s spinner from 0.13.1, which already carries a `prefers-reduced-motion` guard. Browser-compatibility pass and regression-proofing (`eslint-plugin-jsx-a11y` + tests) remain, tracked in the roadmap.
 
 ## [0.13.4] - 2026-07-15
 

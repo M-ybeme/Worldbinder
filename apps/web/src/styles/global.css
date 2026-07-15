@@ -69,6 +69,12 @@ body {
   color: var(--wb-accent);
 }
 
+.app-shell__nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
 .app-shell__main {
   padding: 2rem 1.5rem;
   max-width: 640px;

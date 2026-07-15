@@ -1,5 +1,13 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Button, FormMessage, Select, TextField } from '@worldbinder/ui'
+import {
+  Button,
+  EmptyState,
+  ErrorState,
+  FormMessage,
+  LoadingState,
+  Select,
+  TextField,
+} from '@worldbinder/ui'
 import { inviteMemberSchema, type InviteMemberInput } from '@worldbinder/validation'
 import { useForm } from 'react-hook-form'
 import { useCampaignOutletContext } from '../../campaigns/hooks/useCampaignContext'
@@ -51,44 +59,52 @@ export function MembersPage() {
   return (
     <section>
       <h1>Members</h1>
-      {membersQuery.isLoading && <p>Loading members…</p>}
-      <ul className="wb-member-list">
-        {membersQuery.data?.map((member) => (
-          <li key={member.id}>
-            <div>
-              <div>{member.displayName}</div>
-              <div className="wb-member-list__meta">{member.email}</div>
-            </div>
-            {canManageMember(member.role) ? (
-              <div className="wb-member-list__actions">
-                <Select
-                  aria-label={`Role for ${member.displayName}`}
-                  options={ASSIGNABLE_ROLE_OPTIONS}
-                  value={member.role}
-                  onChange={(event) =>
-                    updateRole.mutate({
-                      memberId: member.id,
-                      input: {
-                        role: event.target.value as InviteMemberInput['role'],
-                      },
-                    })
-                  }
-                  disabled={updateRole.isPending}
-                />
-                <Button
-                  variant="secondary"
-                  onClick={() => removeMember.mutate(member.id)}
-                  disabled={removeMember.isPending}
-                >
-                  Remove
-                </Button>
+      {membersQuery.isLoading && <LoadingState label="Loading members…" />}
+      {membersQuery.isError && (
+        <ErrorState message={membersQuery.error.message} onRetry={() => membersQuery.refetch()} />
+      )}
+      {!membersQuery.isLoading && !membersQuery.isError && membersQuery.data?.length === 0 && (
+        <EmptyState message="No members yet." />
+      )}
+      {!membersQuery.isLoading && !membersQuery.isError && !!membersQuery.data?.length && (
+        <ul className="wb-member-list">
+          {membersQuery.data.map((member) => (
+            <li key={member.id}>
+              <div>
+                <div>{member.displayName}</div>
+                <div className="wb-member-list__meta">{member.email}</div>
               </div>
-            ) : (
-              <span className="wb-member-list__role">{member.role}</span>
-            )}
-          </li>
-        ))}
-      </ul>
+              {canManageMember(member.role) ? (
+                <div className="wb-member-list__actions">
+                  <Select
+                    aria-label={`Role for ${member.displayName}`}
+                    options={ASSIGNABLE_ROLE_OPTIONS}
+                    value={member.role}
+                    onChange={(event) =>
+                      updateRole.mutate({
+                        memberId: member.id,
+                        input: {
+                          role: event.target.value as InviteMemberInput['role'],
+                        },
+                      })
+                    }
+                    disabled={updateRole.isPending}
+                  />
+                  <Button
+                    variant="secondary"
+                    onClick={() => removeMember.mutate(member.id)}
+                    disabled={removeMember.isPending}
+                  >
+                    Remove
+                  </Button>
+                </div>
+              ) : (
+                <span className="wb-member-list__role">{member.role}</span>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
 
       {canManage && (
         <>

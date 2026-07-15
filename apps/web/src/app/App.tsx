@@ -17,6 +17,7 @@ export function App() {
           ) : (
             <Link to="/login">Log in</Link>
           )}
+          <Link to="/help">Help</Link>
         </nav>
       </header>
       <main className="app-shell__main">

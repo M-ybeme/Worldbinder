@@ -42,7 +42,10 @@ export function CampaignsListPage() {
       {!campaignsQuery.isLoading &&
         !campaignsQuery.isError &&
         campaignsQuery.data?.length === 0 && (
-          <EmptyState message="You aren't a member of any campaigns yet. Create one below to get started." />
+          <EmptyState
+            message="You aren't a member of any campaigns yet. Create one below to get started."
+            action={<Link to="/help">New here? Read the getting-started guide.</Link>}
+          />
         )}
 
       {!campaignsQuery.isLoading && !campaignsQuery.isError && !!campaignsQuery.data?.length && (
