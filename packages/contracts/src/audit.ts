@@ -6,6 +6,8 @@ export type CampaignAuditEventType =
   | 'campaign_archived'
   | 'campaign_deleted'
   | 'destructive_action'
+  | 'campaign_exported'
+  | 'campaign_imported'
 
 export interface CampaignAuditEvent {
   id: string

@@ -2075,7 +2075,7 @@ Each milestone must end in working software, passing tests, and updated document
 
 ---
 
-## Milestone 12 — Export and Import
+## Milestone 12 — Export and Import [Done]
 
 ### Deliverables
 

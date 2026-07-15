@@ -13,3 +13,26 @@ export const CLEANUP_ABANDONED_ATTACHMENTS_JOB_NAME = 'cleanup-abandoned-attachm
 export interface ProcessAttachmentJobData {
   attachmentId: string
 }
+
+// Milestone 12 — Export and Import. Two queues (not one, unlike attachments'
+// single process+cleanup queue) since export and import are separate
+// domains with different producers/consumers of their job data.
+
+export const EXPORT_QUEUE_NAME = 'campaign-export'
+export const IMPORT_QUEUE_NAME = 'campaign-import'
+
+export const EXPORT_CAMPAIGN_JOB_NAME = 'export-campaign'
+export const VALIDATE_IMPORT_JOB_NAME = 'validate-import'
+export const RUN_IMPORT_JOB_NAME = 'run-import'
+
+export interface ExportCampaignJobData {
+  exportId: string
+}
+
+export interface ValidateImportJobData {
+  importId: string
+}
+
+export interface RunImportJobData {
+  importId: string
+}

@@ -62,8 +62,25 @@ export type {
 export {
   ATTACHMENT_PROCESSING_QUEUE_NAME,
   CLEANUP_ABANDONED_ATTACHMENTS_JOB_NAME,
+  EXPORT_CAMPAIGN_JOB_NAME,
+  EXPORT_QUEUE_NAME,
+  IMPORT_QUEUE_NAME,
   PROCESS_ATTACHMENT_JOB_NAME,
+  RUN_IMPORT_JOB_NAME,
+  VALIDATE_IMPORT_JOB_NAME,
 } from './jobs.js'
-export type { ProcessAttachmentJobData } from './jobs.js'
+export type {
+  ExportCampaignJobData,
+  ProcessAttachmentJobData,
+  RunImportJobData,
+  ValidateImportJobData,
+} from './jobs.js'
 export type { MapDetail, MapLayerSummary, MapPinSummary, MapSummary } from './maps.js'
 export type { TimelineEventDetail, TimelineEventSummary } from './timeline.js'
+export type { CampaignExportStatus, CampaignExportSummary } from './exports.js'
+export type {
+  CampaignImportStatus,
+  CampaignImportSummary,
+  ImportReport,
+  PresignedImportUploadResponse,
+} from './imports.js'

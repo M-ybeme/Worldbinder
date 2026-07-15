@@ -14,6 +14,8 @@ const EVENT_LABELS: Record<CampaignAuditEventType, string> = {
   campaign_archived: 'Campaign archived',
   campaign_deleted: 'Campaign deleted',
   destructive_action: 'Destructive action',
+  campaign_exported: 'Campaign exported',
+  campaign_imported: 'Campaign imported',
 }
 
 /** Owner/gm-only campaign activity feed (backend enforces this too — see

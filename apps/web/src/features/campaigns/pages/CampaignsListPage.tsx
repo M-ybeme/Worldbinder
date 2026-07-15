@@ -22,6 +22,9 @@ export function CampaignsListPage() {
   return (
     <section>
       <h1>Your campaigns</h1>
+      <p>
+        <Link to="/app/campaigns/import">Import a campaign from an archive</Link>
+      </p>
       {campaignsQuery.isLoading && <p>Loading campaigns…</p>}
       {campaignsQuery.isError && <FormMessage message={campaignsQuery.error.message} />}
       <ul className="wb-campaign-list">

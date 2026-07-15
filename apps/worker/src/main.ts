@@ -4,6 +4,8 @@ import { Pool } from 'pg'
 import type { Queue, Worker } from 'bullmq'
 import { createAttachmentWorker } from './jobs/attachment-worker.js'
 import { scheduleCleanupSweep } from './jobs/cleanup-scheduler.js'
+import { createExportWorker } from './jobs/export-worker.js'
+import { createImportWorker } from './jobs/import-worker.js'
 import { createLogger } from './logger.js'
 import { createS3Client } from './storage/s3-client.js'
 
@@ -26,13 +28,29 @@ async function main(): Promise<void> {
     logger,
   })
   const cleanupQueue: Queue = await scheduleCleanupSweep(env.REDIS_URL)
+  const exportWorker: Worker = createExportWorker({
+    redisUrl: env.REDIS_URL,
+    pool,
+    s3,
+    bucket: env.STORAGE_BUCKET,
+  })
+  const importWorker: Worker = createImportWorker({
+    redisUrl: env.REDIS_URL,
+    pool,
+    s3,
+    bucket: env.STORAGE_BUCKET,
+  })
 
-  logger.info('Worker connected to Postgres and Redis. Processing attachment jobs.')
+  logger.info(
+    'Worker connected to Postgres and Redis. Processing attachment, export, and import jobs.',
+  )
 
   const shutdown = async (signal: string): Promise<void> => {
     logger.info({ signal }, 'Worker shutting down')
     await attachmentWorker.close()
     await cleanupQueue.close()
+    await exportWorker.close()
+    await importWorker.close()
     redis.disconnect()
     await pool.end()
     process.exit(0)

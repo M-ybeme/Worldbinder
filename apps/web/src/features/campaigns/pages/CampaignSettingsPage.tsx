@@ -164,6 +164,11 @@ export function CampaignSettingsPage() {
         <Link to={`/app/campaign/${campaign.id}/audit`}>View campaign activity</Link>
       </p>
 
+      <h2>Import / Export</h2>
+      <p>
+        <Link to={`/app/campaign/${campaign.id}/import-export`}>Export this campaign</Link>
+      </p>
+
       <h2>Archive</h2>
       {campaign.status === 'archived' ? (
         <Button

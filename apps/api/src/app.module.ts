@@ -13,7 +13,9 @@ import { ConfigModule } from './config/config.module';
 import { EnvService } from './config/env.service';
 import { DatabaseModule } from './database/database.module';
 import { EntitiesModule } from './entities/entities.module';
+import { ExportsModule } from './exports/exports.module';
 import { HealthModule } from './health/health.module';
+import { ImportsModule } from './imports/imports.module';
 import { MapsModule } from './maps/maps.module';
 import { MembershipModule } from './membership/membership.module';
 import { PlotThreadsModule } from './plot-threads/plot-threads.module';
@@ -57,6 +59,8 @@ import { TimelineModule } from './timeline/timeline.module';
     AttachmentsModule,
     MapsModule,
     TimelineModule,
+    ExportsModule,
+    ImportsModule,
   ],
 })
 export class AppModule implements NestModule {

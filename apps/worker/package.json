@@ -8,13 +8,15 @@
     "start": "node dist/main.js",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run --passWithNoTests --exclude \"**/*.integration.spec.ts\"",
+    "test:integration": "dotenv -e ../../.env -- vitest run integration.spec --passWithNoTests"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1085.0",
     "@worldbinder/config": "workspace:*",
     "@worldbinder/contracts": "workspace:*",
     "@worldbinder/validation": "workspace:*",
-    "@aws-sdk/client-s3": "^3.1085.0",
+    "adm-zip": "^0.6.0",
     "bullmq": "^5.80.2",
     "image-size": "^2.0.2",
     "ioredis": "^5.4.0",
@@ -22,10 +24,11 @@
     "pino": "^9.5.0"
   },
   "devDependencies": {
-    "@worldbinder/eslint-config": "workspace:*",
-    "@worldbinder/tsconfig": "workspace:*",
+    "@types/adm-zip": "^0.5.8",
     "@types/node": "^22.10.0",
     "@types/pg": "^8.11.0",
+    "@worldbinder/eslint-config": "workspace:*",
+    "@worldbinder/tsconfig": "workspace:*",
     "dotenv-cli": "^8.0.0",
     "eslint": "^9.18.0",
     "globals": "^17.0.0",

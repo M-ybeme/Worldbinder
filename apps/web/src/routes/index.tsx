@@ -8,6 +8,8 @@ import { TimelineEventDetailPage } from '../features/timeline/pages/TimelineEven
 import { TimelineEventFormPage } from '../features/timeline/pages/TimelineEventFormPage'
 import { TimelineListPage } from '../features/timeline/pages/TimelineListPage'
 import { AuditPage } from '../features/audit/pages/AuditPage'
+import { ExportsPage } from '../features/exports/pages/ExportsPage'
+import { ImportCampaignPage } from '../features/imports/pages/ImportCampaignPage'
 import { RedirectIfAuthenticated } from '../features/auth/components/RedirectIfAuthenticated'
 import { RequireAuth } from '../features/auth/components/RequireAuth'
 import { ForgotPasswordPage } from '../features/auth/pages/ForgotPasswordPage'
@@ -73,6 +75,7 @@ export const router = createBrowserRouter([
         element: <RequireAuth />,
         children: [
           { path: 'campaigns', element: <CampaignsListPage /> },
+          { path: 'campaigns/import', element: <ImportCampaignPage /> },
           {
             path: 'campaign/:campaignId',
             element: <RequireCampaignMembership />,
@@ -105,6 +108,7 @@ export const router = createBrowserRouter([
                   { path: 'maps/:mapId/edit', element: <MapFormPage /> },
                   { path: 'search', element: <SearchResultsPage /> },
                   { path: 'audit', element: <AuditPage /> },
+                  { path: 'import-export', element: <ExportsPage /> },
                 ],
               },
             ],

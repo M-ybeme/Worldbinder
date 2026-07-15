@@ -87,6 +87,14 @@ export class CampaignPolicyService {
     return MANAGEMENT_ROLES.includes(role);
   }
 
+  /** §5.6's permission matrix marks Editor "Configurable" for exporting a
+   * campaign — same "no v1 per-campaign toggle yet" position as
+   * `canEditEntities`'s Player row, so it defaults to the safer of the two
+   * options (owner/GM only) until that toggle is designed. */
+  canExportCampaign(role: CampaignRole): boolean {
+    return MANAGEMENT_ROLES.includes(role);
+  }
+
   /** Same actor set as `canEditEntities`/`canEditSessions` (§5.6's "Manage
    * plot threads" row). */
   canManagePlotThreads(role: CampaignRole): boolean {

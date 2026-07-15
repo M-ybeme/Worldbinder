@@ -724,6 +724,8 @@ export const campaignAuditEventTypeEnum = pgEnum('campaign_audit_event_type', [
   'campaign_archived',
   'campaign_deleted',
   'destructive_action',
+  'campaign_exported',
+  'campaign_imported',
 ]);
 
 export const campaignAuditEvents = pgTable(
@@ -1003,4 +1005,79 @@ export const timelineEventTags = pgTable(
       .references(() => tags.id, { onDelete: 'cascade' }),
   },
   (table) => [unique().on(table.timelineEventId, table.tagId)],
+);
+
+// Milestone 12 — Export and Import. Job-tracking tables, not part of the
+// roadmap's literal §9 schema list (which only specifies the archive
+// *format*, §17) — same "necessary but undocumented" position
+// campaigns.calendarConfigJson was in for Milestone 11.
+
+export const campaignExportStatusEnum = pgEnum('campaign_export_status', [
+  'pending',
+  'processing',
+  'ready',
+  'failed',
+]);
+
+export const campaignExports = pgTable(
+  'campaign_exports',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    campaignId: uuid('campaign_id')
+      .notNull()
+      .references(() => campaigns.id, { onDelete: 'cascade' }),
+    requestedByUserId: uuid('requested_by_user_id').references(() => users.id, {
+      onDelete: 'set null',
+    }),
+    status: campaignExportStatusEnum('status').notNull().default('pending'),
+    // Opaque (`exports/{campaignId}/{exportId}.zip`), same "never derived
+    // from user input" precedent as attachments.storageKey.
+    storageKey: text('storage_key'),
+    sizeBytes: integer('size_bytes'),
+    errorMessage: text('error_message'),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    completedAt: timestamp('completed_at', { withTimezone: true }),
+  },
+  (table) => [index('campaign_exports_campaign_id_idx').on(table.campaignId)],
+);
+
+export const campaignImportStatusEnum = pgEnum('campaign_import_status', [
+  'pending',
+  'validating',
+  'dry_run_ready',
+  'importing',
+  'completed',
+  'failed',
+]);
+
+export const campaignImports = pgTable(
+  'campaign_imports',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    // Not set-null: an import row with no owning user is meaningless, and
+    // (unlike attachments) no async cleanup job depends on this table
+    // surviving a user deletion.
+    createdByUserId: uuid('created_by_user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    status: campaignImportStatusEnum('status').notNull().default('pending'),
+    archiveStorageKey: text('archive_storage_key').notNull(),
+    dryRunReportJson: jsonb('dry_run_report_json'),
+    importReportJson: jsonb('import_report_json'),
+    // Set only once status reaches 'completed'.
+    resultCampaignId: uuid('result_campaign_id').references(
+      () => campaigns.id,
+      { onDelete: 'set null' },
+    ),
+    errorMessage: text('error_message'),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    completedAt: timestamp('completed_at', { withTimezone: true }),
+  },
+  (table) => [
+    index('campaign_imports_created_by_user_id_idx').on(table.createdByUserId),
+  ],
 );
