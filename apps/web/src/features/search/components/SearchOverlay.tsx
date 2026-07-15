@@ -123,7 +123,16 @@ export function SearchOverlay({ campaignId }: SearchOverlayProps) {
   }
 
   return createPortal(
+    // Click-outside-to-dismiss is a pointer-only convenience; the keyboard
+    // equivalent (Escape) is handled on the input below. This backdrop must
+    // stay a plain div, not a button — giving it a role/tabindex would make
+    // it a spurious tab stop inside the dialog's own focus trap.
+    // eslint-disable-next-line jsx-a11y/no-static-element-interactions
     <div className="wb-search-overlay__backdrop" onMouseDown={close}>
+      {/* This dialog owns its own Tab-trap/Escape handling directly, the
+          standard pattern for a real modal — jsx-a11y's interactive-role
+          allowlist doesn't include role="dialog" itself. */}
+      {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions */}
       <div
         ref={panelRef}
         className="wb-search-overlay__panel"

@@ -39,7 +39,7 @@ export function EntityMultiPicker({
     <div className="wb-field">
       <span className="wb-field__label">{label}</span>
       {value.length > 0 && (
-        <ul className="wb-entity-multi-picker__chips" role="list">
+        <ul className="wb-entity-multi-picker__chips">
           {value.map((entityId) => (
             <EntityChip
               key={entityId}

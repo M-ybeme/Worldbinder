@@ -6,6 +6,17 @@ Every push to `main` should add an entry here. This is meant to be an honest rec
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-07-15
+
+### Added
+
+- **Milestone 13 — UX and Accessibility Hardening, complete (Phase 8 of 8 — Regression-proofing).** Added `eslint-plugin-jsx-a11y` to `packages/eslint-config/react.js` (the shared config `apps/web` extends). First run surfaced 5 findings: 4 were legitimate patterns fixed with a targeted `eslint-disable` and inline justification rather than code changes (`MapCanvas`'s click-to-place background div, whose keyboard equivalent is Phase 2's "+ New pin" button; `SearchOverlay`'s backdrop click-to-dismiss, whose keyboard equivalent is Escape; and its `role="dialog"` element's own `onKeyDown`, a standard modal pattern jsx-a11y's interactive-role allowlist doesn't recognize) — and one was a real fix: a redundant explicit `role="list"` on a real `<ul>` in both `EntityMultiPicker` and `TagInput` (added in Phase 2), removed since `<ul>` already conveys list semantics natively.
+- 7 new `getByRole`/`getByLabelText` tests on the three riskiest widgets touched in Phase 2: `MapPinMarker.test.tsx` (Enter/Space activation — the confirmed keyboard bug — and that unrelated keys don't), `Combobox.test.tsx` (`aria-activedescendant` tracks the active option as arrow keys move, Enter selects it), `TagInput.test.tsx` (chips render as a real list, add/remove both announce via the live region).
+- **Caught and fixed a real, latent test-infra bug while writing them**: `apps/web/src/test/setup.ts` never wired up testing-library's automatic cleanup, and since `vite.config.ts` sets `test.globals: false`, the library's default `afterEach`-based auto-cleanup never actually registered — any test file with more than one `render()` call silently leaked DOM into subsequent tests in the same file (confirmed: all three new multi-test files failed with "multiple elements found" until fixed). Added an explicit `afterEach(cleanup)` to the shared setup file.
+- Full suite re-run clean: typecheck/lint/tests across `apps/web`, `packages/ui`, and `apps/api` (the last to confirm the shared eslint-config change didn't cross-contaminate — it doesn't; `apps/api` has its own independent config).
+- **Milestone-level status**: all 8 phases done (0.13.1–0.14.0). Tablet-layout and onboarding exit criteria are directly addressed and manually verified. The WCAG 2.2 AA criterion is addressed for every concrete gap this milestone's own audit found (contrast computed against the real WCAG formula, keyboard/focus-trap/`aria-activedescendant` fixes, static a11y linting) but this was not a formal compliance audit — no automated `axe` scan, no manual testing with real assistive technology (NVDA/JAWS/VoiceOver). Treat as "hardened against the issues found," not "certified compliant" — see the roadmap's Milestone 13 status note for the honest version of this claim.
+- **Scope notes across all of Milestone 13**: `packages/ui` still has no lint step of its own (its components are only linted where consumed by `apps/web`) — a pre-existing gap, not introduced here, and a reasonable candidate for a future milestone. No `jest-axe`/`@axe-core/react` runtime scanning was added. Reduced-motion (Phase 5) required no code change — the only motion in the app already had a guard from Phase 1.
+
 ## [0.13.6] - 2026-07-15
 
 ### Added

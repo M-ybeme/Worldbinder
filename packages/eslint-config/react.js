@@ -1,9 +1,11 @@
-import reactHooks from 'eslint-plugin-react-hooks';
-import reactRefresh from 'eslint-plugin-react-refresh';
-import { baseConfig } from './base.js';
+import jsxA11y from 'eslint-plugin-jsx-a11y'
+import reactHooks from 'eslint-plugin-react-hooks'
+import reactRefresh from 'eslint-plugin-react-refresh'
+import { baseConfig } from './base.js'
 
 export const reactConfig = [
   ...baseConfig,
+  jsxA11y.flatConfigs.recommended,
   {
     plugins: {
       'react-hooks': reactHooks,
@@ -14,4 +16,4 @@ export const reactConfig = [
       'react-refresh/only-export-components': ['warn', { allowConstantExport: true }],
     },
   },
-];
+]

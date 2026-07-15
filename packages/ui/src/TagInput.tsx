@@ -44,7 +44,7 @@ export function TagInput({ label, value, onChange, error, placeholder }: TagInpu
         {label}
       </label>
       <div className="wb-tag-input">
-        <ul className="wb-tag-input__list" role="list">
+        <ul className="wb-tag-input__list">
           {value.map((tag) => (
             <li key={tag} className="wb-tag-input__chip">
               {tag}

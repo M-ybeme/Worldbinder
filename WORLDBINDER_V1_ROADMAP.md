@@ -2098,7 +2098,7 @@ Each milestone must end in working software, passing tests, and updated document
 
 ---
 
-## Milestone 13 — UX and Accessibility Hardening
+## Milestone 13 — UX and Accessibility Hardening [Done]
 
 ### Deliverables
 
@@ -2162,16 +2162,19 @@ A pre-implementation audit of the actual repo state (not the aspirational delive
 - Add Firefox + WebKit Playwright projects, run the existing e2e suite against them, and fix any found breakage.
 - **Resolution**: added `firefox`/`webkit` Playwright projects (`devices['Desktop Firefox']`/`devices['Desktop Safari']`) alongside the existing `chromium` one — this repo's documented supported-desktop-browser list going forward, since no separate browserslist/README section exists (and none is needed while build tooling has no differential-targeting decision to make). Running the full 7-spec e2e suite against both surfaced 5 failures, all genuine test-locator bugs rather than product bugs: two specs (`sessions.spec.ts`, `plot-threads.spec.ts`) used a bare `getByText('completed')` that also matched unrelated Revision History panel text once that panel's async load won the race — a timing outcome that happened not to occur on `chromium` but did on the other two; one spec (`search.spec.ts`) pressed the Ctrl/Cmd+K shortcut immediately after `page.goto()`, racing React's mount (and the `keydown` listener that shortcut depends on) — `goto()` only resolves at the load event, not after hydration. Fixed by scoping the locator to `.wb-entity-header__meta` and by waiting for a real post-mount element before pressing the shortcut, respectively. No mobile-emulation project — Milestone 13's own scope is desktop/tablet (see Phase 4), not phone.
 
-**Phase 8 — Regression-proofing**
+**Phase 8 — Regression-proofing** [Done — see 0.13.7]
 
 - No accessibility-aware tooling or tests exist today: `eslint-plugin-jsx-a11y`, `jest-axe`, and `@axe-core/react` are all absent from every `package.json` in the repo, and a repo-wide grep for `getByRole`/`getByLabelText` in tests returns zero matches — nothing today would catch a broken label, wrong role, or missing `aria-*` wiring, incidentally or otherwise.
 - Add `eslint-plugin-jsx-a11y` to `apps/web`'s eslint config and a handful of `getByRole`/`getByLabelText` tests on the widgets fixed in Phase 2, so these specific bugs can't silently regress.
+- **Resolution**: added `eslint-plugin-jsx-a11y` to `packages/eslint-config/react.js` (the shared config `apps/web` extends), which surfaced 5 real findings on first run — all legitimate patterns with an eslint-disable and inline justification, not bugs to fix: `MapCanvas`'s click-to-place background div (keyboard equivalent is the "+ New pin" button from Phase 2), `SearchOverlay`'s backdrop click-to-dismiss (keyboard equivalent is Escape) and its `role="dialog"` element's own `onKeyDown` (a real dialog legitimately owns its Tab-trap/Escape handling; jsx-a11y's interactive-role allowlist doesn't include `dialog` itself), plus one genuine fix — a redundant explicit `role="list"` on a real `<ul>` in both `EntityMultiPicker` and `TagInput` (added in Phase 2, removed here). `packages/ui` itself still has no lint step of its own (pre-existing gap, out of scope here — its components are only linted where consumed). Added `getByRole`/`getByLabelText` tests for the three riskiest widgets touched in Phase 2: `MapPinMarker`'s keyboard activation (the confirmed bug), `Combobox`'s `aria-activedescendant` tracking, and `TagInput`'s live-region announcements + list semantics — 7 new tests. **Caught and fixed a real, latent test-infra bug while writing them**: `apps/web/src/test/setup.ts` never wired up testing-library's automatic cleanup, and since `vite.config.ts` sets `test.globals: false`, the library's default afterEach-based auto-cleanup never registered — any future test file with more than one `render()` call would have leaked DOM between tests silently. Fixed with an explicit `afterEach(cleanup)` in the shared setup file. No `jest-axe`/`@axe-core/react` added — `eslint-plugin-jsx-a11y` covers static analysis of the exact gaps this milestone found; a runtime axe scan is a reasonable future addition but wasn't needed to close out this phase's findings.
 
 ### Exit criteria
 
 - Primary workflows meet WCAG 2.2 AA expectations
 - No blocking tablet-layout defects
 - New users can complete onboarding without external help
+
+**Status against exit criteria (2026-07-15)**: all 8 phases above are done (0.13.1–0.13.7). "No blocking tablet-layout defects" and "new users can complete onboarding without external help" are addressed directly (Phases 4 and 6) and manually verified. "Primary workflows meet WCAG 2.2 AA expectations" is addressed for every concrete gap this milestone's audit actually found — contrast ratios computed by hand against the real WCAG formula, keyboard/focus-trap/`aria-activedescendant` fixes, `eslint-plugin-jsx-a11y` wired in — but this was not a formal WCAG audit: no automated `axe` scan and no manual testing with real assistive technology (NVDA/JAWS/VoiceOver) was performed, only DOM/ARIA-correctness reasoning and Playwright-driven checks. Treat as "hardened against the issues found," not "certified compliant."
 
 ---
 

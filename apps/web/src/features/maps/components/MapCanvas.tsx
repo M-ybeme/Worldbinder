@@ -110,6 +110,11 @@ export function MapCanvas({
   }
 
   return (
+    // Click-to-place is a pointer-only convenience over the canvas
+    // background; the keyboard-reachable equivalent is the "+ New pin"
+    // button (MapDetailPage) plus MapPinForm's position fields, not a
+    // keyboard handler on this element itself.
+    // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events
     <div
       ref={containerRef}
       className="wb-map-canvas"
