@@ -6,6 +6,19 @@ Every push to `main` should add an entry here. This is meant to be an honest rec
 
 ## [Unreleased]
 
+## [0.14.4] - 2026-07-15
+
+### Added
+
+- **Milestone 14, Phase 4 — CORS and CSP hardening, and Phase 4b — Cookie and secrets review.** Both scoped hosting-agnostic and environment-driven per the user's explicit "feature-complete before Railway" direction — no Railway/R2/Sentry domains exist yet to hardcode.
+- `main.ts`'s CORS config was a boolean (`origin: NODE_ENV === 'development'`) — permissive in dev, disabled entirely otherwise, with no way to actually allow a real deployed frontend. Added `CORS_ORIGIN` (comma-separated allow-list, parsed to an array in `packages/config`): empty in development still reflects any origin; empty anywhere else now fails closed until real origins are configured, replacing "disabled entirely" with an actually-usable default.
+- Added `helmet` (secure defaults: CSP, `X-Content-Type-Options`, `X-Frame-Options`, HSTS, etc.), `crossOriginResourcePolicy` relaxed to `cross-origin` since the frontend is served from a different origin. CSP directives use helmet's own defaults rather than hand-tuned storage/monitoring domains that don't exist yet — revisit once R2/Sentry are real (Phases 9/11).
+- **Caught a real architectural gap while implementing**: both `helmet()` and `cors()` were first added to `main.ts`'s `bootstrap()`, which — per this repo's own established `cookie-parser` precedent — Nest's testing module never runs, so the integration suite would have silently never exercised either. Moved both into `AppModule.configure()` alongside `cookie-parser`, keeping `main.ts` down to just `app.listen()`.
+- **Cookie flags verified already correct** (ADR-0007): `httpOnly`, environment-conditional `secure`, `sameSite: 'lax'`, path-scoped, env-configurable `domain` — no fix needed, confirmed rather than assumed.
+- **Secrets-validation gap closed**: added a `superRefine` to `apiEnvSchema` rejecting three known local-dev-only values (the `.env.example` JWT placeholder, MinIO's default storage credentials) outside `development` **and** `test` — `test` is exempted alongside `development` because CI's integration-tests job runs with `NODE_ENV=test` against ephemeral containers using these exact dev-shaped credentials. A deploy that copies `.env.example` without generating real secrets now fails to boot instead of silently running with well-known values.
+- 5 new integration tests (`security-headers.e2e-spec.ts`, using `overrideProvider(EnvService)` to test multiple `NODE_ENV`/`CORS_ORIGIN` combinations without depending on ambient `.env` state) and 8 new unit tests (merged into the existing `packages/config/src/env.test.ts` after noticing a near-duplicate `.spec.ts` file was about to be created alongside it — consolidated instead). Full suite re-run clean: 183 API integration tests, 89 unit tests, typecheck, lint. `pnpm audit` unchanged (5 findings, all pre-existing dev-tooling-only) — `cors`/`helmet` introduced nothing new.
+- **Scope note**: this is Phase 4 (+4b) of 13. Rate-limit tuning, database indexing, bundle analysis, load tests, and the storage/email/monitoring/backup/runbook work remain, tracked in the roadmap.
+
 ## [0.14.3] - 2026-07-15
 
 ### Added

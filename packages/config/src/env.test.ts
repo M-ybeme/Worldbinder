@@ -40,3 +40,80 @@ describe('loadEnv', () => {
     expect(env.SMTP_SECURE).toBe(true)
   })
 })
+
+function baseEnv(overrides: Record<string, string | undefined> = {}) {
+  return {
+    DATABASE_URL: 'postgres://user:pass@localhost:5432/db',
+    REDIS_URL: 'redis://localhost:6379',
+    JWT_ACCESS_SECRET: 'a'.repeat(32),
+    ...overrides,
+  }
+}
+
+describe('apiEnvSchema CORS_ORIGIN', () => {
+  it('parses a comma-separated list, trimming whitespace', () => {
+    const result = loadEnv(
+      apiEnvSchema,
+      baseEnv({ CORS_ORIGIN: 'https://a.example.com, https://b.example.com' }),
+    )
+    expect(result.CORS_ORIGIN).toEqual(['https://a.example.com', 'https://b.example.com'])
+  })
+
+  it('defaults to an empty list when unset', () => {
+    const result = loadEnv(apiEnvSchema, baseEnv())
+    expect(result.CORS_ORIGIN).toEqual([])
+  })
+})
+
+describe('apiEnvSchema local-dev-only value guard', () => {
+  it('allows the .env.example JWT placeholder in development', () => {
+    const result = loadEnv(
+      apiEnvSchema,
+      baseEnv({
+        NODE_ENV: 'development',
+        JWT_ACCESS_SECRET: 'replace-with-a-random-32-byte-hex-string',
+      }),
+    )
+    expect(result.JWT_ACCESS_SECRET).toBe('replace-with-a-random-32-byte-hex-string')
+  })
+
+  it('rejects the .env.example JWT placeholder outside development', () => {
+    expect(() =>
+      loadEnv(
+        apiEnvSchema,
+        baseEnv({
+          NODE_ENV: 'production',
+          JWT_ACCESS_SECRET: 'replace-with-a-random-32-byte-hex-string',
+        }),
+      ),
+    ).toThrow(/JWT_ACCESS_SECRET/)
+  })
+
+  it('rejects the default MinIO storage credentials outside development', () => {
+    expect(() => loadEnv(apiEnvSchema, baseEnv({ NODE_ENV: 'production' }))).toThrow(
+      /STORAGE_ACCESS_KEY_ID|STORAGE_SECRET_ACCESS_KEY/,
+    )
+  })
+
+  it('allows a real secret and real storage credentials in production', () => {
+    const result = loadEnv(
+      apiEnvSchema,
+      baseEnv({
+        NODE_ENV: 'production',
+        STORAGE_ACCESS_KEY_ID: 'a-real-r2-access-key',
+        STORAGE_SECRET_ACCESS_KEY: 'a-real-r2-secret-key',
+      }),
+    )
+    expect(result.NODE_ENV).toBe('production')
+  })
+
+  it('allows the dev defaults in test, alongside development', () => {
+    // CI's integration-tests job (.github/workflows/ci.yml) runs with
+    // NODE_ENV=test against ephemeral service containers using these same
+    // dev-shaped storage credentials, and deliberately only overrides
+    // JWT_ACCESS_SECRET — `test` is ephemeral/local-infra, not a real
+    // deploy target, so it's exempt alongside `development`.
+    const result = loadEnv(apiEnvSchema, baseEnv({ NODE_ENV: 'test' }))
+    expect(result.NODE_ENV).toBe('test')
+  })
+})

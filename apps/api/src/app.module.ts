@@ -4,6 +4,8 @@ import {
   type NestModule,
 } from '@nestjs/common';
 import cookieParser from 'cookie-parser';
+import cors from 'cors';
+import helmet from 'helmet';
 import { LoggerModule } from 'nestjs-pino';
 import { CampaignAuditViewModule } from './audit/campaign-audit-view.module';
 import { AttachmentsModule } from './attachments/attachments.module';
@@ -64,10 +66,38 @@ import { TimelineModule } from './timeline/timeline.module';
   ],
 })
 export class AppModule implements NestModule {
+  constructor(private readonly env: EnvService) {}
+
   // Registered here (not just in main.ts) so it also applies when the Nest
   // testing module builds the app directly via createNestApplication(),
-  // bypassing main.ts's bootstrap() entirely.
+  // bypassing main.ts's bootstrap() entirely — same reasoning as
+  // cookie-parser (see ADR-0007 / CLAUDE.md's footgun note), extended to
+  // helmet and CORS so integration tests actually exercise them instead of
+  // silently skipping them.
   configure(consumer: MiddlewareConsumer): void {
-    consumer.apply(cookieParser()).forRoutes('*');
+    const allowedOrigins = this.env.values.CORS_ORIGIN;
+    consumer
+      .apply(
+        // JSON API with no HTML views of its own — CSP here mainly guards
+        // any Express default error page; crossOriginResourcePolicy is
+        // relaxed since the frontend is served from a different origin.
+        helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }),
+        // Environment-driven allow-list (CORS_ORIGIN, comma-separated) —
+        // empty in development means "reflect any origin" (matches
+        // pre-Milestone-14 behavior); empty anywhere else means no
+        // cross-origin requests are allowed at all until a real frontend
+        // origin is configured, failing closed rather than silently
+        // disabling CORS outright.
+        cors({
+          origin:
+            this.env.values.NODE_ENV === 'development' &&
+            allowedOrigins.length === 0
+              ? true
+              : allowedOrigins,
+          credentials: true,
+        }),
+        cookieParser(),
+      )
+      .forRoutes('*');
   }
 }
