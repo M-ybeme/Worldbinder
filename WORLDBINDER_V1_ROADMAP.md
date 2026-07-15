@@ -2145,9 +2145,10 @@ A pre-implementation audit of the actual repo state (not the aspirational delive
 - Fixed, non-fluid `max-width`s: `.app-shell__main` (640px), `.wb-form` (360px), `.wb-search-overlay__panel` (560px), `.wb-map-canvas` (900px).
 - No documented tablet breakpoint target exists anywhere (roadmap or `docs/planning/ui-ux.md`) — this phase needs to pick one (e.g. ~768–1024px) and design/test against it.
 
-**Phase 5 — Reduced-motion support** (covers "Reduced-motion support")
+**Phase 5 — Reduced-motion support** [Done — see 0.13.1] (covers "Reduced-motion support")
 
 - No `transition`, `animation`, `@keyframes`, or `prefers-reduced-motion` usage exists anywhere in the app today — there is currently nothing to guard. Add the `prefers-reduced-motion: reduce` convention preemptively (disable smooth-scroll, cap any future transitions) so it's in place before later milestones introduce motion, and note honestly in the CHANGELOG that this is a preemptive guard, not a fix to existing motion.
+- **Resolved as a side effect of Phase 1**: `LoadingState`'s spinner (`@keyframes wb-spin`, added in 0.13.1) is the only animation anywhere in `apps/web/src` — confirmed by re-checking for `animation`/`transition`/`@keyframes`/`scroll-behavior`/`scrollIntoView`/animation libraries across the whole app — and it already carries a `@media (prefers-reduced-motion: reduce)` guard. Nothing further to build; re-check this phase if a future milestone introduces new motion.
 
 **Phase 6 — Onboarding and help content** (covers "Onboarding", "Help content")
 

@@ -6,6 +6,10 @@ Every push to `main` should add an entry here. This is meant to be an honest rec
 
 ## [Unreleased]
 
+### Notes
+
+- **Milestone 13, Phase 5 — Reduced-motion support: confirmed done, no code change needed.** Re-checked the whole app for `animation`/`transition`/`@keyframes`/`scroll-behavior`/`scrollIntoView`/animation libraries — the only motion anywhere is `LoadingState`'s spinner from 0.13.1's `@keyframes wb-spin`, which already has a `prefers-reduced-motion: reduce` guard. Marked `[Done]` in the roadmap rather than inventing a preemptive guard with nothing to guard.
+
 ## [0.13.4] - 2026-07-15
 
 ### Added
