@@ -136,10 +136,10 @@ function toContract(row: RelationshipTypeRow): RelationshipType {
 }
 
 function isUniqueViolation(error: unknown): boolean {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    'code' in error &&
-    error.code === '23505'
-  );
+  if (typeof error !== 'object' || error === null) return false;
+  if ('code' in error && error.code === '23505') return true;
+  // drizzle-orm >=0.4x wraps the driver error in a DrizzleQueryError, with
+  // the original pg error (carrying the real Postgres error `code`) on
+  // `.cause` rather than on the thrown error itself.
+  return 'cause' in error && isUniqueViolation(error.cause);
 }

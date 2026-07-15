@@ -6,6 +6,18 @@ Every push to `main` should add an entry here. This is meant to be an honest rec
 
 ## [Unreleased]
 
+## [0.14.3] - 2026-07-15
+
+### Added
+
+- **Milestone 14, Phase 3 — Dependency upgrade: drizzle-orm.** The highest-blast-radius dependency change in this milestone — used in every database query across `apps/api` — done as its own dedicated, gated pass per the user's explicit process. Bumped `drizzle-orm` `^0.36.0` → `^0.45.2` (past the SQL-injection fix) and `drizzle-kit` `^0.28.0` → `^0.31.10` together, since generation and runtime need to stay compatible.
+- **Process followed exactly as specified**: (1) full `pg_dump` snapshot of local Postgres taken first (249 TOC entries, verified restorable); (2) migration-drift review — `drizzle-kit generate` against a placeholder `DATABASE_URL`, mirroring CI's `validate-migrations` job — produced zero diff; (3) full API/worker suite — 178 integration tests, 89 unit tests, `apps/worker`'s 31 unit tests, and its real-infrastructure integration tier (4 tests against real Postgres + MinIO); (4) export/import round-trip test — both the automated `round-trip.integration.spec.ts`/`rollback.integration.spec.ts` tier and a **live** manual round trip through the actual running app; (5) representative manual CRUD checks, folded into that same live session (create/edit-via-autosave/delete on a real campaign).
+- **Found and fixed one real regression along the way**: `relationship-types.service.ts`'s `isUniqueViolation()` checked `error.code === '23505'` directly, but drizzle-orm ≥0.4x now wraps every query error in a `DrizzleQueryError` with the real driver error nested on `.cause` — a duplicate relationship-type key started 500ing instead of correctly 409ing. Fixed to check both shapes. Repo-wide grep confirmed this was the only place inspecting a raw Postgres error code.
+- **Live round-trip verification** (Playwright-driven, real dev stack): created a campaign, created and edited an entity (confirming autosave persists correctly through the upgraded ORM), created a session and plot thread, soft-deleted a second entity, exported the campaign, downloaded the real archive, re-uploaded it through the import UI, confirmed the dry-run report's counts, confirmed the import, and verified the new campaign has the edited entity under its _edited_ name while correctly excluding the soft-deleted one.
+- `pnpm audit` no longer lists `drizzle-orm` (or `nodemailer`, from Phase 2) at all. Remaining findings are the pre-existing dev-tooling-only `esbuild`/`vite`/`vitest` vulnerabilities already noted as lower-priority in Phase 4's audit — not addressed in this phase, since they weren't part of the user's explicit gate.
+- **Per the user's explicit gate, both required dependency upgrades (nodemailer, drizzle-orm) are now complete and clean.** No live Railway provisioning happens regardless until the app is feature-complete (deferred to Milestone 16), but this specific blocker is cleared.
+- **Scope note**: this is Phase 3 of 13. CORS/CSP/cookies/secrets hardening, rate-limit tuning, database indexing, bundle analysis, load tests, and the storage/email/monitoring/backup/runbook work remain, tracked in the roadmap.
+
 ## [0.14.2] - 2026-07-15
 
 ### Added
