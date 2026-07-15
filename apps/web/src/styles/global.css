@@ -2,26 +2,37 @@
   color-scheme: light dark;
   --wb-bg: #ffffff;
   --wb-fg: #16171d;
-  --wb-border: #e5e4e7;
+  /* ~3.4:1 against --wb-bg/--wb-field-bg — WCAG 1.4.11 non-text contrast
+     for the field/panel boundaries this token backs (was #e5e4e7, ~1.2:1). */
+  --wb-border: #8a8a92;
   --wb-accent: #6d28d9;
   --wb-accent-fg: #ffffff;
   --wb-error: #b91c1c;
   --wb-success: #15803d;
+  --wb-warning: #b45309;
   --wb-field-bg: #ffffff;
   --wb-muted-bg: #f4f4f5;
+  /* ~6.9:1 against --wb-bg and --wb-muted-bg — replaces opacity-based
+     text dimming, which produced unpredictable (sometimes sub-AA) contrast
+     depending on what was behind it. */
+  --wb-muted-fg: #4b5563;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
     --wb-bg: #16171d;
     --wb-fg: #f3f4f6;
-    --wb-border: #2e303a;
+    /* ~3.3:1 against --wb-bg, ~3.0:1 against --wb-muted-bg (was #2e303a). */
+    --wb-border: #666a7a;
     --wb-accent: #c084fc;
     --wb-accent-fg: #16171d;
     --wb-error: #f87171;
     --wb-success: #4ade80;
+    --wb-warning: #fbbf24;
     --wb-field-bg: #1f2028;
     --wb-muted-bg: #1f2028;
+    /* ~6.4:1 against --wb-bg and --wb-muted-bg. */
+    --wb-muted-fg: #9ca3af;
   }
 }
 
@@ -67,7 +78,7 @@ body {
 
 .status-panel dt {
   font-size: 0.85rem;
-  opacity: 0.7;
+  color: var(--wb-muted-fg);
 }
 
 .status-panel dd {
@@ -157,6 +168,25 @@ body {
 .wb-form-message--success {
   color: var(--wb-success);
   background: color-mix(in srgb, var(--wb-success) 12%, transparent);
+}
+
+.wb-banner {
+  margin: 1rem 0;
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+  border: 1px solid var(--wb-border);
+  background: var(--wb-muted-bg);
+  font-size: 0.9rem;
+}
+
+.wb-banner p {
+  margin: 0;
+}
+
+.wb-banner--warning {
+  color: var(--wb-warning);
+  border-color: color-mix(in srgb, var(--wb-warning) 40%, transparent);
+  background: color-mix(in srgb, var(--wb-warning) 12%, transparent);
 }
 
 .wb-visually-hidden {
@@ -259,7 +289,7 @@ body {
 
 .wb-session-list__meta {
   font-size: 0.8rem;
-  opacity: 0.75;
+  color: var(--wb-muted-fg);
 }
 
 .wb-combobox {
@@ -299,13 +329,13 @@ body {
 
 .wb-combobox__meta {
   font-size: 0.75rem;
-  opacity: 0.6;
+  color: var(--wb-muted-fg);
 }
 
 .wb-combobox__status {
   padding: 0.4rem 0.5rem;
   font-size: 0.85rem;
-  opacity: 0.7;
+  color: var(--wb-muted-fg);
 }
 
 .wb-entity-picker__chip {
@@ -390,7 +420,7 @@ body {
 
 .wb-dropzone p {
   margin: 0;
-  opacity: 0.75;
+  color: var(--wb-muted-fg);
 }
 
 .wb-dropzone:focus-visible {
@@ -470,7 +500,7 @@ body {
 .wb-search-overlay__status {
   padding: 0.6rem 0.75rem;
   font-size: 0.85rem;
-  opacity: 0.7;
+  color: var(--wb-muted-fg);
 }
 
 .wb-search-overlay__footer {
@@ -504,13 +534,13 @@ body {
 
 .wb-search-result__subtitle {
   font-size: 0.75rem;
-  opacity: 0.65;
+  color: var(--wb-muted-fg);
 }
 
 .wb-search-result__snippet {
   margin: 0.2rem 0 0;
   font-size: 0.85rem;
-  opacity: 0.8;
+  color: var(--wb-muted-fg);
 }
 
 .wb-search-result__snippet mark {

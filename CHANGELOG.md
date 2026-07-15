@@ -6,6 +6,17 @@ Every push to `main` should add an entry here. This is meant to be an honest rec
 
 ## [Unreleased]
 
+## [0.13.3] - 2026-07-15
+
+### Added
+
+- **Milestone 13, Phase 3 — Contrast review.** Fixes the concrete contrast gaps the audit found in `global.css` (see `WORLDBINDER_V1_ROADMAP.md`'s Milestone 13 phase breakdown), computed against WCAG's actual relative-luminance formula rather than eyeballed.
+- **Muted/secondary text was done via CSS `opacity` on `--wb-fg`, which stacks unpredictably with theme and background** — `wb-combobox__meta` at `opacity: 0.6` was the worst offender and almost certainly failed AA's 4.5:1 for normal text. Replaced every text-dimming `opacity` rule (`status-panel dt`, `wb-session-list__meta`, `wb-combobox__meta`/`__status`, `wb-dropzone p`, `wb-search-overlay__status`, `wb-search-result__subtitle`/`__snippet`) with a new solid `--wb-muted-fg` token — `#4b5563` light (~6.9:1 against both `--wb-bg` and `--wb-muted-bg`), `#9ca3af` dark (~6.4:1). `opacity` is left alone on the two places it's legitimate (`:disabled` states, which WCAG exempts from contrast minimums) and the visually-hidden file input.
+- **`--wb-border` bumped from ~1.2:1 to ~3.4:1 (light) / ~3.3:1 (dark) against page background**, meeting WCAG 1.4.11's 3:1 non-text-contrast minimum for UI component boundaries — this token backs the visible edge of every field input, listbox, dropzone, and empty/error-state box in the app (20 usages), so the old near-invisible value meant most component boundaries in the app were essentially imperceptible to low-vision users.
+- **`.wb-banner`/`.wb-banner--warning` were referenced in `EntityFormPage.tsx` (the draft-restored notice and the edit-conflict warning) but never defined in `global.css` at all** — rendered completely unstyled. Added both, plus a new `--wb-warning` token (`#b45309` light ~5.0:1, `#fbbf24` dark ~10.7:1) — only error/success had tokens before this.
+- Full existing suite re-run clean (typecheck, lint, existing web test). Manually verified end to end against the running dev stack in both light and dark color schemes (Playwright-driven, `colorScheme` context option): confirmed empty-state/field/dropzone borders are now clearly visible in both themes, confirmed no layout regression on entity detail, world list, and the search overlay's combobox meta/status text. No new console errors.
+- **Scope note**: this is Phase 3 of 8. The remaining phases (responsive/tablet layout, reduced-motion, onboarding/help content, browser-compatibility pass, regression-proofing via `eslint-plugin-jsx-a11y`) are tracked in the roadmap, not yet done. Contrast ratios were computed by hand against the WCAG relative-luminance formula, not measured with automated tooling (no contrast-checking tool is wired into this repo yet — a natural candidate for the Phase 8 regression-proofing pass).
+
 ## [0.13.2] - 2026-07-15
 
 ### Added
