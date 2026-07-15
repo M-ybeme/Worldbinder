@@ -6,6 +6,17 @@ Every push to `main` should add an entry here. This is meant to be an honest rec
 
 ## [Unreleased]
 
+## [0.14.7] - 2026-07-15
+
+### Added
+
+- **Milestone 14, Phase 7 — Bundle analysis.** No bundle-analysis tooling existed and `apps/web/src/routes/index.tsx` eagerly imported all ~30 page components into a single static router tree — directly contradicting the roadmap's own §22.1 targets ("lazy-load TipTap, map, and timeline bundles," "route-level code splitting"), documented in the roadmap audit but never implemented.
+- Added `rollup-plugin-visualizer`, wired opt-in (`ANALYZE=1 pnpm build`, writing `dist/stats.html`) rather than always-on, since it's a build-time cost and the output is a debugging artifact CI doesn't need.
+- Converted every leaf page route to react-router-dom v7's native `lazy: () => import(...).then(m => ({ Component: m.XyzPage }))` property. One mechanism covers both roadmap bullets at once, since lazy-loading pages that import TipTap/map/timeline transitively code-splits those dependencies too. Only the root shell, layout/guard components, and the `/` landing route stay eager.
+- **Before/after** (production build): the single bundle dropped from **1,423.15 kB (400.80 kB gzip)** to a main/vendor chunk of **523.41 kB (157.14 kB gzip)** — a 61% cut in gzipped JS on the critical path — with TipTap/ProseMirror split into its own on-demand **496.73 kB (155.93 kB gzip)** chunk and ~40 small per-route chunks (0.1–15 kB each).
+- Verified with clean `typecheck`/`lint` (confirms every lazy import's named export is correct), the existing Vitest suite (11/11), and a manual Playwright smoke pass against a real `vite preview` build of the output — logged in as the seeded demo user, navigated campaign overview/world/timeline/maps/sessions plus an entity detail and entity-creation page, confirmed the TipTap editor actually mounts at runtime from its lazy chunk, and saw no console/page errors or failed dynamic imports on any route.
+- **Scope note**: this is Phase 7 of 13. Load tests, and the storage/email/monitoring/backup/runbook work remain, tracked in the roadmap.
+
 ## [0.14.6] - 2026-07-15
 
 ### Added

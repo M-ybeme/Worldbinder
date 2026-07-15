@@ -1,9 +1,22 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import { visualizer } from 'rollup-plugin-visualizer'
 import { configDefaults } from 'vitest/config'
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    // Milestone 14 Phase 7 — writes dist/stats.html on every build; opt-in
+    // via ANALYZE=1 rather than always-on, since it adds a build-time cost
+    // and the output is a debugging artifact, not something CI needs.
+    process.env.ANALYZE &&
+      visualizer({
+        filename: 'dist/stats.html',
+        gzipSize: true,
+        brotliSize: true,
+        template: 'treemap',
+      }),
+  ],
   envDir: '../../',
   // @worldbinder/contracts and @worldbinder/validation are CommonJS (they're
   // also consumed by the CJS NestJS API/worker, so they can't switch to ESM
