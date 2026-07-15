@@ -69,7 +69,11 @@ test('plot thread lifecycle: introduce, go neglected, resolve, player status pro
 
     await ownerPage.getByRole('button', { name: 'Complete session' }).click()
     await ownerPage.getByRole('button', { name: 'Confirm completion' }).click()
-    await expect(ownerPage.getByText('completed')).toBeVisible()
+    // Scoped to the status meta span, not a bare getByText('completed') —
+    // the Revision History panel loads asynchronously and its diff text can
+    // also contain the word "completed", making an unscoped locator
+    // ambiguous once it finishes loading (timing-dependent across browsers).
+    await expect(ownerPage.locator('.wb-entity-header__meta')).toContainText('completed')
   }
 
   await test.step('owner introduces the thread in session one', async () => {

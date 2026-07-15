@@ -2155,11 +2155,12 @@ A pre-implementation audit of the actual repo state (not the aspirational delive
 - No tooltip/help/walkthrough/first-run component exists anywhere in the codebase (confirmed via grep). `CampaignsListPage`'s zero-campaign state — the only "onboarding" surface today — is one plain sentence ("You aren't a member of any campaigns yet.") with no dedicated empty state or guided next step.
 - Scope a lightweight first-run experience (not a full product tour) for the zero-campaign state, plus a basic Help page/link with getting-started content, consistent with this codebase's "build up only as real screens need them" philosophy (no tour/walkthrough library).
 
-**Phase 7 — Browser compatibility pass** (covers "Browser compatibility pass")
+**Phase 7 — Browser compatibility pass** [Done — see 0.13.6] (covers "Browser compatibility pass")
 
 - `playwright.config.ts` configures only a single `chromium` project — no Firefox/WebKit/mobile-emulation projects. Its own comment calls this "early scaffolding... pulled forward from Milestone 13/20," i.e. the full matrix was always expected to land here.
 - No `browserslist` config exists anywhere (root or `apps/web` `package.json`) and no documented supported-browser list exists in the roadmap or README.
 - Add Firefox + WebKit Playwright projects, run the existing e2e suite against them, and fix any found breakage.
+- **Resolution**: added `firefox`/`webkit` Playwright projects (`devices['Desktop Firefox']`/`devices['Desktop Safari']`) alongside the existing `chromium` one — this repo's documented supported-desktop-browser list going forward, since no separate browserslist/README section exists (and none is needed while build tooling has no differential-targeting decision to make). Running the full 7-spec e2e suite against both surfaced 5 failures, all genuine test-locator bugs rather than product bugs: two specs (`sessions.spec.ts`, `plot-threads.spec.ts`) used a bare `getByText('completed')` that also matched unrelated Revision History panel text once that panel's async load won the race — a timing outcome that happened not to occur on `chromium` but did on the other two; one spec (`search.spec.ts`) pressed the Ctrl/Cmd+K shortcut immediately after `page.goto()`, racing React's mount (and the `keydown` listener that shortcut depends on) — `goto()` only resolves at the load event, not after hydration. Fixed by scoping the locator to `.wb-entity-header__meta` and by waiting for a real post-mount element before pressing the shortcut, respectively. No mobile-emulation project — Milestone 13's own scope is desktop/tablet (see Phase 4), not phone.
 
 **Phase 8 — Regression-proofing**
 

@@ -6,6 +6,15 @@ Every push to `main` should add an entry here. This is meant to be an honest rec
 
 ## [Unreleased]
 
+## [0.13.6] - 2026-07-15
+
+### Added
+
+- **Milestone 13, Phase 7 — Browser compatibility pass.** `playwright.config.ts` previously configured only `chromium` — its own comment already anticipated Firefox/WebKit landing here. Added both (`devices['Desktop Firefox']`/`devices['Desktop Safari']`), the repo's now-documented supported-desktop-browser list (see the roadmap's Milestone 13 Phase 7 entry). No mobile-emulation project — desktop/tablet is this milestone's scope (Phase 4), not phone.
+- **Ran the full 7-spec e2e suite against both new browsers and found 5 real failures — all test-locator bugs, not product bugs, confirmed by a clean chromium re-run of the same specs after fixing them.** `sessions.spec.ts` and `plot-threads.spec.ts` both asserted a bare `getByText('completed')` right after completing a session; the async-loading Revision History panel's diff text can also contain the word "completed," and once that panel finishes loading the locator becomes ambiguous — a timing race that chromium happened not to lose but firefox/webkit did. Fixed by scoping both to `.wb-entity-header__meta` (the actual status element) instead. `search.spec.ts` pressed the Ctrl/Cmd+K shortcut immediately after `page.goto()`; `goto()` resolves at the load event, not after React has mounted `CampaignLayout`'s `keydown` listener, so the keypress could fire into a page that wasn't listening yet — fixed by waiting for a real post-mount element (the "World" nav link) first.
+- Full 3-browser e2e suite (19 previously-passing tests re-confirmed on firefox/webkit, the 3 fixed specs re-run clean on all of chromium/firefox/webkit) plus the existing unit/typecheck/lint suites all pass.
+- **Scope note**: this is Phase 7 of 8. Only Phase 8 (regression-proofing via `eslint-plugin-jsx-a11y` and accessibility-aware tests) remains.
+
 ## [0.13.5] - 2026-07-15
 
 ### Added

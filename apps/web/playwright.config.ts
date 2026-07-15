@@ -27,7 +27,13 @@ export default defineConfig({
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },
+  // Milestone 13 Phase 7 (browser-compatibility pass): the roadmap's own
+  // §20.4 comment above already anticipated this landing here. No
+  // mobile-emulation project yet — Milestone 13's scope is desktop/tablet,
+  // not phone (see the Phase 4 responsive-layout note in the roadmap).
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+    { name: 'firefox', use: { ...devices['Desktop Firefox'] } },
+    { name: 'webkit', use: { ...devices['Desktop Safari'] } },
   ],
 })

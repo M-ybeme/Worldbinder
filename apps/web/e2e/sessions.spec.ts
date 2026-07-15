@@ -81,7 +81,11 @@ test('session lifecycle: create, complete with world date, reveal, session appea
     await ownerPage.getByLabel('Day').fill('12')
     await ownerPage.getByRole('button', { name: 'Confirm completion' }).click()
     await expect(ownerPage.getByText(/Ends 1428-06-12/)).toBeVisible()
-    await expect(ownerPage.getByText('completed')).toBeVisible()
+    // Scoped to the status meta span, not a bare getByText('completed') —
+    // the Revision History panel loads asynchronously and its diff text can
+    // also contain the word "completed", making an unscoped locator
+    // ambiguous once it finishes loading (timing-dependent across browsers).
+    await expect(ownerPage.locator('.wb-entity-header__meta')).toContainText('completed')
   })
 
   await test.step('owner reveals the secret entity', async () => {

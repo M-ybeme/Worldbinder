@@ -84,6 +84,12 @@ test('search: overlay and results page respect entity visibility for GM vs. play
 
   await test.step('owner finds both entities and the secret phrase via the search overlay', async () => {
     await ownerPage.goto(campaignUrl)
+    // Wait for CampaignLayout to actually mount (and with it, the keydown
+    // listener the Ctrl/Cmd+K shortcut depends on) before pressing it —
+    // `goto()` only resolves at the load event, not after React hydration,
+    // and pressing the shortcut in that gap is a real race that showed up
+    // as a flake in slower/differently-timed browsers.
+    await expect(ownerPage.getByRole('link', { name: 'World' })).toBeVisible()
     await ownerPage.keyboard.press('Control+k')
     const overlay = ownerPage.locator('.wb-search-overlay__panel')
     await expect(overlay).toBeVisible()
