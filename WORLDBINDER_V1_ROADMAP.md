@@ -2195,6 +2195,77 @@ A pre-implementation audit of the actual repo state (not the aspirational delive
 - Incident runbooks
 - Monitoring and alerts
 
+### Phases (audit findings, 2026-07-15)
+
+A pre-implementation audit (three parallel research passes: security/auth, performance, reliability/ops) found the codebase itself in solid shape on authorization specifically, but real gaps elsewhere. **Hosting decision (2026-07-15)**: the intended future target is Railway — API and worker as separate services, Railway-managed Postgres and Redis, Cloudflare R2 replacing MinIO, a transactional email provider (Resend or Postmark) replacing raw SMTP, Sentry for error monitoring — but **no Railway environment is provisioned yet, deliberately**: the app should be feature-complete first. This milestone's job is to make every one of those integration points environment-driven and swappable (CORS origins, CSP, cookie flags, secrets, storage backend, email transport, monitoring DSN, health checks, backup/restore tooling) via config, not to actually stand up Railway. Live hosted backup drills, live alert testing, and production smoke tests are explicitly deferred to Milestone 16 (v1.0 Release Candidate), once Railway is actually provisioned. Local dev keeps docker-compose/MinIO/Mailpit unchanged throughout.
+
+**Phase 1 — Authorization audit** (covers "Threat model", "Authorization audit")
+
+- `CampaignPolicyService` (`apps/api/src/membership/campaign-policy.service.ts`) is well-structured and consistently enforced two ways (route-level `CampaignRolesGuard` + service-level policy calls) across every spot-checked controller (entities, sessions, maps, attachments, membership). Cross-campaign isolation is solid — every checked resource type (entities/sessions/maps/attachments) scopes lookups by both resource id _and_ `campaignId`, returning 404 rather than another campaign's data.
+- Two concrete inconsistencies, not exploitable today but fragile: `CampaignsController.update()` (`PATCH /campaigns/:campaignId`) was the one mutating endpoint missing the route-level `CampaignRolesGuard`/`@RequireCampaignRole` every sibling endpoint has (it was correctly protected only by a service-level check — the permission is genuinely field-dependent, rename is owner-only vs. other settings are owner/gm, which a single static role guard can't fully express — but nothing at the route layer would catch a future field being added without its own service-level check). **Fixed**: added `@RequireCampaignRole('owner', 'gm')` as a coarse floor; purely additive, doesn't change any actual behavior since owner+gm already pass the existing fine-grained checks. `AttachmentsService.complete()` **and** `delete()` both had their final `UPDATE` filtering only by `attachments.id`, not `campaignId` — unlike entities/sessions/maps' equivalent writes, which re-assert `campaignId` directly in the mutating query (not just in an earlier read). **Fixed**: both now include `eq(attachments.campaignId, campaignId)` in their `WHERE`.
+- **Correction**: the initial audit's claim that `CampaignPolicyService.canExportCampaign` was dead code was wrong — `exports.service.ts:107`'s `assertCanExport()` calls it, correctly layered under `ExportsController`'s route-level `@RequireCampaignRole('owner', 'gm')` guard, the same two-layer pattern as everywhere else. No fix needed; verified before assuming the finding was real.
+- Threat model written: `docs/security/threat-model.md` — trust boundaries, the two-tier visibility model (ADR-0009), the auth model (ADR-0007), the Railway/R2/Sentry/email-provider topology, and the specific gaps found across every phase in this milestone as known risks.
+
+**Phase 2 — Dependency upgrade: nodemailer**
+
+- `pnpm audit` found `nodemailer` pinned `^6.9.16` in `apps/api/package.json` — many majors behind the patched line (7.0.7+/8.0.4+/9.0.1+), unpatched SSRF + arbitrary-file-read + multiple injection CVEs (high/moderate/low across several advisories). Per the user's explicit ordering: upgrade this first, in isolation, and validate every real email workflow (registration verification, password reset, invitations) end to end before touching drizzle-orm.
+
+**Phase 3 — Dependency upgrade: drizzle-orm** (dedicated pass, gated on Phase 2 being clean)
+
+- `drizzle-orm` pinned `^0.36.0` vs. a SQL-injection fix at `0.45.2` — used in every DB query across `apps/api`, highest blast radius of any dependency in the repo. Per the user's explicit process: take a database snapshot first, review migration drift after upgrading, run the complete API/worker/e2e suite, do an export/import round-trip test, and do representative manual CRUD checks before considering this done. **Do not proceed to any live Railway provisioning (deferred to Milestone 16 regardless) until Phases 2 and 3 are both complete and clean** — a hard gate the user set explicitly.
+- `vitest`'s critical vuln and `vite`'s moderate vulns are dev-tooling-only (not shipped) — lower urgency, safe to bump opportunistically in this phase too.
+
+**Phase 4 — CORS and CSP hardening (environment-driven, not Railway-specific)**
+
+- `main.ts`'s CORS config is a boolean, not an allow-list: `origin: NODE_ENV === 'development'` — reflects any origin in dev, disables CORS entirely otherwise. Needs a real `CORS_ORIGIN`/`ALLOWED_ORIGINS` env var (comma-separated list, validated in `packages/config`) so any future frontend origin can be allowed without a code change — no Railway domain is known yet, so this must default sanely (dev: permissive; anything else: explicit allow-list or fail closed) rather than hardcode a Railway URL.
+- No CSP anywhere — `helmet` isn't a dependency. Build the policy with env-driven directive values (storage domain, monitoring ingestion domain) defaulting to `'self'`/off when unset, so it tightens automatically once Phase 9/11's real values exist later without needing this phase redone.
+
+**Phase 4b — Cookie and secrets review**
+
+- Audited alongside CORS/CSP since they're the same "environment-driven security config" concern: confirm refresh-token cookie flags (`Secure`/`SameSite`/`HttpOnly`, ADR-0007) are environment-conditional where required (e.g. `Secure` should be forced true outside local dev), and close the two secrets-validation gaps the audit found — `.env.example`'s `JWT_ACCESS_SECRET` placeholder is long enough to pass the current Zod min-length check unchanged, and `STORAGE_ACCESS_KEY_ID`/`STORAGE_SECRET_ACCESS_KEY` silently default to the known dev/MinIO values if unset rather than failing closed outside development.
+
+**Phase 5 — Rate-limit tuning**
+
+- Rate limiting (`apps/api/src/common/rate-limiter.service.ts`, fixed-window via Redis) is applied manually per-call-site, not globally — only `register`/`login`/`resendVerification`/`forgotPassword` (auth) and `inviteMember` (membership) are covered.
+- Unprotected auth endpoints: `verify-email`, `refresh`, `logout`, `reset-password`, `change-password` — `reset-password` accepts an opaque-token guess with zero throttle.
+- Every other module — entities, sessions, maps, attachments, plot-threads, timeline, exports, imports, campaigns CRUD — has no request-volume control at all (relevant for bulk-creation/export-generation/presigned-upload abuse, more so once real users can hit a real Railway bill).
+
+**Phase 6 — Database query profiling**
+
+- Confirmed missing indexes on columns actually filtered in hot paths: `entityWikiLinks` (campaignId/sourceResourceId/targetEntityId — hit on every entity-detail backlinks fetch), `campaignInvitations`, `securityEvents.userId`, `userSessions` (userId/tokenFamilyId — the refresh-reuse-detection lookup key), `emailVerificationTokens`/`passwordResetTokens.tokenHash` (the actual verify/reset lookup key), `campaignImports.resultCampaignId`, `attachments.uploadedByUserId`. Several composite-unique join tables (`timelineEventEntities`, `timelineEventSessions`, etc.) only support leftmost-column lookups — `TimelineService.list()`'s entity/session filters hit the unindexed second column.
+- One confirmed real N+1: `CampaignsService.list()` → `toSummary()` → `resolveCoverImageUrl()` issues a separate `attachments` query per campaign in the loop.
+- `timelineEvents.title` has no trigram index despite `SearchService` calling `similarity()` against it — the one search fuzzy-match tier that isn't index-backed.
+- Search itself is otherwise well-indexed and bounded (per-table `LIMIT 25`, in-memory merge/sort capped at 125 rows); a single-user sequential latency benchmark already exists (`apps/api/src/search/search-benchmark.ts`) but nothing tests concurrent load (see Phase 8).
+
+**Phase 7 — Bundle analysis**
+
+- No bundle-analysis tooling configured (`rollup-plugin-visualizer` etc. — none installed). No code-splitting anywhere: `apps/web/src/routes/index.tsx` imports every page eagerly into one static router tree — this directly contradicts the roadmap's own §22.1 targets ("lazy-load TipTap, map, and timeline bundles," "route-level code splitting"), documented but never implemented. 9 separate `@tiptap/*` packages are among the heaviest dependencies.
+
+**Phase 8 — Load tests**
+
+- No load-testing tool exists anywhere (`k6`/`autocannon`/`artillery` all absent). §20.6 and §22 already document seed sizes (10k entities/50k relationships/2k plot threads/200 sessions/500 timeline events) and budgets (search p95 <500ms, simple reads <300ms, writes <500ms) to test against — this phase should build the harness and actually run it, not redefine targets that already exist.
+
+**Phase 9 — Storage: S3-compatible backend made swappable**
+
+- `StorageService` (`apps/api/src/storage/`) already talks to MinIO via `@aws-sdk/client-s3`. R2 is S3-API-compatible, so the goal here is making the endpoint/credentials/bucket fully env-driven (not hardcoded to MinIO's local defaults) so R2 becomes a config change later, not a code change — without actually creating an R2 bucket or testing against real R2 in this milestone. Confirm the `onModuleInit` auto-bucket-creation stays correctly gated to non-production. Local dev keeps MinIO unchanged.
+
+**Phase 10 — Email: transport made swappable**
+
+- Current mail sending goes through `nodemailer` via raw SMTP against Mailpit locally. Both Resend and Postmark offer SMTP relay endpoints, so the plan is keeping `nodemailer` (once upgraded in Phase 2) but making its SMTP host/port/credentials fully env-driven rather than assuming Mailpit's local defaults — so pointing it at a real provider later is a config change. No real Resend/Postmark account is created or tested against in this milestone.
+
+**Phase 11 — Monitoring: Sentry SDK wired in, env-gated**
+
+- No APM/error-tracking exists anywhere today (confirmed absent: Sentry, DataDog, Prometheus, OpenTelemetry) — logging itself is real (structured `pino` JSON via `nestjs-pino` and `apps/worker`'s own `pino()`) but nothing aggregates or alerts on it. Add `@sentry/node` to `apps/api` and `apps/worker`, and `@sentry/react` to `apps/web`, wired via an env-driven DSN that's simply unset (Sentry fully inert) in local dev and CI — no Sentry account/project is created or tested against live in this milestone. The health endpoint (`GET /health`) currently checks only Postgres and Redis, not storage or the job queue — worth extending alongside this phase, still against local infra.
+
+**Phase 12 — Backup restore drill and migration rehearsal (local)**
+
+- Zero backup infrastructure today: no `pg_dump`/`pg_restore`/object-storage-mirror script anywhere, `infrastructure/scripts/` and `infrastructure/docker/` are both empty directories. Write a real, environment-agnostic backup/restore script (takes connection info from env, so it works against local docker-compose Postgres now and any real target later without modification) and rehearse a full restore against local docker-compose to prove the mechanism works — not a paper exercise, but explicitly a local rehearsal. A live drill against a real hosted Postgres instance is deferred to Milestone 16 once Railway exists.
+- 13 forward-only migrations (drizzle-kit doesn't generate down-migrations by design); CI already guards against schema drift (`validate-migrations` job) but nothing rehearses a rollback. Since there's no down-migration path, "rollback" for this project means restore-from-backup — rehearse and document that explicitly as the real rollback procedure, plus verify the transactional-per-invocation behavior `drizzle-orm` already provides (a partial failure mid-batch rolls back that batch) actually holds under a forced-failure test, all against local infra.
+
+**Phase 13 — Incident runbooks**
+
+- `docs/runbooks/`, `docs/architecture/`, `docs/security/` all exist as empty directories — write initial runbooks (what to check when X breaks, using `/health` and application logs; a placeholder section for Sentry/Railway-specific steps once those exist). No Railway deployment config (service definitions, staging cutover checklist) is written this milestone — that belongs to Milestone 16 when Railway is actually provisioned, per the user's explicit "feature-complete first" ordering.
+
 ### Exit criteria
 
 - No critical security findings
@@ -2238,6 +2309,8 @@ A pre-implementation audit of the actual repo state (not the aspirational delive
 ---
 
 ## Milestone 16 — v1.0 Release Candidate
+
+**Deferred from Milestone 14 (2026-07-15)**: per an explicit user decision, Milestone 14 built CORS/CSP/cookies/secrets/storage/email/monitoring/health-checks/backup-restore as environment-driven and Railway-ready but did _not_ provision a real Railway environment — the app was to be feature-complete first. This milestone is where that provisioning actually happens: standing up Railway (API/worker as separate services, Railway Postgres/Redis, Cloudflare R2, a transactional email provider — Resend or Postmark, Sentry), the live backup restore drill against real hosted Postgres, live alert testing, and the "Production smoke tests" deliverable below. Don't assume any of that infrastructure exists yet when starting this milestone — check.
 
 ### Deliverables
 

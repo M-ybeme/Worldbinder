@@ -73,7 +73,8 @@ export class CampaignsController {
     return this.campaigns.getDashboard(campaignId, membership);
   }
 
-  @UseGuards(CampaignMembershipGuard)
+  @UseGuards(CampaignMembershipGuard, CampaignRolesGuard)
+  @RequireCampaignRole('owner', 'gm')
   @Patch(':campaignId')
   update(
     @Param('campaignId', ParseUUIDPipe) campaignId: string,

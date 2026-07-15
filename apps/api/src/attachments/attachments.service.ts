@@ -103,7 +103,12 @@ export class AttachmentsService {
     const [updated] = await this.db
       .update(attachments)
       .set({ status: 'uploaded', sizeBytes: verifiedSize })
-      .where(eq(attachments.id, attachmentId))
+      .where(
+        and(
+          eq(attachments.id, attachmentId),
+          eq(attachments.campaignId, campaignId),
+        ),
+      )
       .returning();
 
     await this.queue.enqueueProcessing(attachmentId);
@@ -318,7 +323,12 @@ export class AttachmentsService {
     await this.db
       .update(attachments)
       .set({ status: 'deleted', deletedAt: new Date() })
-      .where(eq(attachments.id, attachmentId));
+      .where(
+        and(
+          eq(attachments.id, attachmentId),
+          eq(attachments.campaignId, campaignId),
+        ),
+      );
 
     await this.storage.deleteObject(attachment.storageKey);
 
