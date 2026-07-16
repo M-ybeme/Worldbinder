@@ -6,6 +6,20 @@ Every push to `main` should add an entry here. This is meant to be an honest rec
 
 ## [Unreleased]
 
+## [0.14.12] - 2026-07-16
+
+### Added
+
+- **Milestone 14, Phase 12 — Backup restore drill and migration rehearsal (local).** No backup infrastructure existed at all: no `pg_dump`/`pg_restore`/object-storage-mirror script anywhere, and no rehearsed rollback path despite 13 forward-only migrations with no down-migration support.
+- `infrastructure/scripts/backup.sh`/`restore.sh`/`restore-drill.sh` — genuinely environment-agnostic (read `DATABASE_URL` from env, never a hardcoded target) by running `pg_dump`/`pg_restore`/`psql` inside a throwaway `postgres:17-alpine` container instead of requiring client tools on the host. `rewrite-url.js` uses Node's `URL` class to rewrite `localhost`/`127.0.0.1` to `host.docker.internal` for that container's benefit only — a real deployed URL passes through unchanged, so the same scripts work against a real target later without modification.
+- `restore-drill.sh` never touches the real database destructively: backs it up, restores into an isolated scratch database, verifies row counts across 8 tables, then drops the scratch database and deletes the dump file.
+- `apps/api/src/backup/storage-mirror.ts` (`pnpm --filter @worldbinder/api backup:storage`) closes the object-storage half of the gap — mirrors every object in the configured bucket to a local directory, using the same `createS3Client` helper `StorageService` already uses.
+- Migration rollback is now explicitly documented (`docs/runbooks/backup-restore.md`) as "restore the pre-migration backup" — the only rollback path that exists. Also covers the object-storage recovery procedure and what's deferred to Milestone 16 (a live drill against real hosted Postgres, automated backups, live alert testing).
+- **Verified for real**: ran `restore-drill.sh` against the actual local dev database (191 users, 120 campaigns, 10,139 entities, 50,020 relationships, and more) — every table's row count matched after restore. Ran `backup:storage` against the real local MinIO bucket — 676 objects (8.6MB) mirrored, file count confirmed to match exactly.
+- Added a real forced-failure test (`apps/api/test/transaction-atomicity.e2e-spec.ts`) proving Drizzle's `db.transaction()` rollback guarantee against a genuine Postgres unique-constraint violation, not a synthetic `throw`.
+- Full suite re-run clean: 190 API integration tests, typecheck/lint.
+- **Scope note**: this is Phase 12 of 13. Incident runbooks remain, tracked in the roadmap.
+
 ## [0.14.11] - 2026-07-16
 
 ### Added

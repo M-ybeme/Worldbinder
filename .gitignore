@@ -18,6 +18,12 @@ Thumbs.db
 # Local infra volumes
 infrastructure/docker/data/
 
+# Backup/restore drill output (infrastructure/scripts/*.sh, apps/api's
+# backup:storage script) — operator-triggered local artifacts, never
+# committed.
+*.dump
+storage-mirror/
+
 # Web
 apps/web/dist/
 

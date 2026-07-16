@@ -1,0 +1,5 @@
+# Shell scripts must always have LF line endings regardless of a given
+# machine's core.autocrlf setting — a CRLF shebang line or CRLF-corrupted
+# body breaks bash execution outright. Added alongside
+# infrastructure/scripts/*.sh (Milestone 14 Phase 12).
+*.sh text eol=lf
