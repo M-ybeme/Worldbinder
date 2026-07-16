@@ -6,6 +6,19 @@ Every push to `main` should add an entry here. This is meant to be an honest rec
 
 ## [Unreleased]
 
+## [0.14.11] - 2026-07-16
+
+### Added
+
+- **Milestone 14, Phase 11 — Monitoring: Sentry SDK wired in, env-gated.** No APM/error-tracking existed anywhere (logging itself was real via `pino`, but nothing aggregated or alerted on it).
+- `apps/api` uses `@sentry/nestjs` (wraps `@sentry/node` with NestJS-appropriate defaults, ships its own `SentryModule`/`SentryGlobalFilter`). New `instrument.ts` files in both `apps/api` and `apps/worker` are the first import in their `main.ts` (required for Sentry's OpenTelemetry module patching) and call `Sentry.init` only if `SENTRY_DSN` is set — unset means fully inert, not initialized-with-an-empty-DSN. `SentryGlobalFilter` is registered as `APP_FILTER` in `AppModule` so it also applies under Nest's testing module; it's a safe no-op with no DSN.
+- `apps/worker` had no centralized job-failure capture point at all — added `reportJobFailures()` in `main.ts`, attached to all three `Worker` instances, logging via the existing `pino` logger and calling `Sentry.captureException`.
+- `apps/web` had no error boundary anywhere — `main.tsx` now wraps the router in `Sentry.ErrorBoundary`, with the fallback rendered via the existing `ErrorState` component from `packages/ui` rather than new UI. Production bundle grew from 157.14 kB to 162.94 kB gzip, an expected cost of the browser SDK.
+- **Health check extension**: `GET /health` now also checks object storage (`StorageHealthIndicator`, a `HeadBucketCommand` against the configured bucket) and the job queue (`QueueHealthIndicator`, BullMQ's `Queue.waitUntilReady()` — one representative queue stands in for all three, since they share the same Redis instance and fail/recover together). Both timeout-wrapped at 2 seconds so an unreachable dependency reports "down" promptly. Verified for real, not just mocked: stopped the MinIO container mid-session and confirmed `GET /health` correctly reported `storage: down` / HTTP 503 within the timeout, then recovered cleanly once MinIO was back.
+- **Found and fixed a real bug while wiring this up**: `SENTRY_DSN: z.string().url().optional()` rejects the empty string as an invalid URL, but `.env.example`'s own new `SENTRY_DSN=` line is exactly that — anyone who copied the example file verbatim would have had every env-validated command immediately fail. Added an `optionalUrl()` helper in `packages/config/src/env.ts` (same footgun class as the existing `booleanString()` helper) treating an empty string the same as unset, with 4 new regression tests.
+- Full suite re-run clean: 19 `packages/config` unit tests, 96 API unit tests, 189 API integration tests, 31 worker unit tests, 4 worker integration tests, typecheck/lint clean across all four packages/apps.
+- **Scope note**: this is Phase 11 of 13. Backup/restore drill and incident runbook work remain, tracked in the roadmap.
+
 ## [0.14.10] - 2026-07-15
 
 ### Added

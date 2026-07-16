@@ -36,6 +36,7 @@
     "@nestjs/jwt": "^11.0.0",
     "@nestjs/platform-express": "^11.0.1",
     "@nestjs/terminus": "^11.0.0",
+    "@sentry/nestjs": "^10.65.0",
     "@worldbinder/config": "workspace:*",
     "@worldbinder/contracts": "workspace:*",
     "@worldbinder/validation": "workspace:*",

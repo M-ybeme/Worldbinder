@@ -1,3 +1,7 @@
+// Must be the first import in the entire process — see instrument.ts's own
+// doc comment for why (OpenTelemetry module patching has to happen before
+// anything else is required).
+import './instrument';
 import { NestFactory } from '@nestjs/core';
 import { Logger } from 'nestjs-pino';
 import { AppModule } from './app.module';

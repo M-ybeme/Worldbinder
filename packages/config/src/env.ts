@@ -12,6 +12,22 @@ function booleanString(defaultValue: 'true' | 'false') {
     .transform((value) => value === 'true')
 }
 
+/**
+ * `KEY=` in a `.env` file parses to the empty string, not an omitted key —
+ * a plain `z.string().url().optional()` rejects that empty string as an
+ * invalid URL instead of treating it as unset, so every optional URL var
+ * (starting with `.env.example`'s own `SENTRY_DSN=` line) would fail
+ * validation the moment someone copies the example file verbatim. Another
+ * instance of the same class of footgun `booleanString` above guards
+ * against — treat the literal empty string as "not set."
+ */
+function optionalUrl() {
+  return z.preprocess(
+    (value) => (value === '' ? undefined : value),
+    z.string().url().optional(),
+  )
+}
+
 export function loadEnv<T extends z.ZodTypeAny>(
   schema: T,
   source: NodeJS.ProcessEnv = process.env,
@@ -124,6 +140,11 @@ export const apiEnvSchema = z
     STORAGE_SECRET_ACCESS_KEY: z.string().default('worldbinder-dev-secret'),
     // MinIO needs path-style requests; real S3/R2 typically don't.
     STORAGE_FORCE_PATH_STYLE: booleanString('true'),
+
+    // Error monitoring — unset (the default) means Sentry is never
+    // initialized at all, not initialized-with-empty-DSN; fully inert in
+    // local dev and CI until a real Sentry project exists.
+    SENTRY_DSN: optionalUrl(),
   })
   .superRefine(rejectDevOnlyValuesOutsideDevAndTest)
 
@@ -142,6 +163,8 @@ export const workerEnvSchema = z
     STORAGE_ACCESS_KEY_ID: z.string().default('worldbinder'),
     STORAGE_SECRET_ACCESS_KEY: z.string().default('worldbinder-dev-secret'),
     STORAGE_FORCE_PATH_STYLE: booleanString('true'),
+
+    SENTRY_DSN: optionalUrl(),
   })
   .superRefine(rejectDevOnlyValuesOutsideDevAndTest)
 

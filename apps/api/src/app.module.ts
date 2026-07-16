@@ -3,6 +3,8 @@ import {
   Module,
   type NestModule,
 } from '@nestjs/common';
+import { APP_FILTER } from '@nestjs/core';
+import { SentryGlobalFilter, SentryModule } from '@sentry/nestjs/setup';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -31,6 +33,10 @@ import { TimelineModule } from './timeline/timeline.module';
 
 @Module({
   imports: [
+    // Must be the first import per Sentry's own NestJS setup docs. A no-op
+    // registration when SENTRY_DSN is unset (instrument.ts never called
+    // Sentry.init in that case) — safe to always import.
+    SentryModule.forRoot(),
     ConfigModule,
     LoggerModule.forRootAsync({
       inject: [EnvService],
@@ -69,6 +75,14 @@ import { TimelineModule } from './timeline/timeline.module';
     TimelineModule,
     ExportsModule,
     ImportsModule,
+  ],
+  providers: [
+    // Reports unexpected (non-HttpException/RpcException) errors to Sentry
+    // — a safe no-op when SENTRY_DSN was never set, since no client exists
+    // for it to report to. Registered as a provider (not
+    // `app.useGlobalFilters()` in main.ts) per Sentry's own docs, so it
+    // also applies under Nest's testing module.
+    { provide: APP_FILTER, useClass: SentryGlobalFilter },
   ],
 })
 export class AppModule implements NestModule {

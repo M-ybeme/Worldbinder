@@ -17,7 +17,7 @@ describe('Health (e2e)', () => {
     await app.init();
   });
 
-  it('/health (GET) reports database and redis as up', () => {
+  it('/health (GET) reports database, redis, storage, and queue as up', () => {
     return request(app.getHttpServer())
       .get('/health')
       .expect(200)
@@ -26,6 +26,8 @@ describe('Health (e2e)', () => {
         expect(body.status).toBe('ok');
         expect(body.info?.database.status).toBe('up');
         expect(body.info?.redis.status).toBe('up');
+        expect(body.info?.storage.status).toBe('up');
+        expect(body.info?.queue.status).toBe('up');
       });
   });
 

@@ -9,6 +9,7 @@ import {
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { Injectable, Logger, type OnModuleInit } from '@nestjs/common';
+import { rejectAfter } from '../common/timeout.util';
 import { EnvService } from '../config/env.service';
 import { createS3Client } from './s3-client';
 
@@ -52,6 +53,23 @@ export class StorageService implements OnModuleInit {
           `Could not verify or create storage bucket "${this.bucket}": ${String(error)}`,
         );
       }
+    }
+  }
+
+  /** Milestone 14 Phase 11 — for `StorageHealthIndicator`. Same
+   * `HeadBucketCommand` `onModuleInit` already uses to verify the bucket
+   * exists, wrapped with an explicit timeout so a genuinely unreachable
+   * endpoint reports "down" promptly instead of leaving `GET /health`
+   * hanging on the S3 SDK's own (much longer) retry/timeout defaults. */
+  async isHealthy(): Promise<boolean> {
+    try {
+      await Promise.race([
+        this.client.send(new HeadBucketCommand({ Bucket: this.bucket })),
+        rejectAfter(2000, 'Storage health check timed out'),
+      ]);
+      return true;
+    } catch {
+      return false;
     }
   }
 

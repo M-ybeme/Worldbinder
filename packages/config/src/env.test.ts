@@ -159,3 +159,32 @@ describe('workerEnvSchema local-dev-only value guard', () => {
     expect(result.NODE_ENV).toBe('production')
   })
 })
+
+describe('apiEnvSchema SENTRY_DSN', () => {
+  // `.env.example` ships `SENTRY_DSN=` (empty, not omitted) — dotenv parses
+  // that as the literal empty string, which a plain `z.string().url()`
+  // would reject as an invalid URL. Confirms the `optionalUrl()` helper
+  // treats it as unset instead, the way every consumer of this repo's
+  // `.env.example` actually encounters it.
+  it('treats an empty string the same as unset', () => {
+    const result = loadEnv(apiEnvSchema, baseEnv({ SENTRY_DSN: '' }))
+    expect(result.SENTRY_DSN).toBeUndefined()
+  })
+
+  it('leaves SENTRY_DSN unset when omitted entirely', () => {
+    const result = loadEnv(apiEnvSchema, baseEnv())
+    expect(result.SENTRY_DSN).toBeUndefined()
+  })
+
+  it('accepts a real DSN URL', () => {
+    const result = loadEnv(
+      apiEnvSchema,
+      baseEnv({ SENTRY_DSN: 'https://examplePublicKey@o0.ingest.sentry.io/0' }),
+    )
+    expect(result.SENTRY_DSN).toBe('https://examplePublicKey@o0.ingest.sentry.io/0')
+  })
+
+  it('rejects a non-empty value that is not a valid URL', () => {
+    expect(() => loadEnv(apiEnvSchema, baseEnv({ SENTRY_DSN: 'not-a-url' }))).toThrow(/SENTRY_DSN/)
+  })
+})

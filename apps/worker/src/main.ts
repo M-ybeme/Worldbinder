@@ -1,13 +1,36 @@
+// Must be the first import in the entire process — see instrument.ts's own
+// doc comment for why (OpenTelemetry module patching has to happen before
+// anything else is required).
+import './instrument.js'
+import * as Sentry from '@sentry/node'
 import { loadEnv, workerEnvSchema } from '@worldbinder/config'
 import Redis from 'ioredis'
 import { Pool } from 'pg'
-import type { Queue, Worker } from 'bullmq'
+import type { Job, Queue, Worker } from 'bullmq'
 import { createAttachmentWorker } from './jobs/attachment-worker.js'
 import { scheduleCleanupSweep } from './jobs/cleanup-scheduler.js'
 import { createExportWorker } from './jobs/export-worker.js'
 import { createImportWorker } from './jobs/import-worker.js'
 import { createLogger } from './logger.js'
 import { createS3Client } from './storage/s3-client.js'
+
+type WorkerLogger = ReturnType<typeof createLogger>
+
+// Job failures had no centralized capture point before this — each Worker
+// only logged ad hoc, if at all, and BullMQ's own retry/failure bookkeeping
+// happened silently otherwise. Sentry.captureException is a safe no-op when
+// SENTRY_DSN was never set (see instrument.ts).
+function reportJobFailures(worker: Worker, logger: WorkerLogger): void {
+  worker.on('failed', (job: Job | undefined, error: Error) => {
+    logger.error(
+      { err: error, jobId: job?.id, jobName: job?.name },
+      'Job failed',
+    )
+    Sentry.captureException(error, {
+      tags: { queue: worker.name, jobName: job?.name },
+    })
+  })
+}
 
 async function main(): Promise<void> {
   const env = loadEnv(workerEnvSchema)
@@ -41,6 +64,10 @@ async function main(): Promise<void> {
     bucket: env.STORAGE_BUCKET,
   })
 
+  reportJobFailures(attachmentWorker, logger)
+  reportJobFailures(exportWorker, logger)
+  reportJobFailures(importWorker, logger)
+
   logger.info(
     'Worker connected to Postgres and Redis. Processing attachment, export, and import jobs.',
   )
@@ -62,5 +89,6 @@ async function main(): Promise<void> {
 
 main().catch((error: unknown) => {
   console.error('Worker failed to start:', error)
+  Sentry.captureException(error)
   process.exit(1)
 })
