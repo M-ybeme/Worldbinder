@@ -27,7 +27,8 @@
     "db:seed:perf": "dotenv -e ../../.env -- tsx src/database/seed-perf.ts",
     "search:benchmark": "dotenv -e ../../.env -- tsx src/search/search-benchmark.ts",
     "load-test:http": "dotenv -e ../../.env -- tsx src/load-test/http-load-test.ts",
-    "backup:storage": "dotenv -e ../../.env -- tsx src/backup/storage-mirror.ts"
+    "backup:storage": "dotenv -e ../../.env -- tsx src/backup/storage-mirror.ts",
+    "seed:demo": "dotenv -e ../../.env -- tsx src/demo-content/build-demo-campaign.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1085.0",
