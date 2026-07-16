@@ -2278,9 +2278,14 @@ A pre-implementation audit (three parallel research passes: security/auth, perfo
 - **Resolution**: extracted the guard into a shared `rejectDevOnlyValuesOutsideDevAndTest` function in `packages/config/src/env.ts` (used via `Object.entries` over the known-dev-only-values map, so it safely no-ops for any key a given schema doesn't have — `workerEnvSchema` has no `JWT_ACCESS_SECRET`, for instance) and applied it to both `apiEnvSchema` and `workerEnvSchema`'s `superRefine`. 4 new unit tests cover `workerEnvSchema`'s guard across `development`/`test`/`production`.
 - Full suite re-run clean: 15 `packages/config` unit tests (11 + 4 new), 92 API unit tests, 189 API integration tests, 31 worker unit tests, 4 worker integration tests, typecheck/lint clean across `packages/config`, `apps/api`, `apps/worker`.
 
-**Phase 10 — Email: transport made swappable**
+**Phase 10 — Email: transport made swappable** [Done — see 0.14.10]
 
 - Current mail sending goes through `nodemailer` via raw SMTP against Mailpit locally. Both Resend and Postmark offer SMTP relay endpoints, so the plan is keeping `nodemailer` (once upgraded in Phase 2) but making its SMTP host/port/credentials fully env-driven rather than assuming Mailpit's local defaults — so pointing it at a real provider later is a config change. No real Resend/Postmark account is created or tested against in this milestone.
+- **Audit result — host/port/secure/user/password/from were already plain env vars**, no hardcoded Mailpit values in the connection logic itself.
+- **Found one real gap**: `MailService`'s transporter hardcoded `ignoreTLS: !SMTP_SECURE` since Milestone 1 — forcing STARTTLS off entirely for any non-`secure` connection. That's a Mailpit-shaped assumption baked into code, not config: Resend (`smtp.resend.com`) and Postmark (`smtp.postmarkapp.com`) both relay on port 587 with `secure: false` **and** expect an opportunistic STARTTLS upgrade, which `ignoreTLS: true` would have silently disabled — the app would have connected to a real provider in plaintext (if the provider even allowed it) or failed outright.
+- **Resolution**: removed the hardcoded `ignoreTLS` line entirely, letting nodemailer negotiate STARTTLS automatically based on what the connected server's `EHLO` response actually advertises. Verified this doesn't break local dev by removing the flag and re-running the full `auth.e2e-spec.ts` (24 tests, including real verification/reset email delivery through Mailpit) and `membership.e2e-spec.ts` (9 tests, including real invitation email delivery) suites against the real Mailpit container — Mailpit never advertises STARTTLS, so nodemailer never attempted an upgrade against it either way, meaning the hardcoded flag was pure dead-weight risk with no actual local-dev benefit.
+- Added a `.env.example` note on Resend/Postmark's shared port-587-plus-STARTTLS shape so a future deploy doesn't have to rediscover this.
+- Full suite re-run clean: 92 API unit tests, 189 API integration tests, typecheck/lint.
 
 **Phase 11 — Monitoring: Sentry SDK wired in, env-gated**
 

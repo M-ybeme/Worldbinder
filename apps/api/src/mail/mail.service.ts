@@ -14,10 +14,19 @@ export class MailService implements OnModuleDestroy {
     this.transporter = nodemailer.createTransport({
       host: this.env.values.SMTP_HOST,
       port: this.env.values.SMTP_PORT,
+      // `secure: true` = implicit TLS (typically port 465); `secure: false`
+      // leaves nodemailer free to negotiate STARTTLS opportunistically if
+      // the server's EHLO response advertises it, which is exactly what
+      // Resend's and Postmark's SMTP relays expect on port 587. An earlier
+      // version of this transport hardcoded `ignoreTLS: !secure`, forcing
+      // STARTTLS off entirely for any non-`secure` connection — that was a
+      // Mailpit-shaped assumption baked into code rather than config
+      // (Mailpit never advertises STARTTLS, so nodemailer never attempts an
+      // upgrade against it either way; verified by removing the flag and
+      // re-running the full auth/membership e2e suites against real
+      // Mailpit), and would have silently broken STARTTLS against a real
+      // provider once one was configured.
       secure: this.env.values.SMTP_SECURE,
-      // Mailpit (local dev/test) speaks plaintext SMTP only — this prevents
-      // nodemailer from ever attempting an opportunistic STARTTLS upgrade.
-      ignoreTLS: !this.env.values.SMTP_SECURE,
       auth:
         this.env.values.SMTP_USER && this.env.values.SMTP_PASSWORD
           ? {

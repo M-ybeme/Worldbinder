@@ -6,6 +6,17 @@ Every push to `main` should add an entry here. This is meant to be an honest rec
 
 ## [Unreleased]
 
+## [0.14.10] - 2026-07-15
+
+### Added
+
+- **Milestone 14, Phase 10 — Email: transport made swappable.** Audited `MailService` against "pointing it at a real provider later is a config change." Host/port/secure/user/password/from were already plain env vars, no hardcoded Mailpit values in the connection logic itself.
+- **Found one real gap**: the transporter hardcoded `ignoreTLS: !SMTP_SECURE` since Milestone 1, forcing STARTTLS off entirely for any non-`secure` connection. Resend and Postmark both relay on port 587 with `secure: false` and expect an opportunistic STARTTLS upgrade — `ignoreTLS: true` would have silently disabled that, breaking real-provider connectivity the first time one was configured.
+- Removed the hardcoded `ignoreTLS` line, letting nodemailer negotiate STARTTLS automatically from the server's own `EHLO` response. Verified safe for local dev by removing the flag and re-running the full `auth.e2e-spec.ts` (24 tests, real verification/reset email delivery) and `membership.e2e-spec.ts` (9 tests, real invitation email delivery) against the real Mailpit container — Mailpit never advertises STARTTLS, so the flag was dead-weight risk with no local benefit.
+- Added an `.env.example` note on Resend/Postmark's shared port-587-plus-STARTTLS shape.
+- Full suite re-run clean: 92 API unit tests, 189 API integration tests, typecheck/lint.
+- **Scope note**: this is Phase 10 of 13. Monitoring/backup/runbook work remains, tracked in the roadmap.
+
 ## [0.14.9] - 2026-07-15
 
 ### Added
