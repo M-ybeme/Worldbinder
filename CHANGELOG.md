@@ -6,6 +6,13 @@ Every push to `main` should add an entry here. This is meant to be an honest rec
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-07-16
+
+### Added
+
+- **Milestone 15, Phase 6 — Beta release notes. Milestone 15 (Beta) is complete.** New `docs/product/beta-release-notes.md`, written last so it could accurately describe the real demo campaign and real draft legal docs rather than aspirational placeholders. Reframes `CHANGELOG.md`'s milestone history as capabilities for a first-time in-person tester, introduces the Ashgate Crossing demo campaign (with the three real demo account credentials), lists the specific things we want beta feedback on, and closes with an honest "explicitly out of scope for this beta" section (no hosted deployment, no in-app feedback/support UI, Sentry inert, no self-service account deletion, legal docs still draft).
+- **Milestone 15 status**: all 6 phases done. Per the user's explicit 2026-07-16 decision, beta testing itself is in-person and moderated — no in-app feedback-capture UI, error-report UI, support-contact channel, or live Sentry project was built, since the developer observes sessions directly and those needs are deferred to Milestone 16 alongside real hosting. What shipped: the demo-content build script and the "Ashgate Crossing" demo campaign meeting every roadmap §28 target (Phases 1-4, 0.15.1), a draft Privacy Policy and Terms of Use grounded in the real threat model and schema (Phase 5, 0.15.2), and these release notes (Phase 6). Full test suite verified clean (190/190 integration, plus unit tests) at the close of the milestone.
+
 ## [0.15.2] - 2026-07-16
 
 ### Added

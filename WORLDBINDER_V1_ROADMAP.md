@@ -2374,7 +2374,7 @@ A pre-implementation audit (three parallel research passes: security/auth, perfo
 - New `docs/legal/` directory. No in-app route yet — no public hosting exists until Milestone 16, so these are review documents for now, not live pages.
 - Grounded strictly in `docs/security/threat-model.md`'s real "what's collected" list — account/session data, campaign content with its real public/GM-only enforcement, attachments, hashed-IP security telemetry — explicitly stating no analytics/ads/data-sale exist. Intended-but-not-live infrastructure (Railway/R2/email provider/Sentry) described in forward-looking language, matching the threat model's own honest tense. Both documents open with a draft banner (for owner and eventual legal review, not yet reviewed by counsel). Terms cites the roadmap's own "users own their campaign content" product principle directly.
 
-**Phase 6 — Beta release notes**
+**Phase 6 — Beta release notes** [Done — see 0.16.0]
 
 - `docs/product/beta-release-notes.md` — drawn from `CHANGELOG.md`'s milestone summaries but reframed as capabilities for a first-time in-person tester, a short in-fiction pitch for the demo campaign, and an honest "explicitly out of scope for this beta" section (no hosting, no in-app feedback/support UI, Sentry inert). Written last, once there's a real campaign and real docs to describe accurately.
 
