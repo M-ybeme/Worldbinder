@@ -6,6 +6,15 @@ Every push to `main` should add an entry here. This is meant to be an honest rec
 
 ## [Unreleased]
 
+## [0.15.2] - 2026-07-16
+
+### Added
+
+- **Milestone 15, Phase 5 — Privacy Policy and Terms of Use draft.** New `docs/legal/privacy-policy.md` and `docs/legal/terms-of-use.md`. Both are explicitly marked as drafts for owner and eventual legal review, not live pages — there's no in-app route or public hosting for them yet, and Milestone 16 is where real hosting exists at all.
+- Grounded strictly in `docs/security/threat-model.md`'s actual "what's collected" list (account/session data, campaign content with its real backend-enforced public/GM-only split, attachments, hashed-IP security telemetry) and the real schema (`users.status`/`users.deletedAt` exist, but no self-service account-deletion endpoint exists yet) — explicitly states no analytics, ads, or data sale exist, and honestly describes account deletion during this beta as a manual, developer-mediated process (matching the milestone's own in-person moderated beta decision) rather than inventing a self-service flow that isn't built.
+- Terms of Use includes an acceptable-use section (no bypassing permission checks, no service disruption, no malicious uploads) and an age requirement (16+), and cites the roadmap's own "users own their campaign data" product principle (§2.4) directly rather than inventing new language.
+- Intended-but-not-yet-provisioned infrastructure (Railway, Cloudflare R2, a transactional email provider, Sentry) is described in forward-looking language, matching the threat model's own honest tense about what's live today versus planned for Milestone 16.
+
 ## [0.15.1] - 2026-07-16
 
 ### Added
