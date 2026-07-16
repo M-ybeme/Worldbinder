@@ -6,6 +6,17 @@ Every push to `main` should add an entry here. This is meant to be an honest rec
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-07-16
+
+### Added
+
+- **Milestone 14, Phase 13 — Incident runbooks. Milestone 14 (Performance, Security, and Reliability Hardening) is complete.** `docs/runbooks/`, `docs/architecture/`, and `docs/security/` existed as empty directories (aside from Phase 1's `threat-model.md`) at the start of this milestone.
+- `docs/runbooks/incident-triage.md` — first-response steps (`/health`, structured `pino` logs, `docker ps`), then a section per subsystem (database, Redis/rate-limiting, object storage, background jobs, email delivery, elevated error rates), grounded in this milestone's own work: the real `/health` JSON shape and 2-second-timeout behavior (Phase 11), the real `ratelimit:*`/`bull:*` Redis key patterns, the real status-enum transitions for diagnosing a stuck export/import/attachment job, and pointers to the Phase 8 load-test harnesses. Ends with an explicit "Once Railway/Sentry exist (Milestone 16 — not yet)" placeholder section.
+- `docs/runbooks/security-incident.md` — the `security_events`/`campaign_audit_events` two-audit-trail distinction, a step-by-step for `refresh_reuse_detected` (the one security event this app actively defends against, not just logs), repeated-login-failure triage, and a credentials-leaked procedure.
+- **Found and fixed a real inaccuracy while writing the credentials-leaked procedure**: the first draft claimed there was no per-user mass session revocation, but `changePassword` (`auth.service.ts:506`) actually does revoke *all* of a user's active sessions as a side effect — `logout`/`DELETE /auth/sessions/:sessionId` are the ones that only revoke one session each. Verified against the real code before publishing rather than left as an assumption.
+- **Every command and SQL query in both documents was run against the real local stack before being written down**: `GET /health`'s exact response shape, both `security_events` queries, the export/import/attachment status queries, and both `redis-cli KEYS` patterns — all confirmed against the real dev database/Redis/API. Caught and simplified an unnecessarily convoluted JSON-pretty-print one-liner in an early draft in the process.
+- **Milestone 14 status**: all 13 phases done. No critical security findings or known authorization leaks beyond what each phase's own audit already fixed. Performance budgets pass against the Phase 8 harnesses. Backup restore succeeds, verified for real (Phase 12). The rollback procedure is documented and tested. As with Milestone 13: this is "hardened against the issues each phase's audit actually found," not an external penetration test — Railway/R2/Sentry/a real email provider remain unprovisioned by deliberate user decision, deferred to Milestone 16.
+
 ## [0.14.12] - 2026-07-16
 
 ### Added
