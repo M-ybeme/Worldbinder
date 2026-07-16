@@ -6,6 +6,17 @@ Every push to `main` should add an entry here. This is meant to be an honest rec
 
 ## [Unreleased]
 
+## [0.14.9] - 2026-07-15
+
+### Added
+
+- **Milestone 14, Phase 9 — Storage: S3-compatible backend made swappable.** Audited `StorageService` and both env schemas against the goal of "R2 becomes a config change later, not a code change" — most of it was already correct: endpoint/region/bucket/credentials/path-style are all plain env vars with MinIO-shaped local defaults, not hardcoded logic, and `onModuleInit()`'s auto-bucket-creation already skips production correctly. Confirmed via a full-codebase grep that no real code path (only comments/local test fixtures) hardcodes "minio".
+- **Found one real gap**: Phase 4b's dev-only-secrets guard (rejecting the well-known MinIO default storage credentials outside `development`/`test`) was applied to `apiEnvSchema` but never to `workerEnvSchema`, even though `apps/worker` talks to the same storage bucket directly. A production worker deploy that forgot to set real R2 credentials would have booted silently against those defaults.
+- Extracted the guard into a shared `rejectDevOnlyValuesOutsideDevAndTest` function in `packages/config/src/env.ts` and applied it to both schemas. 4 new unit tests cover `workerEnvSchema`'s guard.
+- Added a one-line `.env.example` note on the two R2-specific knobs (`STORAGE_REGION=auto`, `STORAGE_FORCE_PATH_STYLE=false`).
+- Full suite re-run clean: 15 `packages/config` unit tests, 92 API unit tests, 189 API integration tests, 31 worker unit tests, 4 worker integration tests, typecheck/lint clean across all three packages.
+- **Scope note**: this is Phase 9 of 13. Email/monitoring/backup/runbook work remains, tracked in the roadmap.
+
 ## [0.14.8] - 2026-07-15
 
 ### Added

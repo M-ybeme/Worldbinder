@@ -33,13 +33,41 @@ export function loadEnv<T extends z.ZodTypeAny>(
 // works out of the box against docker-compose/`.env.example` with zero
 // ceremony) but booting a non-dev environment with any of them means a
 // deploy silently skipped generating real credentials rather than failing
-// closed. Checked in `apiEnvSchema`'s `superRefine` below, not per-field,
-// since the check depends on `NODE_ENV`.
+// closed. Checked via `rejectDevOnlyValuesOutsideDevAndTest` below (shared
+// by both `apiEnvSchema` and `workerEnvSchema`'s `superRefine` — a
+// production *worker* booted with these same storage defaults is just as
+// real a footgun as the API being, since apps/worker talks to the same
+// bucket directly), not per-field, since the check depends on `NODE_ENV`.
+// `Object.entries` naturally no-ops for any key a given schema doesn't
+// have (e.g. workerEnvSchema has no `JWT_ACCESS_SECRET`) — `values[key]`
+// is simply `undefined` there, which never matches a dev-only value.
 const KNOWN_DEV_ONLY_VALUES = {
   JWT_ACCESS_SECRET: 'replace-with-a-random-32-byte-hex-string',
   STORAGE_ACCESS_KEY_ID: 'worldbinder',
   STORAGE_SECRET_ACCESS_KEY: 'worldbinder-dev-secret',
 } as const
+
+function rejectDevOnlyValuesOutsideDevAndTest(
+  values: Record<string, unknown>,
+  ctx: z.RefinementCtx,
+): void {
+  // `test` is exempt alongside `development`, not just production-only —
+  // CI's integration-tests job (see .github/workflows/ci.yml) runs with
+  // NODE_ENV=test against ephemeral service containers that use these
+  // same dev-shaped storage credentials and deliberately doesn't override
+  // them, only JWT_ACCESS_SECRET. `test` environments are inherently
+  // ephemeral/local-infra, not a real deploy target.
+  if (values.NODE_ENV === 'development' || values.NODE_ENV === 'test') return
+  for (const [key, devOnlyValue] of Object.entries(KNOWN_DEV_ONLY_VALUES)) {
+    if (values[key] === devOnlyValue) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: [key],
+        message: `${key} is still set to its local-dev-only value — generate a real one before running outside development`,
+      })
+    }
+  }
+}
 
 /** Comma-separated allow-list, e.g. `https://app.example.com,https://staging.example.com`. */
 function corsOriginList() {
@@ -97,39 +125,24 @@ export const apiEnvSchema = z
     // MinIO needs path-style requests; real S3/R2 typically don't.
     STORAGE_FORCE_PATH_STYLE: booleanString('true'),
   })
-  .superRefine((values, ctx) => {
-    // `test` is exempt alongside `development`, not just production-only —
-    // CI's integration-tests job (see .github/workflows/ci.yml) runs with
-    // NODE_ENV=test against ephemeral service containers that use these
-    // same dev-shaped storage credentials and deliberately doesn't
-    // override them, only JWT_ACCESS_SECRET. `test` environments are
-    // inherently ephemeral/local-infra, not a real deploy target.
-    if (values.NODE_ENV === 'development' || values.NODE_ENV === 'test') return
-    for (const [key, devOnlyValue] of Object.entries(KNOWN_DEV_ONLY_VALUES)) {
-      if (values[key as keyof typeof KNOWN_DEV_ONLY_VALUES] === devOnlyValue) {
-        ctx.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: [key],
-          message: `${key} is still set to its local-dev-only value — generate a real one before running outside development`,
-        })
-      }
-    }
-  })
+  .superRefine(rejectDevOnlyValuesOutsideDevAndTest)
 
 export type ApiEnv = z.infer<typeof apiEnvSchema>
 
-export const workerEnvSchema = z.object({
-  NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
-  LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
-  DATABASE_URL: z.string().url(),
-  REDIS_URL: z.string().url(),
+export const workerEnvSchema = z
+  .object({
+    NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+    LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
+    DATABASE_URL: z.string().url(),
+    REDIS_URL: z.string().url(),
 
-  STORAGE_ENDPOINT: z.string().url().default('http://127.0.0.1:9000'),
-  STORAGE_REGION: z.string().default('us-east-1'),
-  STORAGE_BUCKET: z.string().default('worldbinder-dev'),
-  STORAGE_ACCESS_KEY_ID: z.string().default('worldbinder'),
-  STORAGE_SECRET_ACCESS_KEY: z.string().default('worldbinder-dev-secret'),
-  STORAGE_FORCE_PATH_STYLE: booleanString('true'),
-})
+    STORAGE_ENDPOINT: z.string().url().default('http://127.0.0.1:9000'),
+    STORAGE_REGION: z.string().default('us-east-1'),
+    STORAGE_BUCKET: z.string().default('worldbinder-dev'),
+    STORAGE_ACCESS_KEY_ID: z.string().default('worldbinder'),
+    STORAGE_SECRET_ACCESS_KEY: z.string().default('worldbinder-dev-secret'),
+    STORAGE_FORCE_PATH_STYLE: booleanString('true'),
+  })
+  .superRefine(rejectDevOnlyValuesOutsideDevAndTest)
 
 export type WorkerEnv = z.infer<typeof workerEnvSchema>
