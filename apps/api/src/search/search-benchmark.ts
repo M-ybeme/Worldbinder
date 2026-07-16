@@ -2,6 +2,7 @@ import { apiEnvSchema, loadEnv } from '@worldbinder/config';
 import { eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
+import { PERF_CAMPAIGN_SLUG } from '../database/seed-perf';
 import * as schema from '../database/schema';
 import { campaigns, entities } from '../database/schema';
 import { CampaignPolicyService } from '../membership/campaign-policy.service';
@@ -15,7 +16,6 @@ import { SearchService } from './search.service';
  * Postgres would be flaky in CI. Run manually; read the printed p50/p95/p99.
  */
 
-const PERF_CAMPAIGN_SLUG = 'search-perf-benchmark';
 const RUNS_PER_QUERY = 20;
 // Guaranteed present on a handful of entities by seed-perf.ts, for a
 // realistic-selectivity multi-word content-phrase benchmark.

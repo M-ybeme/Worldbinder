@@ -6,6 +6,19 @@ Every push to `main` should add an entry here. This is meant to be an honest rec
 
 ## [Unreleased]
 
+## [0.14.8] - 2026-07-15
+
+### Added
+
+- **Milestone 14, Phase 8 — Load tests.** No load-testing tool existed anywhere (`k6`/`autocannon`/`artillery` all absent) despite the roadmap already documenting concrete seed sizes and latency budgets to test against.
+- Extended `seed-perf.ts` (Milestone 7) with the two §20.6 seed counts it was missing — 500 timeline events, 20 maps — plus a fixed login credential for its fixture owner user so HTTP harnesses can authenticate through the real `/auth/login` endpoint. Attachments still aren't seeded there: export's attachment step reads real bytes from object storage, and fake rows with no matching MinIO object would fail that step instead of measuring it.
+- Installed `autocannon`. `apps/api/src/load-test/http-load-test.ts` (`pnpm --filter @worldbinder/api load-test:http`) runs real concurrent HTTP load against the genuinely concurrent read routes — campaigns list, dashboard, entity detail, relationships, search. `apps/worker/src/load-test/export-import-benchmark.ts` (`pnpm --filter @worldbinder/worker load-test:export-import`) times the real export/validate/import pipeline directly at full 10k/50k scale instead, since background jobs aren't a concurrent-request workload.
+- **Found and fixed a real bug while wiring this up**: `seed-perf.ts`'s `main().catch(...)` ran unconditionally at module scope, so importing its exported constants (needed by the new scripts and by `search-benchmark.ts`) silently re-triggered a full campaign re-seed as a side effect — the first load-test run got its own campaign deleted and recreated mid-benchmark. Fixed with a `require.main === module` guard.
+- **Surfaced a real, working-as-designed interaction with Phase 5's rate limiter**: `GlobalRateLimitGuard` buckets by client IP at 300 req/60s, and a loopback benchmark can't spread across multiple real IPs the way production traffic would, so a duration-based run got mostly 429'd after the first few requests. Switched the harness to request-count-bounded (`amount`, not `duration`) — 200 total requests across 5 targets, safely under the shared floor — and documented this as a deliberate scope note, not a defect to fix in Phase 5's code.
+- **Results**: `GET /campaigns` p97.5=25ms, dashboard p97.5=199ms, entity detail p97.5=9ms, relationships p97.5=208ms, search p97.5=360ms — all PASS against the §22.2 budgets (reads <300ms, search <500ms). Export: 1.1s for an 8.5MB archive. Dry-run validate: 359ms, counts matched exactly (10000/50000/2000/200/500/20). Full transactional import: 45.3s — the dominant cost, expected at this row count in one transaction, and now a concrete number instead of a guess for §22.2's "may take longer" framing.
+- Full suite re-run clean: 92 API unit tests, 31 worker unit tests, typecheck/lint on both.
+- **Scope note**: this is Phase 8 of 13. The storage/email/monitoring/backup/runbook work remains, tracked in the roadmap.
+
 ## [0.14.7] - 2026-07-15
 
 ### Added

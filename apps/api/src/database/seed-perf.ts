@@ -4,6 +4,7 @@ import type { EntityType, TiptapDoc } from '@worldbinder/contracts';
 import { eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
+import { PasswordService } from '../auth/password.service';
 import {
   buildWeightedTsvector,
   extractPlainText,
@@ -13,9 +14,12 @@ import {
   campaigns,
   entities,
   entityRelationships,
+  maps,
   plotThreads,
   relationshipTypes,
   sessions,
+  timelineEvents,
+  userCredentials,
   users,
 } from './schema';
 
@@ -24,10 +28,17 @@ import {
  * seeded large campaign" (roadmap §14.4: 10k entities / 50k relationships /
  * 200 sessions / 2k plot threads, p95 < 500ms) — needs *some* concrete
  * fixture to validate against now, not just a promise to build one later.
- * This is a deliberately narrow, standalone script for that one exit
- * criterion, NOT the full §20.6 cross-feature profiling suite (dashboard,
- * entity details, relationship queries, exports, imports) — that belongs to
- * Milestone 14 ("Performance, Security, and Reliability Hardening").
+ * Extended in Milestone 14 Phase 8 with the two counts §20.6 also lists
+ * (500 timeline events, multiple maps) so the same campaign now backs that
+ * phase's broader profiling harness (dashboard, entity details, relationship
+ * queries, exports, imports), not just the original search benchmark.
+ * Attachments are deliberately NOT seeded here: §20.6 says "multiple maps and
+ * attachments," but export's attachment step fetches each row's bytes from
+ * real object storage (`GetObjectCommand`) — synthetic attachment rows with
+ * no matching MinIO object would make every export benchmark run fail on
+ * that step instead of measuring it. Every other export section (entities,
+ * relationships, sessions, plot threads, maps, timeline) is fully seeded and
+ * exercised.
  *
  * Inserts directly via Drizzle, bypassing the NestJS service layer — going
  * through full HTTP/service calls one row at a time would take far too
@@ -41,10 +52,19 @@ const ENTITY_COUNT = 10_000;
 const SESSION_COUNT = 200;
 const PLOT_THREAD_COUNT = 2_000;
 const RELATIONSHIP_COUNT = 50_000;
+const TIMELINE_EVENT_COUNT = 500;
+const MAP_COUNT = 20;
 const BATCH_SIZE = 500;
 
-const PERF_CAMPAIGN_SLUG = 'search-perf-benchmark';
-const PERF_OWNER_EMAIL = 'search-perf-owner@worldbinder.local';
+// Exported for search-benchmark.ts and Milestone 14 Phase 8's load-test
+// scripts, so they identify/log into this exact fixture campaign/user
+// without redeclaring (and risking drift from) these values.
+export const PERF_CAMPAIGN_SLUG = 'search-perf-benchmark';
+export const PERF_OWNER_EMAIL = 'search-perf-owner@worldbinder.local';
+// Fixed, well-known credential for this fixture user only — lets Phase 8's
+// HTTP load-test harness log in via the real /auth/login endpoint instead of
+// needing its own user-provisioning path. Never used for a real account.
+export const PERF_OWNER_PASSWORD = 'search-perf-owner-password-9!';
 
 const ENTITY_TYPES: EntityType[] = [
   'character',
@@ -203,6 +223,15 @@ async function main(): Promise<void> {
     })
     .returning({ id: users.id });
   if (!owner) throw new Error('Failed to create/resolve perf owner user');
+
+  const passwordHash = await new PasswordService().hash(PERF_OWNER_PASSWORD);
+  await db
+    .insert(userCredentials)
+    .values({ userId: owner.id, passwordHash })
+    .onConflictDoUpdate({
+      target: userCredentials.userId,
+      set: { passwordHash },
+    });
 
   const [campaign] = await db
     .insert(campaigns)
@@ -377,13 +406,72 @@ async function main(): Promise<void> {
       .then(() => undefined),
   );
 
+  // --- Timeline events --- (roadmap §14.2 weights: title=A, summary=B,
+  // content=C — same buildTimelineEventSearchVector mapping as
+  // timeline.service.ts, inlined since that function isn't exported)
+  const timelineEventRows = Array.from(
+    { length: TIMELINE_EVENT_COUNT },
+    (_, i) => {
+      const title = `Event ${i}: ${randomWords(3)}`;
+      const summary = randomSentence();
+      const contentJson = randomDoc(1 + randomInt(2));
+      const contentText = extractPlainText(contentJson);
+      const year = 1 + randomInt(2000);
+
+      return {
+        campaignId: campaign.id,
+        title,
+        summary,
+        contentJson,
+        startDateJson: { schemaVersion: 1 as const, year },
+        endDateJson: null,
+        datePrecision: 'year' as const,
+        visibility: 'public' as const,
+        searchVector: buildWeightedTsvector({
+          a: [title],
+          b: [summary],
+          c: [contentText],
+        }),
+      };
+    },
+  );
+  await insertInBatches('Timeline events', timelineEventRows, (batch) =>
+    db
+      .insert(timelineEvents)
+      .values(batch)
+      .then(() => undefined),
+  );
+
+  // --- Maps --- (no image attachment — see file-level doc comment on why
+  // attachments aren't seeded)
+  const mapRows = Array.from({ length: MAP_COUNT }, (_, i) => ({
+    campaignId: campaign.id,
+    name: `Map ${i}: ${randomWords(2)}`,
+    description: randomSentence(),
+    visibility: 'public' as const,
+  }));
+  await insertInBatches('Maps', mapRows, (batch) =>
+    db
+      .insert(maps)
+      .values(batch)
+      .then(() => undefined),
+  );
+
   console.log(
     `\nDone. Campaign id: ${campaign.id} (slug: ${PERF_CAMPAIGN_SLUG})`,
   );
   await pool.end();
 }
 
-main().catch((error: unknown) => {
-  console.error('Perf seed failed:', error);
-  process.exit(1);
-});
+// Guarded: search-benchmark.ts and Phase 8's load-test scripts import this
+// module's exported constants (PERF_CAMPAIGN_SLUG etc.) without wanting to
+// re-run the seed — importing a module always executes its top-level code,
+// so without this check every one of those imports would silently trigger a
+// full re-seed (delete + recreate the whole 10k-entity campaign) as a side
+// effect, which is exactly what happened before this guard was added.
+if (require.main === module) {
+  main().catch((error: unknown) => {
+    console.error('Perf seed failed:', error);
+    process.exit(1);
+  });
+}

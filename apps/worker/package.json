@@ -9,7 +9,8 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --passWithNoTests --exclude \"**/*.integration.spec.ts\"",
-    "test:integration": "dotenv -e ../../.env -- vitest run integration.spec --passWithNoTests"
+    "test:integration": "dotenv -e ../../.env -- vitest run integration.spec --passWithNoTests",
+    "load-test:export-import": "dotenv -e ../../.env -- tsx src/load-test/export-import-benchmark.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1085.0",
