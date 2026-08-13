@@ -10,6 +10,12 @@ Every push to `main` should add an entry here. This is meant to be an honest rec
 
 - **Production infrastructure decisions finalized.** Domain (`worldbinder.net`), hosting (Railway, unchanged from Milestone 14), object storage (Cloudflare R2), transactional email (Resend), and monitoring (Sentry) are now decided — closing the provider ambiguity Milestone 14 deliberately left open ("Resend or Postmark," "Postmark, Resend, or SES"). This is a documentation/planning update only: no infrastructure is provisioned yet, and no code changed. `docs/decisions/0021-resend-production-email.md` records the email-provider decision; `WORLDBINDER_V1_ROADMAP.md`'s Milestone 16 section gets a concrete 17-step production-provisioning checklist. `docs/security/threat-model.md`, `docs/runbooks/incident-triage.md`, `docs/legal/privacy-policy.md`, and `.env.example` updated to name Resend specifically instead of "Resend or Postmark." Resend is reached through the same `nodemailer`/SMTP transport Milestone 14 already built — no mail-sending code changed.
 
+## [0.16.3] - 2026-08-12
+
+### Added
+
+- **Milestone 16, Phase 3 — architecture and data-model documentation.** New `docs/architecture/overview.md` (the three-process topology, the request lifecycle through `AppModule`'s middleware and per-route guards, module boundaries, `packages/` responsibilities) and `docs/architecture/data-model.md` (a narrative companion to `schema.ts` — tenancy, the polymorphic `entities` table, the `entity_relationships`-vs-`entity_wiki_links` distinction, the `resource_revisions`-vs-audit-events distinction, soft-deletion exceptions — each section cross-referenced to the ADR that made the underlying decision, deliberately not a field-by-field schema mirror that would drift out of date).
+
 ## [0.16.2] - 2026-08-12
 
 ### Added

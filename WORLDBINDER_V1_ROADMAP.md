@@ -2462,6 +2462,11 @@ Exact DNS record values, Resend account details, and Railway service configurati
 
 - Wrote all 11 missing/partial ADRs (§29.1): `0010` TipTap JSON as canonical rich text, `0011` relationship table over Neo4j, `0012` S3-compatible storage, `0013` application-level revision snapshots, `0014` PostgreSQL full-text search, `0015` campaign-scoped tenancy (data model — distinct from `0008`'s enforcement-layer ADR), `0016` soft deletion, `0017` versioned export format, `0018` structured fantasy-calendar dates, `0019` IndexedDB local drafts, `0020` BullMQ job processing. Every one grounded in the real implementing code (schema tables, service files, the actual npm packages used), not invented reasoning — all 18 required ADR topics are now documented (20 total, including `0009`'s extra entity-visibility ADR beyond the required list).
 
+**Phase 3 — Architecture and data-model documentation** [Done — see 0.16.3]
+
+- `docs/architecture/overview.md` — the three-process topology (API/worker/web), the request lifecycle through `AppModule.configure()`'s middleware and per-route guards (not global — ADR-0008), module boundaries on both sides, `packages/` responsibilities, and a forward-reference to Milestone 16's not-yet-provisioned deployment topology.
+- `docs/architecture/data-model.md` — a narrative companion to `schema.ts`, not a field-by-field mirror (to avoid drift): tenancy, the polymorphic `entities` table, the two distinct connection mechanisms (`entity_relationships` vs. `entity_wiki_links`), the two distinct history/audit trails (`resource_revisions` vs. `campaign_audit_events`/`security_events`), and the soft-deletion exceptions — each section cross-referencing the ADR that made the underlying decision.
+
 ---
 
 ## 28. Demo Campaign Requirements
