@@ -59,7 +59,7 @@ Written as part of Milestone 14 Phase 13 (Performance, Security, and Reliability
 - Locally, everything goes through Mailpit — check `http://localhost:8025` directly, or its REST API (`GET http://127.0.0.1:8025/api/v1/messages`, the same endpoint `apps/api/test/helpers/test-users.ts`'s `findEmailToken` polls in the integration suite).
 - If `MailService.send()` (`apps/api/src/mail/mail.service.ts`) is throwing, it logs via `this.logger.error({ err, to, subject }, 'Failed to send email')` before rethrowing — check for that log line and read the underlying SMTP error, not just "email didn't arrive."
 - A misconfigured `SMTP_HOST=localhost` (instead of `127.0.0.1`) is a documented, previously-hit footgun (`CLAUDE.md`): on at least one dev machine `localhost` resolves to `::1` first, where an unrelated process was squatting on port 1025 instead of Docker's Mailpit.
-- Once a real provider (Resend/Postmark) is configured, see `.env.example`'s comment on their shared port-587-plus-STARTTLS shape (Milestone 14 Phase 10) — `SMTP_SECURE` should stay `false` for either.
+- Once Resend is configured in production (the selected provider — see [ADR-0021](../decisions/0021-resend-production-email.md)), see `.env.example`'s comment on its port-587-plus-STARTTLS shape (Milestone 14 Phase 10) — `SMTP_SECURE` should stay `false`.
 
 ## Elevated error rates / suspected regression
 

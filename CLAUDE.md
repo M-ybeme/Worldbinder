@@ -6,6 +6,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Worldbinder is a permission-aware campaign encyclopedia and continuity manager for tabletop RPGs (React 19/Vite frontend, NestJS 11 API, Postgres/Drizzle, Redis). Full product scope, data model, and the milestone-by-milestone build plan live in `WORLDBINDER_V1_ROADMAP.md` — read it before making product-scope or architecture decisions, not just code. `CHANGELOG.md` is the honest, dated record of what has actually shipped per milestone; trust it over inferring progress from file existence. `docs/decisions/*.md` are ADRs for the _why_ behind stack/architecture choices; `docs/planning/ui-ux.md` is the UX/navigation spec.
 
+**Production infrastructure (decided 2026-08-12, not yet provisioned — Milestone 16's job)**: domain `worldbinder.net`, hosting Railway, object storage Cloudflare R2, transactional email Resend (via the existing `nodemailer`/SMTP transport — see [ADR-0021](docs/decisions/0021-resend-production-email.md), not a Resend SDK integration), monitoring Sentry. These were open questions ("Resend or Postmark," "Cloudflare R2 or AWS S3... Postmark, Resend, or SES") as recently as Milestone 14/15; don't re-ask or re-litigate them — check `WORLDBINDER_V1_ROADMAP.md`'s Milestone 16 section for the current provisioning checklist instead.
+
 ## Commands
 
 Run from the repo root unless noted. All commands fan out across the pnpm/Turborepo workspace.

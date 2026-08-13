@@ -251,7 +251,7 @@ The project should use supported production releases rather than experimental re
 - **MinIO** for local S3-compatible storage
 - **Cloudflare R2** or AWS S3 in production
 - **Mailpit** locally
-- **Postmark, Resend, or SES** in production
+- **Resend** in production (via SMTP relay through the existing `nodemailer` transport — decided 2026-08-12, see [ADR-0021](docs/decisions/0021-resend-production-email.md))
 - **GitHub Actions** for CI/CD
 - **Sentry** for frontend and backend errors
 - **OpenTelemetry** for traces and service metrics
@@ -2197,7 +2197,7 @@ A pre-implementation audit of the actual repo state (not the aspirational delive
 
 ### Phases (audit findings, 2026-07-15)
 
-A pre-implementation audit (three parallel research passes: security/auth, performance, reliability/ops) found the codebase itself in solid shape on authorization specifically, but real gaps elsewhere. **Hosting decision (2026-07-15)**: the intended future target is Railway — API and worker as separate services, Railway-managed Postgres and Redis, Cloudflare R2 replacing MinIO, a transactional email provider (Resend or Postmark) replacing raw SMTP, Sentry for error monitoring — but **no Railway environment is provisioned yet, deliberately**: the app should be feature-complete first. This milestone's job is to make every one of those integration points environment-driven and swappable (CORS origins, CSP, cookie flags, secrets, storage backend, email transport, monitoring DSN, health checks, backup/restore tooling) via config, not to actually stand up Railway. Live hosted backup drills, live alert testing, and production smoke tests are explicitly deferred to Milestone 16 (v1.0 Release Candidate), once Railway is actually provisioned. Local dev keeps docker-compose/MinIO/Mailpit unchanged throughout.
+A pre-implementation audit (three parallel research passes: security/auth, performance, reliability/ops) found the codebase itself in solid shape on authorization specifically, but real gaps elsewhere. **Hosting decision (2026-07-15)**: the intended future target is Railway — API and worker as separate services, Railway-managed Postgres and Redis, Cloudflare R2 replacing MinIO, a transactional email provider (Resend or Postmark, provider undecided at the time — see Milestone 16's 2026-08-12 decision update) replacing raw SMTP, Sentry for error monitoring — but **no Railway environment is provisioned yet, deliberately**: the app should be feature-complete first. This milestone's job is to make every one of those integration points environment-driven and swappable (CORS origins, CSP, cookie flags, secrets, storage backend, email transport, monitoring DSN, health checks, backup/restore tooling) via config, not to actually stand up Railway. Live hosted backup drills, live alert testing, and production smoke tests are explicitly deferred to Milestone 16 (v1.0 Release Candidate), once Railway is actually provisioned. Local dev keeps docker-compose/MinIO/Mailpit unchanged throughout.
 
 **Phase 1 — Authorization audit** (covers "Threat model", "Authorization audit")
 
@@ -2398,7 +2398,31 @@ A pre-implementation audit (three parallel research passes: security/auth, perfo
 
 ## Milestone 16 — v1.0 Release Candidate
 
-**Deferred from Milestone 14 (2026-07-15)**: per an explicit user decision, Milestone 14 built CORS/CSP/cookies/secrets/storage/email/monitoring/health-checks/backup-restore as environment-driven and Railway-ready but did _not_ provision a real Railway environment — the app was to be feature-complete first. This milestone is where that provisioning actually happens: standing up Railway (API/worker as separate services, Railway Postgres/Redis, Cloudflare R2, a transactional email provider — Resend or Postmark, Sentry), the live backup restore drill against real hosted Postgres, live alert testing, and the "Production smoke tests" deliverable below. Don't assume any of that infrastructure exists yet when starting this milestone — check.
+**Deferred from Milestone 14 (2026-07-15)**: per an explicit user decision, Milestone 14 built CORS/CSP/cookies/secrets/storage/email/monitoring/health-checks/backup-restore as environment-driven and Railway-ready but did _not_ provision a real Railway environment — the app was to be feature-complete first. This milestone is where that provisioning actually happens: standing up Railway (API/worker as separate services, Railway Postgres/Redis, Cloudflare R2, Resend for transactional email, Sentry), the live backup restore drill against real hosted Postgres, live alert testing, and the "Production smoke tests" deliverable below. Don't assume any of that infrastructure exists yet when starting this milestone — check.
+
+**Production infrastructure decisions finalized (2026-08-12)**: the provider/domain ambiguity this milestone inherited from Milestone 14 is now resolved. Production domain: **`worldbinder.net`** (control of its DNS is what matters, not the registrar). Hosting: **Railway** (unchanged from the Milestone 14 decision — API and worker as separate services, Railway-managed Postgres and Redis). Object storage: **Cloudflare R2**. Transactional email: **Resend**, reached through the existing `nodemailer` SMTP transport that Milestone 14 deliberately made provider-agnostic (`MailService` → SMTP → Resend in production, → Mailpit locally, unchanged architecture — see [ADR-0021](docs/decisions/0021-resend-production-email.md)) — not a direct Resend SDK integration. Monitoring: **Sentry**. These are documentation/planning decisions only; none of this infrastructure is provisioned yet as of this update. The concrete provisioning checklist below is new; the phases before it (the docs-and-regression track) predate this decision update and are unaffected by it.
+
+**Production provisioning checklist** (not started — this is the scope of the infrastructure-provisioning track once the docs-and-regression track above is done, per the user's chosen sequencing):
+
+1. Purchase/control `worldbinder.net` (~$11.86/year) and its DNS
+2. Provision Railway production services (API, worker)
+3. Configure production Postgres and Redis (Railway-managed)
+4. Configure Cloudflare R2 (bucket, credentials)
+5. Connect `worldbinder.net` to the deployed application (plus `www.worldbinder.net` and any `api.worldbinder.net`/mail subdomain only if the actual Railway topology or Resend's setup benefits from one — don't create subdomains speculatively)
+6. Configure production `CORS_ORIGIN`/cookie/`FRONTEND_URL` settings using the real hostname
+7. Create the Resend account and provision it for production sending
+8. Authenticate the Worldbinder sending domain in DNS per Resend's requirements
+9. Configure production SMTP credentials (Resend's SMTP relay) through Railway environment variables — `MailService`/`nodemailer` code is unchanged, only config
+10. Configure the production sender address (e.g. `Worldbinder <notifications@worldbinder.net>`)
+11. Send real verification, password-reset, and campaign-invitation emails end to end in the hosted environment
+12. Confirm every link in those emails resolves to the correct `worldbinder.net` route
+13. Verify auth/session cookies behave correctly on the real domain (`Secure`, `SameSite=Lax`, `/auth` scope — ADR-0007)
+14. Provision Sentry and test live error reporting from both `apps/api` and `apps/worker`
+15. Run production smoke tests
+16. Run the live backup/restore drill (already deferred to this milestone from Milestone 14 Phase 12)
+17. Update `docs/runbooks/deployment.md` with the actual provider/service details discovered during provisioning
+
+Exact DNS record values, Resend account details, and Railway service configuration aren't known yet and won't be invented here — they're discovered during provisioning itself.
 
 ### Deliverables
 

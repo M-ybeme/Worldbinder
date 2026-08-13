@@ -6,7 +6,7 @@
 
 ## 1. What this covers
 
-This policy describes what Worldbinder collects, why, and what participants can do about it. It applies to the Worldbinder application (`apps/web`, `apps/api`, `apps/worker`) as it exists today — currently run locally / in a controlled beta-testing environment, not a public hosted service. Sections describing where things will eventually run (Railway, Cloudflare R2, a transactional email provider, Sentry) are forward-looking and explicitly marked as not yet live.
+This policy describes what Worldbinder collects, why, and what participants can do about it. It applies to the Worldbinder application (`apps/web`, `apps/api`, `apps/worker`) as it exists today — currently run locally / in a controlled beta-testing environment, not a public hosted service. Sections describing where things will eventually run (Railway at `worldbinder.net`, Cloudflare R2, Resend, Sentry) are forward-looking and explicitly marked as not yet live.
 
 ## 2. What we collect
 
@@ -22,7 +22,7 @@ This policy describes what Worldbinder collects, why, and what participants can 
 
 ## 3. Where data is stored and processed
 
-Today (during the Milestone 15 beta), all data is stored in a Postgres database and object storage (MinIO) run locally or in a controlled testing environment the developer directly controls — there is no public-facing production deployment yet. When we deploy to production (planned for Milestone 16), the same categories of data described above will move to: Railway (application hosting and managed Postgres/Redis), Cloudflare R2 (file attachments and export archives, replacing local MinIO), a transactional email provider such as Resend or Postmark (replacing local dev SMTP, used only to send verification/reset/invitation emails — not marketing email), and Sentry (error monitoring, capturing request/error metadata to help diagnose bugs, not additional personal data beyond what's already described here). This policy will be updated with specifics once that infrastructure is actually provisioned.
+Today (during the Milestone 15 beta), all data is stored in a Postgres database and object storage (MinIO) run locally or in a controlled testing environment the developer directly controls — there is no public-facing production deployment yet. When we deploy to production (planned for Milestone 16, at `worldbinder.net`), the same categories of data described above will move to: Railway (application hosting and managed Postgres/Redis), Cloudflare R2 (file attachments and export archives, replacing local MinIO), Resend (replacing local dev SMTP, reached through the same email-sending code — used only to send verification/reset/invitation emails, not marketing email), and Sentry (error monitoring, capturing request/error metadata to help diagnose bugs, not additional personal data beyond what's already described here). This policy will be updated with specifics once that infrastructure is actually provisioned.
 
 ## 4. Who can see your content
 

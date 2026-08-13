@@ -6,13 +6,17 @@ Every push to `main` should add an entry here. This is meant to be an honest rec
 
 ## [Unreleased]
 
-## [0.16.2] - 2026-07-16
+### Added
+
+- **Production infrastructure decisions finalized.** Domain (`worldbinder.net`), hosting (Railway, unchanged from Milestone 14), object storage (Cloudflare R2), transactional email (Resend), and monitoring (Sentry) are now decided — closing the provider ambiguity Milestone 14 deliberately left open ("Resend or Postmark," "Postmark, Resend, or SES"). This is a documentation/planning update only: no infrastructure is provisioned yet, and no code changed. `docs/decisions/0021-resend-production-email.md` records the email-provider decision; `WORLDBINDER_V1_ROADMAP.md`'s Milestone 16 section gets a concrete 17-step production-provisioning checklist. `docs/security/threat-model.md`, `docs/runbooks/incident-triage.md`, `docs/legal/privacy-policy.md`, and `.env.example` updated to name Resend specifically instead of "Resend or Postmark." Resend is reached through the same `nodemailer`/SMTP transport Milestone 14 already built — no mail-sending code changed.
+
+## [0.16.2] - 2026-08-12
 
 ### Added
 
 - **Milestone 16, Phase 2 — missing and partial ADRs.** `docs/decisions/0010` through `0020`: TipTap JSON as canonical rich text, relationship table over Neo4j, S3-compatible storage, application-level revision snapshots, PostgreSQL full-text search, campaign-scoped tenancy (the data-modeling decision, distinct from `0008`'s enforcement-layer ADR), soft deletion, versioned export format, structured fantasy-calendar dates, IndexedDB local drafts, and BullMQ job processing. All 18 ADR topics required by roadmap §29.1 are now documented, each grounded in the actual implementing code rather than invented reasoning.
 
-## [0.16.1] - 2026-07-16
+## [0.16.1] - 2026-08-12
 
 ### Fixed
 
