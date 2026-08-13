@@ -6,6 +6,12 @@ Every push to `main` should add an entry here. This is meant to be an honest rec
 
 ## [Unreleased]
 
+## [0.16.2] - 2026-07-16
+
+### Added
+
+- **Milestone 16, Phase 2 — missing and partial ADRs.** `docs/decisions/0010` through `0020`: TipTap JSON as canonical rich text, relationship table over Neo4j, S3-compatible storage, application-level revision snapshots, PostgreSQL full-text search, campaign-scoped tenancy (the data-modeling decision, distinct from `0008`'s enforcement-layer ADR), soft deletion, versioned export format, structured fantasy-calendar dates, IndexedDB local drafts, and BullMQ job processing. All 18 ADR topics required by roadmap §29.1 are now documented, each grounded in the actual implementing code rather than invented reasoning.
+
 ## [0.16.1] - 2026-07-16
 
 ### Fixed
