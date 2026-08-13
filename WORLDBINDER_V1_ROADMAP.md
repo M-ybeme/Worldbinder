@@ -2472,6 +2472,11 @@ Exact DNS record values, Resend account details, and Railway service configurati
 - `docs/security/authorization-model.md` — the full §5.6 role/permission matrix in one table, each cell mapped to the real `CampaignPolicyService` method enforcing it, including the two cells ("Optional" player entity editing, "Configurable" editor export access) that the roadmap deliberately leaves without a v1 toggle — documented as the safer default they actually resolve to, not left as a silent gap. `docs/security/threat-model.md`'s own authorization section now points here instead of duplicating the matrix.
 - `docs/testing/testing-strategy.md` — the three-layer strategy (unit/integration/e2e), why integration tests hit real Postgres/Redis/Mailpit rather than mocks, the dev-stack-vs-test-suite Redis/BullMQ footgun from Phase 1 (documented here so it isn't rediscovered), the "wait for content, not just the URL" Playwright lesson from the same phase, and what CI actually runs.
 
+**Phase 5 — Export format spec and environment variable reference** [Done — see 0.16.5]
+
+- `docs/architecture/export-format.md` — the full archive spec (superseding the roadmap's §17.1/§17.2 skeleton, which only specified file layout): every file's real schema from `packages/validation/src/import-export.ts`, the documented `attachments.json` deviation, and the layered import defenses (entry-count cap, entry-name whitelist covering path traversal and symlinks in one check, per-file size caps, checksum verification, schema validation, magic-byte re-verification) read directly from `apps/worker/src/imports/archive.ts`.
+- `docs/architecture/environment-variables.md` — every variable across `apps/api`/`apps/worker`/`apps/web` in one table (required/default/notes), read from `packages/config/src/env.ts`'s Zod schemas rather than just `.env.example`'s comments — surfaced one variable (`COOKIE_DOMAIN`) that's validated by the schema but missing from `.env.example` entirely, and named the production-specific values Milestone 16's provisioning checklist will need to set.
+
 ---
 
 ## 28. Demo Campaign Requirements

@@ -10,6 +10,13 @@ Every push to `main` should add an entry here. This is meant to be an honest rec
 
 - **Production infrastructure decisions finalized.** Domain (`worldbinder.net`), hosting (Railway, unchanged from Milestone 14), object storage (Cloudflare R2), transactional email (Resend), and monitoring (Sentry) are now decided — closing the provider ambiguity Milestone 14 deliberately left open ("Resend or Postmark," "Postmark, Resend, or SES"). This is a documentation/planning update only: no infrastructure is provisioned yet, and no code changed. `docs/decisions/0021-resend-production-email.md` records the email-provider decision; `WORLDBINDER_V1_ROADMAP.md`'s Milestone 16 section gets a concrete 17-step production-provisioning checklist. `docs/security/threat-model.md`, `docs/runbooks/incident-triage.md`, `docs/legal/privacy-policy.md`, and `.env.example` updated to name Resend specifically instead of "Resend or Postmark." Resend is reached through the same `nodemailer`/SMTP transport Milestone 14 already built — no mail-sending code changed.
 
+## [0.16.5] - 2026-08-12
+
+### Added
+
+- **Milestone 16, Phase 5 — export format spec and environment variable reference.** New `docs/architecture/export-format.md`, superseding the roadmap's §17.1/§17.2 file-layout-only skeleton with every file's real schema and the full layered import defense (entry-count cap, path-traversal/symlink whitelist, size caps, checksums, schema validation, magic-byte re-verification), read directly from `packages/validation`/`apps/worker/src/imports/archive.ts`. New `docs/architecture/environment-variables.md`, covering every variable across all three apps with required/default status, sourced from the actual Zod env schemas rather than just `.env.example`'s comments.
+- **Found a real gap while writing the env-var doc**: `COOKIE_DOMAIN` is validated by `apiEnvSchema` and consumed by `auth.controller.ts`, but was entirely missing from `.env.example`. Added it as a commented-out example (not a blank assignment — an empty string is a defined value to `z.string().optional()`, not "unset," and would reach the cookie's `Domain` attribute as-is).
+
 ## [0.16.4] - 2026-08-12
 
 ### Added
