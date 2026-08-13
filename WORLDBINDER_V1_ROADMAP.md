@@ -2477,6 +2477,12 @@ Exact DNS record values, Resend account details, and Railway service configurati
 - `docs/architecture/export-format.md` — the full archive spec (superseding the roadmap's §17.1/§17.2 skeleton, which only specified file layout): every file's real schema from `packages/validation/src/import-export.ts`, the documented `attachments.json` deviation, and the layered import defenses (entry-count cap, entry-name whitelist covering path traversal and symlinks in one check, per-file size caps, checksum verification, schema validation, magic-byte re-verification) read directly from `apps/worker/src/imports/archive.ts`.
 - `docs/architecture/environment-variables.md` — every variable across `apps/api`/`apps/worker`/`apps/web` in one table (required/default/notes), read from `packages/config/src/env.ts`'s Zod schemas rather than just `.env.example`'s comments — surfaced one variable (`COOKIE_DOMAIN`) that's validated by the schema but missing from `.env.example` entirely, and named the production-specific values Milestone 16's provisioning checklist will need to set.
 
+**Phase 6 — Accessibility statement, deployment runbook, release process** [Done — see 0.16.6]
+
+- `docs/planning/accessibility-statement.md` — grounded in Milestone 13's actual completed work (all 8 phases, 0.13.1–0.13.7): what was audited and fixed, honestly scoped as "hardened against found issues," not a certification claim — no formal WCAG audit, no automated `axe` scan, no real assistive-technology testing was ever performed, matching the exit-criteria status note Milestone 13 itself already recorded.
+- `docs/runbooks/deployment.md` — forward-looking (explicitly marked as describing intent, not history, since no infrastructure is provisioned yet), the target topology, and the same 14-step first-deployment checklist as this section, narrated with more process detail; will be updated with real specifics once provisioning actually happens.
+- `docs/runbooks/release-process.md` — formalizes the versioning convention already in practice since Milestone 0 (minor bumps close milestones, patch bumps close phases, `hotfix —` for unscheduled cross-cutting changes), the CHANGELOG-before-push hook, and the "never rewrite historical entries" discipline this very milestone's own infra-decision update followed.
+
 ---
 
 ## 28. Demo Campaign Requirements

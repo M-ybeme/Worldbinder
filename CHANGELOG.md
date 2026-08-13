@@ -10,6 +10,12 @@ Every push to `main` should add an entry here. This is meant to be an honest rec
 
 - **Production infrastructure decisions finalized.** Domain (`worldbinder.net`), hosting (Railway, unchanged from Milestone 14), object storage (Cloudflare R2), transactional email (Resend), and monitoring (Sentry) are now decided — closing the provider ambiguity Milestone 14 deliberately left open ("Resend or Postmark," "Postmark, Resend, or SES"). This is a documentation/planning update only: no infrastructure is provisioned yet, and no code changed. `docs/decisions/0021-resend-production-email.md` records the email-provider decision; `WORLDBINDER_V1_ROADMAP.md`'s Milestone 16 section gets a concrete 17-step production-provisioning checklist. `docs/security/threat-model.md`, `docs/runbooks/incident-triage.md`, `docs/legal/privacy-policy.md`, and `.env.example` updated to name Resend specifically instead of "Resend or Postmark." Resend is reached through the same `nodemailer`/SMTP transport Milestone 14 already built — no mail-sending code changed.
 
+## [0.16.6] - 2026-08-12
+
+### Added
+
+- **Milestone 16, Phase 6 — accessibility statement, deployment runbook, release process.** New `docs/planning/accessibility-statement.md`, grounded in Milestone 13's actual completed work, honestly scoped as "hardened against found issues" rather than a certification claim. New `docs/runbooks/deployment.md`, forward-looking and explicit that no production infrastructure is provisioned yet, with the same first-deployment checklist as the roadmap's Milestone 16 section narrated in more process detail. New `docs/runbooks/release-process.md`, formalizing the versioning/commit/CHANGELOG convention already in practice since Milestone 0.
+
 ## [0.16.5] - 2026-08-12
 
 ### Added
