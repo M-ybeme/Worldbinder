@@ -9,6 +9,11 @@ Every push to `main` should add an entry here. This is meant to be an honest rec
 ### Added
 
 - **Production infrastructure decisions finalized.** Domain (`worldbinder.net`), hosting (Railway, unchanged from Milestone 14), object storage (Cloudflare R2), transactional email (Resend), and monitoring (Sentry) are now decided — closing the provider ambiguity Milestone 14 deliberately left open ("Resend or Postmark," "Postmark, Resend, or SES"). This is a documentation/planning update only: no infrastructure is provisioned yet, and no code changed. `docs/decisions/0021-resend-production-email.md` records the email-provider decision; `WORLDBINDER_V1_ROADMAP.md`'s Milestone 16 section gets a concrete 17-step production-provisioning checklist. `docs/security/threat-model.md`, `docs/runbooks/incident-triage.md`, `docs/legal/privacy-policy.md`, and `.env.example` updated to name Resend specifically instead of "Resend or Postmark." Resend is reached through the same `nodemailer`/SMTP transport Milestone 14 already built — no mail-sending code changed.
+- **Per-app Dockerfiles for Railway deployment.** New `apps/api/Dockerfile`, `apps/worker/Dockerfile`, `apps/web/Dockerfile` (the last serving its static build via Caddy, with SPA client-side-routing fallback), plus a root `docker-compose.yml` (for Railway's multi-service import, not local dev) and `.dockerignore`. Added after Railway's Railpack builder proved unreliable at detecting this repo's pnpm workspace and defaulted to npm, which can't parse `workspace:*` dependencies — explicit Dockerfiles sidestep that auto-detection entirely. All three images built and smoke-tested locally against the real dev Postgres/Redis before being committed (API confirmed connecting to both and serving `/health`; web confirmed serving both `/` and a deep client-side route with a 200, plus a real built asset).
+
+### Fixed
+
+- **Found a real, previously-unexercised bug while building the API's Docker image**: `apps/api/package.json`'s `start:prod` script (`node dist/main`) has been wrong since it was written — NestJS's `sourceRoot: "src"` config actually outputs to `dist/src/main.js`, not `dist/main.js`. Nothing had ever actually run `start:prod` in practice (local dev uses `start:dev`, CI never runs a production start) until this Docker build attempted it. Fixed to `node dist/src/main`.
 
 ## [0.16.7] - 2026-08-12
 

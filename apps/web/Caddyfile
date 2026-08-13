@@ -1,0 +1,14 @@
+{
+	auto_https off
+}
+
+:{$PORT:3000} {
+	root * /srv
+	encode gzip
+	file_server
+
+	# Client-side routing (React Router) — serve index.html for any path
+	# that doesn't match a real built file, so deep links and refreshes on
+	# e.g. /app/campaigns work instead of 404ing at the static-file layer.
+	try_files {path} /index.html
+}

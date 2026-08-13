@@ -1,0 +1,25 @@
+# Not used for local development — pnpm dev plus
+# infrastructure/compose/docker-compose.yml (Postgres/Redis/MinIO/Mailpit)
+# handles that, unchanged. This file exists solely so Railway's "Deploy from
+# Docker Compose" import can stage all three deployable apps as separate
+# services in one go, each building from its own per-app Dockerfile against
+# the full repo context (required for pnpm workspace resolution — see
+# apps/api/Dockerfile's comment for why). Railway ignores ports/networks/
+# depends_on from this file; public domains and Postgres/Redis are
+# configured per-service in the Railway dashboard instead.
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+
+  worker:
+    build:
+      context: .
+      dockerfile: apps/worker/Dockerfile
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile

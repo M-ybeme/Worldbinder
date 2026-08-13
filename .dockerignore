@@ -1,0 +1,29 @@
+# Keeps the Docker build context small and prevents stale local artifacts
+# from leaking into a build that's supposed to build everything fresh
+# (pnpm install + turbo build run inside the container, not on the host).
+
+node_modules
+**/node_modules
+dist
+**/dist
+build
+**/build
+.turbo
+coverage
+*.log
+.env
+.env.local
+.env.*.local
+.git
+.DS_Store
+.vscode
+.idea
+*.tsbuildinfo
+.pnpm-store
+
+infrastructure/docker/data
+*.dump
+storage-mirror
+
+apps/web/e2e/test-results
+apps/web/playwright-report
