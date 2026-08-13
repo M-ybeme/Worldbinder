@@ -37,7 +37,7 @@ Short-lived (15 min) signed JWT access token, kept in-memory on the frontend onl
 
 ## Authorization model (ADR-0008, ADR-0009)
 
-Every campaign-scoped resource is gated two ways: a coarse route-level `CampaignRolesGuard`/`@RequireCampaignRole(...)` allow-list, and finer-grained `CampaignPolicyService` checks in the service layer for matrix cells that depend on more than just the actor's role (GM's "Limited" settings access, Editor's "Configurable" GM-content visibility). Cross-campaign isolation is enforced by scoping every resource lookup on both the resource's own id _and_ `campaignId` — a mismatched id returns 404, not another campaign's data, matching the "don't confirm existence" rule ADR-0008/ADR-0009 both establish for `gm_only` content.
+Full role/permission matrix and enforcement details now live in their own dedicated document: `docs/security/authorization-model.md`. Summary: every campaign-scoped resource is gated two ways (a coarse route-level guard, and finer-grained `CampaignPolicyService` checks for matrix cells that depend on more than the actor's role), and cross-campaign isolation returns 404, never leaks another campaign's data.
 
 This model was audited in Milestone 14 Phase 1 and found solid: every spot-checked controller (entities, sessions, maps, attachments, membership, exports) layers both checks correctly. Two inconsistencies were found and fixed (route-level guard missing on `CampaignsController.update()`; `AttachmentsService`'s `complete()`/`delete()` writes not re-asserting `campaignId`) — see the roadmap's Phase 1 notes for detail. No cross-tenant data leak was found to be actually exploitable.
 

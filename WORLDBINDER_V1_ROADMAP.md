@@ -2467,6 +2467,11 @@ Exact DNS record values, Resend account details, and Railway service configurati
 - `docs/architecture/overview.md` — the three-process topology (API/worker/web), the request lifecycle through `AppModule.configure()`'s middleware and per-route guards (not global — ADR-0008), module boundaries on both sides, `packages/` responsibilities, and a forward-reference to Milestone 16's not-yet-provisioned deployment topology.
 - `docs/architecture/data-model.md` — a narrative companion to `schema.ts`, not a field-by-field mirror (to avoid drift): tenancy, the polymorphic `entities` table, the two distinct connection mechanisms (`entity_relationships` vs. `entity_wiki_links`), the two distinct history/audit trails (`resource_revisions` vs. `campaign_audit_events`/`security_events`), and the soft-deletion exceptions — each section cross-referencing the ADR that made the underlying decision.
 
+**Phase 4 — Authorization model and testing strategy** [Done — see 0.16.4]
+
+- `docs/security/authorization-model.md` — the full §5.6 role/permission matrix in one table, each cell mapped to the real `CampaignPolicyService` method enforcing it, including the two cells ("Optional" player entity editing, "Configurable" editor export access) that the roadmap deliberately leaves without a v1 toggle — documented as the safer default they actually resolve to, not left as a silent gap. `docs/security/threat-model.md`'s own authorization section now points here instead of duplicating the matrix.
+- `docs/testing/testing-strategy.md` — the three-layer strategy (unit/integration/e2e), why integration tests hit real Postgres/Redis/Mailpit rather than mocks, the dev-stack-vs-test-suite Redis/BullMQ footgun from Phase 1 (documented here so it isn't rediscovered), the "wait for content, not just the URL" Playwright lesson from the same phase, and what CI actually runs.
+
 ---
 
 ## 28. Demo Campaign Requirements

@@ -10,6 +10,12 @@ Every push to `main` should add an entry here. This is meant to be an honest rec
 
 - **Production infrastructure decisions finalized.** Domain (`worldbinder.net`), hosting (Railway, unchanged from Milestone 14), object storage (Cloudflare R2), transactional email (Resend), and monitoring (Sentry) are now decided — closing the provider ambiguity Milestone 14 deliberately left open ("Resend or Postmark," "Postmark, Resend, or SES"). This is a documentation/planning update only: no infrastructure is provisioned yet, and no code changed. `docs/decisions/0021-resend-production-email.md` records the email-provider decision; `WORLDBINDER_V1_ROADMAP.md`'s Milestone 16 section gets a concrete 17-step production-provisioning checklist. `docs/security/threat-model.md`, `docs/runbooks/incident-triage.md`, `docs/legal/privacy-policy.md`, and `.env.example` updated to name Resend specifically instead of "Resend or Postmark." Resend is reached through the same `nodemailer`/SMTP transport Milestone 14 already built — no mail-sending code changed.
 
+## [0.16.4] - 2026-08-12
+
+### Added
+
+- **Milestone 16, Phase 4 — authorization model and testing strategy.** New `docs/security/authorization-model.md`: the full §5.6 permission matrix in one table, each cell mapped to the real `CampaignPolicyService` method, including how the two "Optional"/"Configurable" cells actually resolve today (safer default, no v1 toggle). `threat-model.md`'s authorization section now points here instead of duplicating it. New `docs/testing/testing-strategy.md`: the unit/integration/e2e layering, why integration tests hit real infrastructure, and the two footguns found the hard way in Phase 1 (dev-stack-vs-test-suite Redis contention; waiting for a page's content, not just its URL, in Playwright).
+
 ## [0.16.3] - 2026-08-12
 
 ### Added
