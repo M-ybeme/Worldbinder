@@ -2483,6 +2483,13 @@ Exact DNS record values, Resend account details, and Railway service configurati
 - `docs/runbooks/deployment.md` — forward-looking (explicitly marked as describing intent, not history, since no infrastructure is provisioned yet), the target topology, and the same 14-step first-deployment checklist as this section, narrated with more process detail; will be updated with real specifics once provisioning actually happens.
 - `docs/runbooks/release-process.md` — formalizes the versioning convention already in practice since Milestone 0 (minor bumps close milestones, patch bumps close phases, `hotfix —` for unscheduled cross-cutting changes), the CHANGELOG-before-push hook, and the "never rewrite historical entries" discipline this very milestone's own infra-decision update followed.
 
+**Phase 7 — Known limitations** [Done — see 0.16.7]
+
+- `docs/product/known-limitations.md` — consolidates every real gap surfaced across Phases 1–6 (ownership transfer, no revision/soft-delete pruning, the two permission-matrix cells without a v1 toggle, IndexedDB draft cross-device sync, single-schema-version export format, accessibility/testing/infrastructure gaps) into one v1-scoped document, explicitly distinguished from the roadmap's actual release-blocker list.
+- **Found and fixed a real staleness bug while writing this phase**: `docs/security/threat-model.md`'s "Known gaps" section (written after Milestone 14 Phase 1's audit) was never updated after Phase 4b and Phase 9 actually fixed all three gaps it listed (cookie `Secure` flag, `JWT_ACCESS_SECRET` placeholder validation, storage-credential dev fallback) — the document had been silently claiming open security gaps that were closed weeks earlier. Corrected to describe the actual resolution.
+
+**Docs-and-regression track status (2026-08-12)**: Phases 1–7 above are done — this closes the portion of Milestone 16 achievable without live infrastructure or the user's creative input, per the sequencing decision at the top of this section. Milestone 16 itself is **not** complete: the production-provisioning checklist (domain/Railway/R2/Resend/Sentry, listed above), production smoke tests, the live backup/restore drill, scope freeze, and portfolio material (case study, screenshots, demo video) remain, each requiring its own planning pass before starting.
+
 ---
 
 ## 28. Demo Campaign Requirements

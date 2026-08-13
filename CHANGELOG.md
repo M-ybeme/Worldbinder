@@ -10,6 +10,17 @@ Every push to `main` should add an entry here. This is meant to be an honest rec
 
 - **Production infrastructure decisions finalized.** Domain (`worldbinder.net`), hosting (Railway, unchanged from Milestone 14), object storage (Cloudflare R2), transactional email (Resend), and monitoring (Sentry) are now decided — closing the provider ambiguity Milestone 14 deliberately left open ("Resend or Postmark," "Postmark, Resend, or SES"). This is a documentation/planning update only: no infrastructure is provisioned yet, and no code changed. `docs/decisions/0021-resend-production-email.md` records the email-provider decision; `WORLDBINDER_V1_ROADMAP.md`'s Milestone 16 section gets a concrete 17-step production-provisioning checklist. `docs/security/threat-model.md`, `docs/runbooks/incident-triage.md`, `docs/legal/privacy-policy.md`, and `.env.example` updated to name Resend specifically instead of "Resend or Postmark." Resend is reached through the same `nodemailer`/SMTP transport Milestone 14 already built — no mail-sending code changed.
 
+## [0.16.7] - 2026-08-12
+
+### Added
+
+- **Milestone 16, Phase 7 — known limitations. The docs-and-regression track of Milestone 16 is complete (Phases 1–7).** New `docs/product/known-limitations.md`, consolidating every real gap found across Phases 1–6 into one v1-scoped document, explicitly distinguished from the roadmap's actual release-blocker list.
+
+### Fixed
+
+- **Found a real staleness bug while writing Phase 7**: `docs/security/threat-model.md`'s "Known gaps" section still described three security gaps (cookie `Secure` flag, `JWT_ACCESS_SECRET` placeholder validation, storage-credential dev fallback) as open, even though Milestone 14 Phases 4b and 9 had actually fixed all three weeks earlier — the note was simply never updated after the fix shipped. Corrected to describe the real resolution.
+- Milestone 16 itself is not complete — the production-provisioning checklist, smoke tests, live backup/restore drill, scope freeze, and portfolio material remain, each needing its own planning pass.
+
 ## [0.16.6] - 2026-08-12
 
 ### Added
