@@ -1,5 +1,12 @@
 import type { RevisionResourceType } from '@worldbinder/contracts'
-import { Button, EmptyState, ErrorState, FormMessage, LoadingState } from '@worldbinder/ui'
+import {
+  Button,
+  ConfirmDialog,
+  EmptyState,
+  ErrorState,
+  FormMessage,
+  LoadingState,
+} from '@worldbinder/ui'
 import { useState } from 'react'
 import { useRestoreRevisionMutation, useRevisionsQuery } from '../hooks/useRevisions'
 import { computeFieldDiff, formatFieldValue } from '../lib/computeFieldDiff'
@@ -37,16 +44,9 @@ export function RevisionHistoryPanel({
   const revisionsQuery = useRevisionsQuery(campaignId, resourceType, resourceId)
   const restoreRevision = useRestoreRevisionMutation(campaignId, resourceType, resourceId)
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [restoring, setRestoring] = useState<{ id: string; number: number } | null>(null)
 
   const revisions = revisionsQuery.data ?? []
-
-  function handleRestore(revisionId: string, revisionNumber: number) {
-    const confirmed = window.confirm(
-      `Restore revision #${revisionNumber}? This creates a new revision with that content — nothing is deleted.`,
-    )
-    if (!confirmed) return
-    restoreRevision.mutate(revisionId, { onSuccess: () => onRestored?.() })
-  }
 
   return (
     <div className="wb-related-content">
@@ -92,7 +92,9 @@ export function RevisionHistoryPanel({
                     <Button
                       variant="secondary"
                       disabled={restoreRevision.isPending}
-                      onClick={() => handleRestore(revision.id, revision.revisionNumber)}
+                      onClick={() =>
+                        setRestoring({ id: revision.id, number: revision.revisionNumber })
+                      }
                     >
                       Restore
                     </Button>
@@ -114,6 +116,19 @@ export function RevisionHistoryPanel({
           })}
         </ul>
       </div>
+
+      <ConfirmDialog
+        open={restoring !== null}
+        title={`Restore revision #${restoring?.number}?`}
+        description="This creates a new revision with that content — nothing is deleted."
+        confirmLabel="Restore"
+        pending={restoreRevision.isPending}
+        onConfirm={() => {
+          if (restoring) restoreRevision.mutate(restoring.id, { onSuccess: () => onRestored?.() })
+          setRestoring(null)
+        }}
+        onCancel={() => setRestoring(null)}
+      />
     </div>
   )
 }

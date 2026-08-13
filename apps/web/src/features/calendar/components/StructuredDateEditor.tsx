@@ -1,5 +1,5 @@
 import type { CalendarConfig, TimelineDatePrecision } from '@worldbinder/contracts'
-import { Select, TextField } from '@worldbinder/ui'
+import { Checkbox, Select, TextField } from '@worldbinder/ui'
 import { useId } from 'react'
 import type { StructuredDateValue } from '../lib/structuredDate'
 
@@ -83,7 +83,9 @@ export function StructuredDateEditor({
             label="Year"
             type="number"
             value={value.year}
-            onChange={(e) => onChange({ ...value, year: e.target.value, precision: effectivePrecision })}
+            onChange={(e) =>
+              onChange({ ...value, year: e.target.value, precision: effectivePrecision })
+            }
           />
 
           {showMonth && (
@@ -120,14 +122,11 @@ export function StructuredDateEditor({
           )}
 
           {allowApproximate && (
-            <label style={{ display: 'block' }}>
-              <input
-                type="checkbox"
-                checked={value.approximate}
-                onChange={(e) => onChange({ ...value, approximate: e.target.checked })}
-              />{' '}
-              Approximate (circa)
-            </label>
+            <Checkbox
+              checked={value.approximate}
+              onChange={(e) => onChange({ ...value, approximate: e.target.checked })}
+              label="Approximate (circa)"
+            />
           )}
 
           <TextField

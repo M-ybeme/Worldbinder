@@ -4,6 +4,23 @@ All notable changes to this project are documented here. Format follows [Keep a 
 
 Every push to `main` should add an entry here. This is meant to be an honest record of what actually shipped, not a restatement of the roadmap's aspirations — if something was attempted and reverted, or shipped partially, say so.
 
+## [0.19.0] - 2026-08-13
+
+**Design system rollout, Phase 2 (core primitives).** Built only the primitives with a confirmed real call site in the codebase (grepped for `window.confirm`, raw checkboxes, `<h1>`, tooltips, tables, and tablists before writing anything, per the design doc's §37 rule) — Dialog, ConfirmDialog, IconButton, Checkbox, Badge, PageHeader, plus a `danger` Button variant. Card, Tabs, Tooltip, Dropdown/Menu, Toast, Avatar, Skeleton, Breadcrumbs, table primitives, and sidebar nav item are deliberately deferred — no real need for them yet. See `docs/product/WORLDBINDER_DESIGN_SYSTEM.md` §45 for full detail.
+
+### Added
+
+- **Dialog primitive**, extracted from `SearchOverlay`'s previously hand-rolled portal/focus-trap/backdrop-dismiss logic — `SearchOverlay` now renders through it instead of owning its own copy.
+- **ConfirmDialog**, replacing all 10 real `window.confirm()` call sites across the app (session/event/thread/entity/campaign/map/pin/layer deletes, attachment delete, revision restore) with a real, keyboard-accessible, screen-reader-friendly dialog instead of a blocking native prompt.
+- **Checkbox**, retrofitting the 4 real raw `<input type="checkbox">` usages in the app (map layer toggles, search type filters, the "approximate date" toggle, session participant picker).
+- **Badge**, replacing plain `" · GM only"` text with a real visual indicator across every real visibility-flag site (5 detail/list pages), plus `ThreadDetailPage`'s "Neglected" flag.
+- **PageHeader**, wired into the 4 detail pages that already shared an identical title+meta header shape (`EntityDetailPage`, `SessionDetailPage`, `TimelineEventDetailPage`, `ThreadDetailPage`). Full page-by-page rollout is Phase 4-6 work.
+- **IconButton**, used by Dialog's close button.
+
+### Fixed
+
+- **A second latent styling gap, on top of Phase 1's `.wb-tag-input` find**: `.wb-entity-header`/`.wb-entity-header__meta` had zero CSS rules anywhere despite being used across 10 files — every detail-page title was rendering with bare browser-default `<header>`/`<span>` styling. Fixed via the PageHeader migration above; the remaining 6 usages of the (genuinely generic, confirmed by grep) `.wb-entity-header__actions`/`__tags` action-row classes got real shared CSS in `global.css`.
+
 ## [0.18.0] - 2026-08-13
 
 **Design system rollout, Phase 1 (foundations).** The live app looked visually unfinished — flat, left-aligned, no real spacing/type system — so `docs/product/WORLDBINDER_DESIGN_SYSTEM.md` (a full visual-direction spec) is now being rolled out in phases. Phase 1 lands the token system and retrofits existing primitives onto it; it does not touch page layouts, add new components, or rebuild the app shell — those are later phases. Explicit decision: this app stays on plain CSS custom properties, not Tailwind, despite the design doc's Tailwind-flavored examples — see the doc's new §45 for the full rationale and exact deviations from its suggested values.

@@ -39,3 +39,17 @@
 .wb-button--secondary:hover:not(:disabled) {
   background: var(--wb-bg-surface-hover);
 }
+
+/* --wb-bg-app doubles as the danger button's text color deliberately: it's
+   near-white in light mode and near-black in dark mode, which is exactly
+   the light/dark text swap --wb-danger's own background needs to clear
+   4.5:1 in both themes (verified: ~6.5:1 light, ~6.9:1 dark) without a
+   dedicated --wb-danger-fg token. */
+.wb-button--danger {
+  background: var(--wb-danger);
+  color: var(--wb-bg-app);
+}
+
+.wb-button--danger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--wb-danger) 85%, black);
+}

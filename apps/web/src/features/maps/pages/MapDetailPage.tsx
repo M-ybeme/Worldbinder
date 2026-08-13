@@ -1,5 +1,5 @@
 import type { MapPinSummary } from '@worldbinder/contracts'
-import { Button, FormMessage, TextField } from '@worldbinder/ui'
+import { Badge, Button, ConfirmDialog, FormMessage, TextField } from '@worldbinder/ui'
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useCampaignOutletContext } from '../../campaigns/hooks/useCampaignContext'
@@ -42,6 +42,9 @@ export function MapDetailPage() {
   const [editingPin, setEditingPin] = useState<MapPinSummary | null>(null)
   const [placingPosition, setPlacingPosition] = useState<{ x: number; y: number } | null>(null)
   const [newLayerName, setNewLayerName] = useState('')
+  const [confirmDeletePin, setConfirmDeletePin] = useState(false)
+  const [confirmDeleteMap, setConfirmDeleteMap] = useState(false)
+  const [deletingLayer, setDeletingLayer] = useState<{ id: string; name: string } | null>(null)
 
   if (mapQuery.isLoading) return <p>Loading…</p>
   if (mapQuery.isError || !mapQuery.data) {
@@ -92,8 +95,7 @@ export function MapDetailPage() {
 
   function handlePinDelete() {
     if (!editingPin) return
-    if (!window.confirm('Delete this pin? This cannot be undone.')) return
-    deletePin.mutate(editingPin.id, { onSuccess: () => setEditingPin(null) })
+    setConfirmDeletePin(true)
   }
 
   return (
@@ -118,15 +120,7 @@ export function MapDetailPage() {
             >
               Map settings
             </Link>
-            <Button
-              variant="secondary"
-              onClick={() => {
-                if (!window.confirm(`Delete "${map.name}"? This cannot be undone.`)) return
-                deleteMap.mutate(map.id, {
-                  onSuccess: () => navigate(`/app/campaign/${campaign.id}/maps`),
-                })
-              }}
-            >
+            <Button variant="secondary" onClick={() => setConfirmDeleteMap(true)}>
               Delete map
             </Button>
           </div>
@@ -213,19 +207,11 @@ export function MapDetailPage() {
             {map.layers.map((layer) => (
               <li key={layer.id}>
                 {layer.name}
-                {layer.visibility === 'gm_only' ? ' (GM only)' : ''}
+                {layer.visibility === 'gm_only' && <Badge tone="warning">GM only</Badge>}
                 <Button
                   variant="secondary"
                   disabled={deleteLayer.isPending}
-                  onClick={() => {
-                    if (
-                      !window.confirm(
-                        `Delete layer "${layer.name}"? Its pins will be ungrouped, not deleted.`,
-                      )
-                    )
-                      return
-                    deleteLayer.mutate(layer.id)
-                  }}
+                  onClick={() => setDeletingLayer({ id: layer.id, name: layer.name })}
                 >
                   Remove
                 </Button>
@@ -257,6 +243,50 @@ export function MapDetailPage() {
           />
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmDeletePin}
+        title="Delete this pin?"
+        description="This cannot be undone."
+        confirmLabel="Delete"
+        danger
+        pending={deletePin.isPending}
+        onConfirm={() => {
+          setConfirmDeletePin(false)
+          if (editingPin) deletePin.mutate(editingPin.id, { onSuccess: () => setEditingPin(null) })
+        }}
+        onCancel={() => setConfirmDeletePin(false)}
+      />
+
+      <ConfirmDialog
+        open={confirmDeleteMap}
+        title={`Delete "${map.name}"?`}
+        description="This cannot be undone."
+        confirmLabel="Delete"
+        danger
+        pending={deleteMap.isPending}
+        onConfirm={() => {
+          setConfirmDeleteMap(false)
+          deleteMap.mutate(map.id, {
+            onSuccess: () => navigate(`/app/campaign/${campaign.id}/maps`),
+          })
+        }}
+        onCancel={() => setConfirmDeleteMap(false)}
+      />
+
+      <ConfirmDialog
+        open={deletingLayer !== null}
+        title={`Delete layer "${deletingLayer?.name}"?`}
+        description="Its pins will be ungrouped, not deleted."
+        confirmLabel="Delete"
+        danger
+        pending={deleteLayer.isPending}
+        onConfirm={() => {
+          if (deletingLayer) deleteLayer.mutate(deletingLayer.id)
+          setDeletingLayer(null)
+        }}
+        onCancel={() => setDeletingLayer(null)}
+      />
     </section>
   )
 }

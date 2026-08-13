@@ -1,4 +1,5 @@
-import { Button, FormMessage } from '@worldbinder/ui'
+import { Badge, Button, ConfirmDialog, FormMessage, PageHeader } from '@worldbinder/ui'
+import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { AttachmentsPanel } from '../../attachments/components/AttachmentsPanel'
 import { useCampaignOutletContext } from '../../campaigns/hooks/useCampaignContext'
@@ -16,6 +17,7 @@ export function ThreadDetailPage() {
   const threadQuery = usePlotThreadQuery(campaign.id, threadId)
   const deleteThread = useDeletePlotThreadMutation(campaign.id)
   const canManage = MANAGEMENT_ROLES.has(campaign.role)
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
 
   if (threadQuery.isLoading) return <p>Loading…</p>
   if (threadQuery.isError || !threadQuery.data) {
@@ -26,38 +28,52 @@ export function ThreadDetailPage() {
 
   return (
     <section>
-      <header className="wb-entity-header">
-        <h1>{thread.title}</h1>
-        <span className="wb-entity-header__meta">
-          {thread.status ?? thread.playerFacingStatus}
-          {thread.importance ? ` · ${thread.importance}` : ''}
-          {thread.visibility === 'gm_only' ? ' · GM only' : ''}
-          {thread.neglected ? ' · Neglected' : ''}
-        </span>
-      </header>
+      <PageHeader
+        title={thread.title}
+        meta={
+          <>
+            <span>{thread.status ?? thread.playerFacingStatus}</span>
+            {thread.importance && <span>{thread.importance}</span>}
+            {thread.visibility === 'gm_only' && <Badge tone="warning">GM only</Badge>}
+            {thread.neglected && <Badge tone="warning">Neglected</Badge>}
+          </>
+        }
+        actions={
+          canManage && (
+            <>
+              <Link
+                className="wb-button wb-button--secondary"
+                to={`/app/campaign/${campaign.id}/threads/${thread.id}/edit`}
+              >
+                Edit
+              </Link>
+              <Button
+                variant="secondary"
+                disabled={deleteThread.isPending}
+                onClick={() => setConfirmDeleteOpen(true)}
+              >
+                Delete
+              </Button>
+            </>
+          )
+        }
+      />
 
-      {canManage && (
-        <div className="wb-entity-header__actions">
-          <Link
-            className="wb-button wb-button--secondary"
-            to={`/app/campaign/${campaign.id}/threads/${thread.id}/edit`}
-          >
-            Edit
-          </Link>
-          <Button
-            variant="secondary"
-            disabled={deleteThread.isPending}
-            onClick={() => {
-              if (!window.confirm(`Delete "${thread.title}"? This cannot be undone.`)) return
-              deleteThread.mutate(thread.id, {
-                onSuccess: () => navigate(`/app/campaign/${campaign.id}/threads`),
-              })
-            }}
-          >
-            Delete
-          </Button>
-        </div>
-      )}
+      <ConfirmDialog
+        open={confirmDeleteOpen}
+        title={`Delete "${thread.title}"?`}
+        description="This cannot be undone."
+        confirmLabel="Delete"
+        danger
+        pending={deleteThread.isPending}
+        onConfirm={() => {
+          setConfirmDeleteOpen(false)
+          deleteThread.mutate(thread.id, {
+            onSuccess: () => navigate(`/app/campaign/${campaign.id}/threads`),
+          })
+        }}
+        onCancel={() => setConfirmDeleteOpen(false)}
+      />
 
       {thread.summary && <p>{thread.summary}</p>}
 

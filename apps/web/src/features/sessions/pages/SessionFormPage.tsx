@@ -1,6 +1,6 @@
 import type { EntityVisibility, TiptapDoc } from '@worldbinder/contracts'
 import { DEFAULT_CALENDAR_CONFIG, type PlotThreadChangeInput } from '@worldbinder/validation'
-import { Button, FormMessage, Select, TextField } from '@worldbinder/ui'
+import { Button, Checkbox, FormMessage, Select, TextField } from '@worldbinder/ui'
 import { useEffect, useState, type FormEvent } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useCampaignOutletContext } from '../../campaigns/hooks/useCampaignContext'
@@ -195,14 +195,12 @@ export function SessionFormPage() {
         <div className="wb-field">
           <span className="wb-field__label">Participants</span>
           {membersQuery.data?.map((member) => (
-            <label key={member.id} style={{ display: 'block' }}>
-              <input
-                type="checkbox"
-                checked={participantIds.includes(member.id)}
-                onChange={() => toggleParticipant(member.id)}
-              />{' '}
-              {member.displayName}
-            </label>
+            <Checkbox
+              key={member.id}
+              checked={participantIds.includes(member.id)}
+              onChange={() => toggleParticipant(member.id)}
+              label={member.displayName}
+            />
           ))}
         </div>
 

@@ -1,4 +1,5 @@
 import type { MapLayerSummary } from '@worldbinder/contracts'
+import { Badge, Checkbox } from '@worldbinder/ui'
 import '../maps.css'
 
 export interface MapLayerTogglesProps {
@@ -29,23 +30,26 @@ export function MapLayerToggles({
       <ul>
         {layers.map((layer) => (
           <li key={layer.id}>
-            <label>
-              <input
-                type="checkbox"
-                checked={visibleLayerIds.has(layer.id)}
-                onChange={() => onToggleLayer(layer.id)}
-              />
-              {layer.name}
-              {layer.visibility === 'gm_only' ? ' (GM only)' : ''}
-            </label>
+            <Checkbox
+              checked={visibleLayerIds.has(layer.id)}
+              onChange={() => onToggleLayer(layer.id)}
+              label={
+                <>
+                  {layer.name}
+                  {layer.visibility === 'gm_only' && (
+                    <>
+                      {' '}
+                      <Badge tone="warning">GM only</Badge>
+                    </>
+                  )}
+                </>
+              }
+            />
           </li>
         ))}
         {hasUnlayeredPins && (
           <li>
-            <label>
-              <input type="checkbox" checked={showUnlayered} onChange={onToggleUnlayered} />
-              Unlayered pins
-            </label>
+            <Checkbox checked={showUnlayered} onChange={onToggleUnlayered} label="Unlayered pins" />
           </li>
         )}
       </ul>

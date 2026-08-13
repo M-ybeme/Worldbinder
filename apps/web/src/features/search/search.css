@@ -1,25 +1,11 @@
-.wb-search-overlay__backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: var(--wb-z-overlay);
-  background: rgba(0, 0, 0, 0.45);
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  padding: 10vh var(--wb-space-4) var(--wb-space-4);
-}
-
-.wb-search-overlay__panel {
-  width: 100%;
+/* Backdrop, base panel skin (background/border/radius/shadow), and modal
+   mechanics all come from @worldbinder/ui's Dialog now — this only
+   overrides the two dimensions where search wants a wider/shorter panel
+   than Dialog's default. Compound selector (not source order) is what
+   guarantees this wins over .wb-dialog__panel's own max-width/max-height. */
+.wb-dialog__panel.wb-search-overlay__panel {
   max-width: 560px;
   max-height: 70vh;
-  display: flex;
-  flex-direction: column;
-  background: var(--wb-bg-surface-raised);
-  border: 1px solid var(--wb-border-default);
-  border-radius: var(--wb-radius-lg);
-  box-shadow: var(--wb-shadow-lg);
-  overflow: hidden;
 }
 
 .wb-search-overlay__input {

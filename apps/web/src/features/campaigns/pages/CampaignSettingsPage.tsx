@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Button, FileDropzone, FormMessage, TextField } from '@worldbinder/ui'
+import { Button, ConfirmDialog, FileDropzone, FormMessage, TextField } from '@worldbinder/ui'
 import {
   DEFAULT_CALENDAR_CONFIG,
   updateCampaignSchema,
@@ -49,6 +49,7 @@ export function CampaignSettingsPage() {
   const archiveCampaign = useArchiveCampaignMutation(campaign.id)
   const restoreCampaign = useRestoreCampaignMutation(campaign.id)
   const deleteCampaign = useDeleteCampaignMutation(campaign.id)
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
 
   const onSubmit = handleSubmit((data) => {
     // Only the owner may rename — omit `name` from a GM's payload entirely
@@ -194,17 +195,28 @@ export function CampaignSettingsPage() {
           <Button
             variant="secondary"
             disabled={deleteCampaign.isPending}
-            onClick={() => {
-              if (!window.confirm(`Delete "${campaign.name}"? This cannot be undone.`)) return
-              deleteCampaign.mutate(undefined, {
-                onSuccess: () => navigate('/app/campaigns'),
-              })
-            }}
+            onClick={() => setConfirmDeleteOpen(true)}
           >
             Delete campaign
           </Button>
         </>
       )}
+
+      <ConfirmDialog
+        open={confirmDeleteOpen}
+        title={`Delete "${campaign.name}"?`}
+        description="This cannot be undone."
+        confirmLabel="Delete"
+        danger
+        pending={deleteCampaign.isPending}
+        onConfirm={() => {
+          setConfirmDeleteOpen(false)
+          deleteCampaign.mutate(undefined, {
+            onSuccess: () => navigate('/app/campaigns'),
+          })
+        }}
+        onCancel={() => setConfirmDeleteOpen(false)}
+      />
     </section>
   )
 }

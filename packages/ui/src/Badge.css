@@ -1,0 +1,40 @@
+.wb-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.1rem var(--wb-space-2);
+  border-radius: var(--wb-radius-full);
+  font-size: var(--wb-text-xs);
+  font-weight: 500;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.wb-badge--neutral {
+  background: var(--wb-bg-surface-hover);
+  color: var(--wb-text-secondary);
+}
+
+.wb-badge--accent {
+  background: color-mix(in srgb, var(--wb-accent) 16%, transparent);
+  color: var(--wb-accent);
+}
+
+.wb-badge--success {
+  background: color-mix(in srgb, var(--wb-success) 16%, transparent);
+  color: var(--wb-success);
+}
+
+.wb-badge--warning {
+  background: color-mix(in srgb, var(--wb-warning) 16%, transparent);
+  color: var(--wb-warning);
+}
+
+.wb-badge--danger {
+  background: color-mix(in srgb, var(--wb-danger) 16%, transparent);
+  color: var(--wb-danger);
+}
+
+.wb-badge--info {
+  background: color-mix(in srgb, var(--wb-info) 16%, transparent);
+  color: var(--wb-info);
+}

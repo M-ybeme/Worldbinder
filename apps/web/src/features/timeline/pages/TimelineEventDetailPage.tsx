@@ -1,5 +1,6 @@
 import { DEFAULT_CALENDAR_CONFIG } from '@worldbinder/validation'
-import { Button, FormMessage } from '@worldbinder/ui'
+import { Badge, Button, ConfirmDialog, FormMessage, PageHeader } from '@worldbinder/ui'
+import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useCampaignOutletContext } from '../../campaigns/hooks/useCampaignContext'
 import { RichTextEditor } from '../../entities/components/RichTextEditor'
@@ -17,6 +18,7 @@ export function TimelineEventDetailPage() {
   const eventQuery = useTimelineEventQuery(campaign.id, eventId)
   const deleteEvent = useDeleteTimelineEventMutation(campaign.id)
   const canManage = MANAGEMENT_ROLES.has(campaign.role)
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
 
   if (eventQuery.isLoading) return <p>Loading…</p>
   if (eventQuery.isError || !eventQuery.data) {
@@ -31,36 +33,50 @@ export function TimelineEventDetailPage() {
 
   return (
     <section>
-      <header className="wb-entity-header">
-        <h1>{event.title}</h1>
-        <span className="wb-entity-header__meta">
-          {dateRange}
-          {event.visibility === 'gm_only' ? ' · GM only' : ''}
-        </span>
-      </header>
+      <PageHeader
+        title={event.title}
+        meta={
+          <>
+            <span>{dateRange}</span>
+            {event.visibility === 'gm_only' && <Badge tone="warning">GM only</Badge>}
+          </>
+        }
+        actions={
+          canManage && (
+            <>
+              <Link
+                className="wb-button wb-button--secondary"
+                to={`/app/campaign/${campaign.id}/world/timeline/${event.id}/edit`}
+              >
+                Edit
+              </Link>
+              <Button
+                variant="secondary"
+                disabled={deleteEvent.isPending}
+                onClick={() => setConfirmDeleteOpen(true)}
+              >
+                Delete
+              </Button>
+            </>
+          )
+        }
+      />
 
-      {canManage && (
-        <div className="wb-entity-header__actions">
-          <Link
-            className="wb-button wb-button--secondary"
-            to={`/app/campaign/${campaign.id}/world/timeline/${event.id}/edit`}
-          >
-            Edit
-          </Link>
-          <Button
-            variant="secondary"
-            disabled={deleteEvent.isPending}
-            onClick={() => {
-              if (!window.confirm(`Delete "${event.title}"? This cannot be undone.`)) return
-              deleteEvent.mutate(event.id, {
-                onSuccess: () => navigate(`/app/campaign/${campaign.id}/world/timeline`),
-              })
-            }}
-          >
-            Delete
-          </Button>
-        </div>
-      )}
+      <ConfirmDialog
+        open={confirmDeleteOpen}
+        title={`Delete "${event.title}"?`}
+        description="This cannot be undone."
+        confirmLabel="Delete"
+        danger
+        pending={deleteEvent.isPending}
+        onConfirm={() => {
+          setConfirmDeleteOpen(false)
+          deleteEvent.mutate(event.id, {
+            onSuccess: () => navigate(`/app/campaign/${campaign.id}/world/timeline`),
+          })
+        }}
+        onCancel={() => setConfirmDeleteOpen(false)}
+      />
 
       {event.summary && <p>{event.summary}</p>}
 

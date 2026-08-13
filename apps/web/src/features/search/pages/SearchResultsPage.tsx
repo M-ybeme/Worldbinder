@@ -1,5 +1,5 @@
 import type { SearchResourceType } from '@worldbinder/contracts'
-import { FormMessage } from '@worldbinder/ui'
+import { Checkbox, FormMessage } from '@worldbinder/ui'
 import { useSearchParams } from 'react-router-dom'
 import { useCampaignOutletContext } from '../../campaigns/hooks/useCampaignContext'
 import { SearchResultRow } from '../components/SearchResultRow'
@@ -99,14 +99,13 @@ export function SearchResultsPage() {
       <fieldset className="wb-search-filters">
         <legend>Filter by type</legend>
         {RESOURCE_TYPE_FILTERS.map((filter) => (
-          <label key={filter.value} className="wb-search-filters__option">
-            <input
-              type="checkbox"
-              checked={selectedTypes.includes(filter.value)}
-              onChange={() => toggleType(filter.value)}
-            />
-            {filter.label}
-          </label>
+          <Checkbox
+            key={filter.value}
+            className="wb-search-filters__option"
+            checked={selectedTypes.includes(filter.value)}
+            onChange={() => toggleType(filter.value)}
+            label={filter.label}
+          />
         ))}
       </fieldset>
 

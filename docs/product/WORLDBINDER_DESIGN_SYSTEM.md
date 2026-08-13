@@ -1622,7 +1622,83 @@ tool was available in that session to capture a real rendered screenshot —
 a human visual pass (`pnpm dev`, check login/world-list/entity-detail)
 is still outstanding before calling Phase 1 fully done.
 
-### Phases 2–7 — not started
+### Phase 2 — Core primitives (shipped, scoped down from §39's full list)
+
+§39 lists ~19 net-new primitives for this phase. Per the doc's own §37 rule
+("built from real application need, not speculatively"), this phase built
+only the ones with a confirmed real call site in the actual codebase —
+found by grepping for `window.confirm`, raw `<input type="checkbox">`,
+`<h1>`, native `title=` tooltips, `<table>`, and `role="tablist"` before
+writing anything. Six primitives had real, immediate call sites:
+
+- **Dialog** — extracted from `SearchOverlay.tsx`'s hand-rolled portal/
+  focus-trap/backdrop-dismiss logic (that component now renders through
+  Dialog instead of owning its own copy). Generic modal mechanics only —
+  visual skin (background/border/radius/shadow) lives on `.wb-dialog__panel`
+  so every dialog shares one look; a dialog variant overriding dimensions
+  (like search's wider/shorter panel) uses a compound selector
+  (`.wb-dialog__panel.wb-search-overlay__panel`) rather than relying on CSS
+  import order to win the cascade.
+- **ConfirmDialog** — built on Dialog + Button. Replaces every one of this
+  codebase's 10 real `window.confirm()` call sites (`SessionDetailPage`,
+  `TimelineEventDetailPage`, `ThreadDetailPage`, `EntityDetailPage`,
+  `CampaignSettingsPage`, `MapDetailPage` ×3, `AttachmentsPanel`,
+  `RevisionHistoryPanel`) with a real, keyboard-accessible, screen-reader-
+  friendly dialog instead of a blocking native browser prompt.
+- **IconButton** — real need was Dialog's own close button (icon-only,
+  needs an accessible name via `label`/`aria-label`).
+- **Checkbox** — retrofits the 4 real raw `<input type="checkbox">` usages
+  (`MapLayerToggles` ×2, `SearchResultsPage`'s type filters,
+  `StructuredDateEditor`'s "approximate" toggle, `SessionFormPage`'s
+  participant list). Themed via `accent-color` on the native control rather
+  than a hand-rolled SVG replacement — keeps native keyboard/screen-reader
+  behavior for free, per §43's "copy universal conventions" guidance.
+- **Badge** — replaces plain `" · GM only"` text with a real visual
+  indicator (tone="warning") across every real visibility-flag call site:
+  `EntityDetailPage`, `SessionDetailPage`, `TimelineEventDetailPage`,
+  `ThreadDetailPage` (also used for its "Neglected" flag),
+  `MapLayerToggles`, and `MapDetailPage`'s layer manager.
+- **PageHeader** — while wiring Badge into the four detail pages, found
+  that `.wb-entity-header`/`.wb-entity-header__meta` (title + meta row) had
+  **zero CSS rules anywhere** despite being used across 10 files — a
+  second latent styling gap, on top of Phase 1's `.wb-tag-input` find.
+  Built PageHeader and migrated the four pages using the full title+meta
+  shape (`EntityDetailPage`, `SessionDetailPage`, `TimelineEventDetailPage`,
+  `ThreadDetailPage`); the remaining 6 usages of the bare
+  `.wb-entity-header__actions`/`__tags` action-row classes (which turned
+  out to be genuinely generic, reused well beyond page titles — confirmed
+  by grep, same discipline as Phase 1's CSS split) got real shared CSS in
+  `global.css` instead of a full PageHeader migration, since their shape
+  (inline action rows inside panels, not page titles) doesn't fit
+  PageHeader. Full page-by-page PageHeader rollout for every other page is
+  Phase 4-6 work, not this phase's.
+- Also added: a `danger` Button variant (needed by ConfirmDialog's
+  destructive confirm action). Its text color reuses `--wb-bg-app` rather
+  than a new `--wb-danger-fg` token — that token is near-white in light
+  mode and near-black in dark mode, which happens to be exactly the
+  light/dark swap `--wb-danger`'s own background needs for 4.5:1 text
+  contrast in both themes (verified ~6.5:1 light, ~6.9:1 dark).
+
+**Deliberately deferred** (no confirmed real call site found this pass):
+Card/Surface, Tabs, Tooltip, Dropdown/Menu, Toast, Avatar, Skeleton,
+Breadcrumbs, table primitives, sidebar nav item. Several of these have an
+obvious future trigger — Dropdown/Menu and sidebar nav item when Phase 3
+builds the real sidebar+topbar shell, Breadcrumbs alongside the wider
+PageHeader rollout in Phases 4-6 — rather than being built ahead of that
+need.
+
+**Verification:** same bar as Phase 1 — `tsc --noEmit` clean for both
+`@worldbinder/ui` and `@worldbinder/web`, `eslint` clean, `vite build`
+clean, full existing unit suite green (still just the 4 pre-existing
+files — none of this phase's real-logic changes across 10+ page files
+have dedicated test coverage, so correctness there rests on manual review
+plus the dev-server smoke check, not an automated safety net). No browser
+tool was available to capture a real rendered screenshot this session
+either — a human visual pass covering at least one delete confirmation,
+the search overlay, and a couple of the migrated detail pages is still
+outstanding.
+
+### Phases 3–7 — not started
 
 See this document's own phase structure (§39) for scope; the rollout plan
 tracks these as separate checkpoints, each getting the same real-browser

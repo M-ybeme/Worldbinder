@@ -1,0 +1,29 @@
+.wb-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  flex-shrink: 0;
+  padding: 0;
+  border: none;
+  border-radius: var(--wb-radius-sm);
+  background: transparent;
+  color: var(--wb-text-muted);
+  cursor: pointer;
+}
+
+.wb-icon-button:hover:not(:disabled) {
+  background: var(--wb-bg-surface-hover);
+  color: var(--wb-text-primary);
+}
+
+.wb-icon-button:focus-visible {
+  outline: 2px solid var(--wb-accent);
+  outline-offset: 1px;
+}
+
+.wb-icon-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}

@@ -102,6 +102,26 @@ body {
   background: color-mix(in srgb, var(--wb-warning) 12%, transparent);
 }
 
+/* Generic action-button row — used standalone (AttachmentsPanel,
+   RevisionHistoryPanel, RelatedContentPanel, CampaignOverviewPage,
+   MapPinForm, MapDetailPage's own header) by pages/panels that haven't
+   moved to the PageHeader primitive's `actions` slot yet. Previously had
+   zero CSS rules anywhere despite 10 real usages — found while wiring
+   PageHeader into the design-system rollout's Phase 2. */
+.wb-entity-header__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--wb-space-2);
+  margin: var(--wb-space-3) 0;
+}
+
+.wb-entity-header__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--wb-space-1);
+}
+
 /* Milestone 13 Phase 4: tablet layout is designed/tested down to a 768px
    viewport (iPad-portrait-class devices) per the roadmap's desktop/tablet
    scope — no phone-width (<600px) target. CampaignLayout's nav is the

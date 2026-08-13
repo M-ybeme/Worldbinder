@@ -1,0 +1,15 @@
+.wb-confirm-dialog {
+  max-width: 420px;
+}
+
+.wb-confirm-dialog__description {
+  margin: 0;
+  color: var(--wb-text-secondary);
+}
+
+.wb-confirm-dialog__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--wb-space-2);
+  margin-top: var(--wb-space-4);
+}

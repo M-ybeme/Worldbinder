@@ -1,5 +1,5 @@
 import type { WorldDate } from '@worldbinder/contracts'
-import { Button, FormMessage, TextField } from '@worldbinder/ui'
+import { Badge, Button, ConfirmDialog, FormMessage, PageHeader, TextField } from '@worldbinder/ui'
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { AttachmentsPanel } from '../../attachments/components/AttachmentsPanel'
@@ -43,6 +43,7 @@ export function SessionDetailPage() {
   const [worldEndMonth, setWorldEndMonth] = useState('')
   const [worldEndDay, setWorldEndDay] = useState('')
   const [revealEntityId, setRevealEntityId] = useState<string | undefined>(undefined)
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
 
   if (sessionQuery.isLoading) return <p>Loading…</p>
   if (sessionQuery.isError || !sessionQuery.data) {
@@ -76,45 +77,59 @@ export function SessionDetailPage() {
 
   return (
     <section>
-      <header className="wb-entity-header">
-        <h1>
-          Session {session.sessionNumber}: {session.title}
-        </h1>
-        <span className="wb-entity-header__meta">
-          {session.status}
-          {session.visibility === 'gm_only' ? ' · GM only' : ''}
-          {formatWorldDate(session.worldStartDateJson) &&
-            ` · Starts ${formatWorldDate(session.worldStartDateJson)}`}
-          {formatWorldDate(session.worldEndDateJson) &&
-            ` · Ends ${formatWorldDate(session.worldEndDateJson)}`}
-        </span>
-      </header>
+      <PageHeader
+        title={`Session ${session.sessionNumber}: ${session.title}`}
+        meta={
+          <>
+            <span>{session.status}</span>
+            {session.visibility === 'gm_only' && <Badge tone="warning">GM only</Badge>}
+            {formatWorldDate(session.worldStartDateJson) && (
+              <span>Starts {formatWorldDate(session.worldStartDateJson)}</span>
+            )}
+            {formatWorldDate(session.worldEndDateJson) && (
+              <span>Ends {formatWorldDate(session.worldEndDateJson)}</span>
+            )}
+          </>
+        }
+        actions={
+          canManage && (
+            <>
+              <Link
+                className="wb-button wb-button--secondary"
+                to={`/app/campaign/${campaign.id}/sessions/${session.id}/edit`}
+              >
+                Edit
+              </Link>
+              {session.status !== 'completed' && !showCompleteForm && (
+                <Button onClick={() => setShowCompleteForm(true)}>Complete session</Button>
+              )}
+              <Button
+                variant="secondary"
+                disabled={deleteSession.isPending}
+                onClick={() => setConfirmDeleteOpen(true)}
+              >
+                Delete
+              </Button>
+            </>
+          )
+        }
+      />
 
-      {canManage && (
-        <div className="wb-entity-header__actions">
-          <Link
-            className="wb-button wb-button--secondary"
-            to={`/app/campaign/${campaign.id}/sessions/${session.id}/edit`}
-          >
-            Edit
-          </Link>
-          {session.status !== 'completed' && !showCompleteForm && (
-            <Button onClick={() => setShowCompleteForm(true)}>Complete session</Button>
-          )}
-          <Button
-            variant="secondary"
-            disabled={deleteSession.isPending}
-            onClick={() => {
-              if (!window.confirm(`Delete "${session.title}"? This cannot be undone.`)) return
-              deleteSession.mutate(session.id, {
-                onSuccess: () => navigate(`/app/campaign/${campaign.id}/sessions`),
-              })
-            }}
-          >
-            Delete
-          </Button>
-        </div>
-      )}
+      <ConfirmDialog
+        open={confirmDeleteOpen}
+        title={`Delete "${session.title}"?`}
+        description="This cannot be undone."
+        confirmLabel="Delete"
+        danger
+        pending={deleteSession.isPending}
+        onConfirm={() => {
+          setConfirmDeleteOpen(false)
+          deleteSession.mutate(session.id, {
+            onSuccess: () => navigate(`/app/campaign/${campaign.id}/sessions`),
+          })
+        }}
+        onCancel={() => setConfirmDeleteOpen(false)}
+      />
 
       {showCompleteForm && (
         <div className="wb-form">

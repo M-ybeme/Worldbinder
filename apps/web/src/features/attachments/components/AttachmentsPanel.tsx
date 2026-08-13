@@ -1,6 +1,7 @@
 import type { AttachmentResourceType } from '@worldbinder/contracts'
 import {
   Button,
+  ConfirmDialog,
   EmptyState,
   ErrorState,
   FileDropzone,
@@ -49,6 +50,9 @@ export function AttachmentsPanel({
   const unlink = useUnlinkAttachmentMutation(campaignId, resourceType, resourceId)
   const deleteAttachment = useDeleteAttachmentMutation(campaignId, resourceType, resourceId)
   const [showPicker, setShowPicker] = useState(false)
+  const [deletingAttachment, setDeletingAttachment] = useState<{ id: string; name: string } | null>(
+    null,
+  )
   const unlinkedQuery = useUnlinkedAttachmentsQuery(campaignId, showPicker)
   const linkExisting = useLinkExistingAttachmentMutation(campaignId, resourceType, resourceId)
 
@@ -114,15 +118,12 @@ export function AttachmentsPanel({
                   <Button
                     variant="secondary"
                     disabled={deleteAttachment.isPending}
-                    onClick={() => {
-                      if (
-                        !window.confirm(
-                          `Delete "${attachment.originalFilename}"? This cannot be undone.`,
-                        )
-                      )
-                        return
-                      deleteAttachment.mutate(attachment.id)
-                    }}
+                    onClick={() =>
+                      setDeletingAttachment({
+                        id: attachment.id,
+                        name: attachment.originalFilename,
+                      })
+                    }
                   >
                     Delete
                   </Button>
@@ -178,6 +179,20 @@ export function AttachmentsPanel({
           </>
         )}
       </div>
+
+      <ConfirmDialog
+        open={deletingAttachment !== null}
+        title={`Delete "${deletingAttachment?.name}"?`}
+        description="This cannot be undone."
+        confirmLabel="Delete"
+        danger
+        pending={deleteAttachment.isPending}
+        onConfirm={() => {
+          if (deletingAttachment) deleteAttachment.mutate(deletingAttachment.id)
+          setDeletingAttachment(null)
+        }}
+        onCancel={() => setDeletingAttachment(null)}
+      />
     </div>
   )
 }
