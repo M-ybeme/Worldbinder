@@ -6,6 +6,15 @@ Every push to `main` should add an entry here. This is meant to be an honest rec
 
 ## [Unreleased]
 
+## [0.16.1] - 2026-07-16
+
+### Fixed
+
+- **Milestone 16, Phase 1 — full regression pass.** Ran lint, typecheck, all unit tests, integration tests, the Playwright e2e suite, and a full build together as one deliberate pass. Found and fixed two real issues:
+- `apps/api/package.json`'s `test:e2e` script duplicated `test:integration` exactly. Root `pnpm test:e2e` fanned that out to both `apps/api` and `apps/web` at once via turbo, but the API's Jest suite needs the dev stack stopped while the Playwright suite needs it running — the two could never both be satisfied in one command. Removed the redundant script; root `pnpm test:e2e` now runs only the intended Playwright suite.
+- `apps/web/e2e/campaign-membership.spec.ts`'s final step clicked "Remove" without first waiting for the Members page to actually render, so it sometimes caught the previous page (Settings, whose calendar config happens to render exactly 12 default months each with their own "Remove" button) still on screen even though the URL had already updated. Verified via a direct database query that this was not a data-duplication bug before concluding it was a missing-wait test issue; fixed by asserting the Members heading is visible first, matching the rest of the suite's pattern.
+- Everything else passed clean: lint, typecheck, 157 unit tests across 4 packages, 190/190 integration tests, all 27 Playwright tests (after the fix above), and the build.
+
 ## [0.16.0] - 2026-07-16
 
 ### Added

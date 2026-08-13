@@ -93,6 +93,7 @@ test('campaign lifecycle: create, invite, accept, switch, role change, remove, a
 
   await test.step('owner removes the invitee', async () => {
     await ownerPage.getByRole('link', { name: 'Members' }).click()
+    await expect(ownerPage.getByRole('heading', { name: 'Members', level: 1 })).toBeVisible()
     await ownerPage.getByRole('button', { name: 'Remove' }).click()
     await expect(ownerPage.getByText(inviteeEmail)).toHaveCount(0)
   })

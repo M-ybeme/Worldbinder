@@ -2424,6 +2424,16 @@ A pre-implementation audit (three parallel research passes: security/auth, perfo
 - Unhandled migration failure
 - Critical runtime errors
 
+### Phases (planning pass, 2026-07-16)
+
+**Sequencing decision (2026-07-16)**: this milestone bundles real infrastructure provisioning (Railway/R2/email provider/Sentry — needs live accounts), a full regression pass, the §29 documentation set plus 18 required ADRs (§29.1), and portfolio material (case study, screenshots, demo video). Per the user's explicit choice, work starts with everything achievable without live infrastructure or their creative input — the regression pass and documentation track below. Infra provisioning, production smoke tests, the live backup/restore drill against real hosted Postgres, and portfolio material are separate tracks planned later, not covered by these phases.
+
+**Phase 1 — Full regression pass** [Done — see 0.16.1]
+
+- Ran lint, typecheck, unit tests (157 across 4 packages), integration tests (190/190), the Playwright e2e suite, and a full build in one deliberate pass. All clean except two real findings, both fixed:
+- `apps/api/package.json`'s `test:e2e` script was a byte-for-byte duplicate of `test:integration`. Since turbo fans a task out to every package that defines it, root `pnpm test:e2e` ran the API's Jest suite (which requires the dev stack **stopped**) at the same time as the web Playwright suite (which requires it **running**) — the two preconditions can never both hold, so the root command had likely never worked correctly. Fixed by removing the redundant script; root `pnpm test:e2e` now correctly and exclusively runs the Playwright suite, matching what the roadmap's own required-commands list (§26) always intended.
+- One genuine, deterministic Playwright failure in `campaign-membership.spec.ts`'s last step: after navigating to the Members page, the test clicked "Remove" without first waiting for the Members page's own content to render. Right after the preceding archive/restore step, the previous page's content (the Settings page's calendar config, which happens to render exactly 12 default months each with their own "Remove" button) was still what was painted, even though the URL had already updated — so the ambiguous locator matched 12 unrelated buttons instead of the one real member row. Confirmed via direct DB query that no data duplication was involved (only 2 real members existed) before concluding it was a missing-wait test bug, not an app bug. Fixed by asserting the Members heading is visible before interacting, matching the pattern the rest of the suite already uses.
+
 ---
 
 ## 28. Demo Campaign Requirements
