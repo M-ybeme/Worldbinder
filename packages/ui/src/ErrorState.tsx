@@ -1,4 +1,5 @@
 import { Button } from './Button'
+import './ErrorState.css'
 
 export interface ErrorStateProps {
   message?: string | null

@@ -1,0 +1,6 @@
+.wb-attachment-list img {
+  max-width: 120px;
+  max-height: 120px;
+  border-radius: var(--wb-radius-sm);
+  display: block;
+}

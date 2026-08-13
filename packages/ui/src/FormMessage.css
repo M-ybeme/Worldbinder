@@ -1,0 +1,16 @@
+.wb-form-message {
+  margin: 0;
+  font-size: var(--wb-text-sm);
+  padding: var(--wb-space-2) var(--wb-space-3);
+  border-radius: var(--wb-radius-sm);
+}
+
+.wb-form-message--error {
+  color: var(--wb-danger);
+  background: color-mix(in srgb, var(--wb-danger) 12%, transparent);
+}
+
+.wb-form-message--success {
+  color: var(--wb-success);
+  background: color-mix(in srgb, var(--wb-success) 12%, transparent);
+}

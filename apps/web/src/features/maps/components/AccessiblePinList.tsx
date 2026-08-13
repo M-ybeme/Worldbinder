@@ -1,4 +1,5 @@
 import type { MapLayerSummary, MapPinSummary } from '@worldbinder/contracts'
+import '../maps.css'
 
 export interface AccessiblePinListProps {
   pins: MapPinSummary[]

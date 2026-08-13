@@ -2,6 +2,7 @@ import type { SearchResult } from '@worldbinder/contracts'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { resultHref } from '../lib/resultHref'
+import '../search.css'
 
 /** Renders highlight offsets as plain text nodes wrapped in <mark> — never
  * embedded markup, so there's no dangerouslySetInnerHTML anywhere in this

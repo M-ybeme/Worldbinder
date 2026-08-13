@@ -1,3 +1,5 @@
+import './LoadingState.css'
+
 export interface LoadingStateProps {
   label?: string
 }

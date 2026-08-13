@@ -3,6 +3,7 @@ import { EmptyState, ErrorState, LoadingState } from '@worldbinder/ui'
 import { Link } from 'react-router-dom'
 import { useCampaignOutletContext } from '../../campaigns/hooks/useCampaignContext'
 import { useMapsQuery } from '../hooks/useMaps'
+import '../maps.css'
 
 const MANAGEMENT_ROLES = new Set(['owner', 'gm', 'editor'])
 

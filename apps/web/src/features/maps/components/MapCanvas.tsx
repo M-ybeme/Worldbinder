@@ -1,4 +1,5 @@
 import type { MapPinSummary } from '@worldbinder/contracts'
+import '../maps.css'
 import {
   useRef,
   useState,

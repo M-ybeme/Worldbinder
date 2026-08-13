@@ -4,6 +4,22 @@ All notable changes to this project are documented here. Format follows [Keep a 
 
 Every push to `main` should add an entry here. This is meant to be an honest record of what actually shipped, not a restatement of the roadmap's aspirations — if something was attempted and reverted, or shipped partially, say so.
 
+## [0.18.0] - 2026-08-13
+
+**Design system rollout, Phase 1 (foundations).** The live app looked visually unfinished — flat, left-aligned, no real spacing/type system — so `docs/product/WORLDBINDER_DESIGN_SYSTEM.md` (a full visual-direction spec) is now being rolled out in phases. Phase 1 lands the token system and retrofits existing primitives onto it; it does not touch page layouts, add new components, or rebuild the app shell — those are later phases. Explicit decision: this app stays on plain CSS custom properties, not Tailwind, despite the design doc's Tailwind-flavored examples — see the doc's new §45 for the full rationale and exact deviations from its suggested values.
+
+### Added
+
+- **Full design-token system** in new `packages/ui/src/tokens.css` (imported once at the app root): neutral surface hierarchy, a 3-tier border scale, a 4-tier text scale, accent + semantic colors (including a new `info` color this app didn't have before), an 8-step type scale, a 10-step spacing scale, a 4-step radius scale, a 3-step shadow scale, a 4-step z-index scale. Light and dark variants both contrast-verified against WCAG AA by hand rather than copying the design doc's suggested dark-mode-only hex values as-is — two values were changed outright because the doc's own suggestions fell short (dark `border-default` was ~1.6:1 against the page background, under the 3:1 non-text-contrast floor; the doc's dark accent pairing with white text only verified to ~4.0:1, short of what a button label needs).
+- **All 11 existing `packages/ui` primitives now have their own colocated CSS** (e.g. `Button.tsx` imports `./Button.css`) instead of living in the web app's monolithic `global.css`, and consume the new tokens instead of hardcoded values.
+- Added `lucide-react` (icon library) as a dependency — no usage yet, available for the next phase.
+
+### Fixed
+
+- **The "everything pushed to the far left" layout bug**: `.app-shell__main` was missing `margin-inline: auto` entirely.
+- **A real, previously-unstyled component**: `TagInput`'s chip/remove-button/input classes had no CSS rules anywhere in the codebase — it and `EntityDetailPage`'s read-only tag display were both rendering with bare browser-default styling. Found while retrofitting the primitive onto tokens, not previously known.
+- `apps/web/src/styles/global.css` (770 lines) trimmed to reset/shell/genuinely-cross-feature-utility rules only; single-feature-owned styles (maps, search, entities, attachments) moved to colocated files next to their feature, verified by grep against actual usage rather than assumed from class names.
+
 ## [0.17.0] - 2026-08-13
 
 **Milestone 16's production infrastructure is live.** `worldbinder.net` is deployed on Railway with real Postgres/Redis/Cloudflare R2/Resend/Sentry, DNS and TLS verified, most of it confirmed working end to end (not just configured) — real database migrations run against the live Postgres, a real captured exception confirmed in Sentry, the live web bundle confirmed pointing at the live API. Email delivery specifically required a same-day follow-up fix (see below) after the first live test caught a real production failure. Still outstanding from Milestone 16's full checklist: the live backup/restore drill, production smoke tests, scope freeze, and portfolio material.

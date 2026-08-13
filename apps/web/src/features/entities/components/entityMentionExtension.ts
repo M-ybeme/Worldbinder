@@ -1,6 +1,7 @@
 import { mergeAttributes, Node } from '@tiptap/core'
 import Suggestion, { type SuggestionKeyDownProps, type SuggestionProps } from '@tiptap/suggestion'
 import { listEntities } from '../api/entitiesApi'
+import '../entities.css'
 
 export interface EntityMentionOptions {
   campaignId: string

@@ -1,0 +1,12 @@
+.wb-empty-state {
+  margin: var(--wb-space-4) 0;
+  padding: var(--wb-space-4);
+  border: 1px dashed var(--wb-border-default);
+  border-radius: var(--wb-radius-md);
+  color: var(--wb-text-primary);
+}
+
+.wb-empty-state p {
+  margin: 0;
+  color: var(--wb-text-muted);
+}

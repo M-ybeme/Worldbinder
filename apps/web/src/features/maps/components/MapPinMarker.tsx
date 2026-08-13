@@ -1,5 +1,6 @@
 import type { MapPinSummary } from '@worldbinder/contracts'
 import type { KeyboardEvent as ReactKeyboardEvent, PointerEvent as ReactPointerEvent } from 'react'
+import '../maps.css'
 
 export interface MapPinMarkerProps {
   pin: MapPinSummary

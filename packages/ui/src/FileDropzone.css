@@ -1,0 +1,37 @@
+.wb-dropzone {
+  position: relative;
+  padding: var(--wb-space-5);
+  border: 1px dashed var(--wb-border-default);
+  border-radius: var(--wb-radius-sm);
+  background: var(--wb-field-bg);
+  text-align: center;
+  cursor: pointer;
+  font-size: var(--wb-text-base);
+}
+
+.wb-dropzone p {
+  margin: 0;
+  color: var(--wb-text-muted);
+}
+
+.wb-dropzone:focus-visible {
+  outline: 2px solid var(--wb-accent);
+  outline-offset: 1px;
+}
+
+.wb-dropzone--active {
+  border-color: var(--wb-accent);
+  background: var(--wb-bg-surface-hover);
+}
+
+.wb-dropzone[aria-disabled='true'] {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.wb-dropzone__input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+}

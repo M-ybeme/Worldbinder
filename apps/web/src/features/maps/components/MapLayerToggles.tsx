@@ -1,4 +1,5 @@
 import type { MapLayerSummary } from '@worldbinder/contracts'
+import '../maps.css'
 
 export interface MapLayerTogglesProps {
   layers: MapLayerSummary[]

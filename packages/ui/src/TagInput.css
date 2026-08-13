@@ -1,0 +1,69 @@
+/* No rules existed for these classes before the design-system pass —
+   TagInput and its chips (also reused verbatim by EntityDetailPage's
+   read-only tag display) rendered with unstyled default browser list/
+   button chrome. */
+
+.wb-tag-input {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--wb-space-2);
+  padding: var(--wb-space-1) var(--wb-space-2);
+  border: 1px solid var(--wb-border-default);
+  border-radius: var(--wb-radius-sm);
+  background: var(--wb-field-bg);
+}
+
+.wb-tag-input:focus-within {
+  outline: 2px solid var(--wb-accent);
+  outline-offset: 1px;
+}
+
+.wb-tag-input__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--wb-space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.wb-tag-input__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--wb-space-1);
+  padding: 0.15rem var(--wb-space-2);
+  border-radius: var(--wb-radius-full);
+  background: var(--wb-bg-surface-hover);
+  color: var(--wb-text-primary);
+  font-size: var(--wb-text-sm);
+}
+
+.wb-tag-input__remove {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: var(--wb-text-muted);
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0;
+}
+
+.wb-tag-input__remove:hover {
+  color: var(--wb-danger);
+}
+
+.wb-tag-input__field {
+  flex: 1;
+  min-width: 120px;
+  border: none;
+  background: transparent;
+  color: var(--wb-text-primary);
+  font-size: var(--wb-text-md);
+  font-family: inherit;
+  padding: var(--wb-space-1) 0;
+}
+
+.wb-tag-input__field:focus {
+  outline: none;
+}

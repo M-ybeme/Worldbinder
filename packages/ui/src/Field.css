@@ -1,0 +1,41 @@
+/* Shared by every field-shaped primitive (TextField, Textarea, Select,
+   Combobox, TagInput, FileDropzone) — imported from each of their .tsx
+   files. Vite dedupes repeated imports of the same CSS module, so this
+   loads once regardless of how many of those components a page uses. */
+
+.wb-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--wb-space-1);
+}
+
+.wb-field__label {
+  font-size: var(--wb-text-sm);
+  font-weight: 500;
+  color: var(--wb-text-secondary);
+}
+
+.wb-field__input {
+  padding: var(--wb-space-2) var(--wb-space-3);
+  border: 1px solid var(--wb-border-default);
+  border-radius: var(--wb-radius-sm);
+  background: var(--wb-field-bg);
+  color: var(--wb-text-primary);
+  font-size: var(--wb-text-md);
+  font-family: inherit;
+}
+
+.wb-field__input:focus-visible {
+  outline: 2px solid var(--wb-accent);
+  outline-offset: 1px;
+}
+
+.wb-field__input[aria-invalid='true'] {
+  border-color: var(--wb-danger);
+}
+
+.wb-field__error {
+  margin: 0;
+  font-size: var(--wb-text-xs);
+  color: var(--wb-danger);
+}

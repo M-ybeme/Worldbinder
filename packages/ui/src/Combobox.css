@@ -1,0 +1,46 @@
+.wb-combobox {
+  position: relative;
+}
+
+.wb-combobox__listbox {
+  position: absolute;
+  z-index: var(--wb-z-dropdown);
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin: var(--wb-space-1) 0 0;
+  padding: var(--wb-space-1);
+  list-style: none;
+  max-height: 220px;
+  overflow-y: auto;
+  border: 1px solid var(--wb-border-default);
+  border-radius: var(--wb-radius-sm);
+  background: var(--wb-field-bg);
+  box-shadow: var(--wb-shadow-md);
+}
+
+.wb-combobox__option {
+  padding: var(--wb-space-2);
+  border-radius: var(--wb-radius-sm);
+  font-size: var(--wb-text-base);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--wb-space-1) var(--wb-space-2);
+  cursor: pointer;
+}
+
+.wb-combobox__option--active {
+  background: var(--wb-bg-surface-hover);
+}
+
+.wb-combobox__meta {
+  font-size: var(--wb-text-xs);
+  color: var(--wb-text-muted);
+}
+
+.wb-combobox__status {
+  padding: var(--wb-space-2);
+  font-size: var(--wb-text-sm);
+  color: var(--wb-text-muted);
+}

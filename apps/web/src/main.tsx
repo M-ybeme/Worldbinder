@@ -7,6 +7,7 @@ import * as Sentry from '@sentry/react'
 import { bootstrapSession } from './features/auth/session'
 import { queryClient } from './lib/queryClient'
 import { router } from './routes'
+import '@worldbinder/ui/src/tokens.css'
 import './styles/global.css'
 
 // Milestone 14 Phase 11 — VITE_SENTRY_DSN unset (the default everywhere

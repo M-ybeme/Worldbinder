@@ -4,6 +4,7 @@ import { useSearchParams } from 'react-router-dom'
 import { useCampaignOutletContext } from '../../campaigns/hooks/useCampaignContext'
 import { SearchResultRow } from '../components/SearchResultRow'
 import { useSearchQuery } from '../hooks/useSearch'
+import '../search.css'
 
 const RESOURCE_TYPE_FILTERS: { value: SearchResourceType; label: string }[] = [
   { value: 'entity', label: 'World' },

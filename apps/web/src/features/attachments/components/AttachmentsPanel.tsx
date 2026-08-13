@@ -8,6 +8,7 @@ import {
   LoadingState,
 } from '@worldbinder/ui'
 import { useState } from 'react'
+import '../attachments.css'
 import {
   useAttachmentsForResourceQuery,
   useDeleteAttachmentMutation,

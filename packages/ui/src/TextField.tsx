@@ -1,4 +1,5 @@
 import { forwardRef, type InputHTMLAttributes } from 'react'
+import './Field.css'
 
 export interface TextFieldProps extends InputHTMLAttributes<HTMLInputElement> {
   label: string
@@ -15,7 +16,14 @@ export const TextField = forwardRef<HTMLInputElement, TextFieldProps>(function T
       <label htmlFor={fieldId} className="wb-field__label">
         {label}
       </label>
-      <input ref={ref} id={fieldId} name={name} className="wb-field__input" aria-invalid={!!error} {...props} />
+      <input
+        ref={ref}
+        id={fieldId}
+        name={name}
+        className="wb-field__input"
+        aria-invalid={!!error}
+        {...props}
+      />
       {error && (
         <p className="wb-field__error" role="alert">
           {error}

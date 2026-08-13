@@ -1,0 +1,41 @@
+.wb-button {
+  padding: var(--wb-space-2) var(--wb-space-4);
+  border-radius: var(--wb-radius-sm);
+  border: 1px solid transparent;
+  font-size: var(--wb-text-md);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.wb-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.wb-button:focus-visible {
+  outline: 2px solid var(--wb-accent);
+  outline-offset: 1px;
+}
+
+.wb-button--primary {
+  background: var(--wb-accent);
+  color: var(--wb-accent-fg);
+}
+
+.wb-button--primary:hover:not(:disabled) {
+  background: var(--wb-accent-hover);
+}
+
+.wb-button--primary:active:not(:disabled) {
+  background: var(--wb-accent-active);
+}
+
+.wb-button--secondary {
+  background: transparent;
+  border-color: var(--wb-border-default);
+  color: var(--wb-text-primary);
+}
+
+.wb-button--secondary:hover:not(:disabled) {
+  background: var(--wb-bg-surface-hover);
+}

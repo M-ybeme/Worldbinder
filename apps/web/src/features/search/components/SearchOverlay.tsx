@@ -5,6 +5,7 @@ import { useSearchQuery } from '../hooks/useSearch'
 import { resultHref } from '../lib/resultHref'
 import { useSearchOverlayStore } from '../store/useSearchOverlayStore'
 import { SearchResultRow } from './SearchResultRow'
+import '../search.css'
 
 const OVERLAY_RESULT_LIMIT = 8
 const DEBOUNCE_MS = 200

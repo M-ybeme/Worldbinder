@@ -1,4 +1,6 @@
 import { useRef, useState, type DragEvent, type KeyboardEvent } from 'react'
+import './Field.css'
+import './FileDropzone.css'
 
 export interface FileDropzoneProps {
   label: string
@@ -11,7 +13,13 @@ export interface FileDropzoneProps {
 /** Click-to-browse + drag-and-drop, following TextField's wb-field/
  * wb-field__label/wb-field__error class shape. No file-input primitive
  * existed in this package before Milestone 9. */
-export function FileDropzone({ label, accept, disabled, onFilesSelected, error }: FileDropzoneProps) {
+export function FileDropzone({
+  label,
+  accept,
+  disabled,
+  onFilesSelected,
+  error,
+}: FileDropzoneProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [isDragActive, setIsDragActive] = useState(false)
 
@@ -45,7 +53,9 @@ export function FileDropzone({ label, accept, disabled, onFilesSelected, error }
     <div className="wb-field">
       <span className="wb-field__label">{label}</span>
       <div
-        className={['wb-dropzone', isDragActive ? 'wb-dropzone--active' : ''].filter(Boolean).join(' ')}
+        className={['wb-dropzone', isDragActive ? 'wb-dropzone--active' : '']
+          .filter(Boolean)
+          .join(' ')}
         role="button"
         tabIndex={disabled ? -1 : 0}
         aria-disabled={disabled}

@@ -2,6 +2,7 @@ import type { EntityVisibility, MapLayerSummary, MapPinSummary } from '@worldbin
 import { Button, FormMessage, Select, TextField } from '@worldbinder/ui'
 import { useState } from 'react'
 import { EntityPicker } from '../../entities/components/EntityPicker'
+import '../maps.css'
 
 const VISIBILITY_OPTIONS = [
   { value: 'public', label: 'Public — visible to all campaign members' },

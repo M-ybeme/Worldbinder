@@ -1,0 +1,16 @@
+/* Entity wiki-link mentions, rendered inside RichTextEditor content.
+   Imported from entityMentionExtension.ts, the only consumer. */
+
+.wb-entity-mention {
+  padding: 0.05rem var(--wb-space-1);
+  border-radius: var(--wb-radius-sm);
+  background: var(--wb-bg-surface-hover);
+  color: var(--wb-accent);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.wb-entity-mention--broken {
+  color: var(--wb-danger);
+  text-decoration: line-through;
+}
