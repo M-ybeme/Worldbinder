@@ -22,10 +22,7 @@ function booleanString(defaultValue: 'true' | 'false') {
  * against — treat the literal empty string as "not set."
  */
 function optionalUrl() {
-  return z.preprocess(
-    (value) => (value === '' ? undefined : value),
-    z.string().url().optional(),
-  )
+  return z.preprocess((value) => (value === '' ? undefined : value), z.string().url().optional())
 }
 
 export function loadEnv<T extends z.ZodTypeAny>(
@@ -122,13 +119,18 @@ export const apiEnvSchema = z
     COOKIE_DOMAIN: z.string().optional(),
     FRONTEND_URL: z.string().url().default('http://localhost:5173'),
 
-    // Mail (Mailpit locally; a real provider's SMTP credentials in production)
+    // Mail (Mailpit locally via SMTP). RESEND_API_KEY unset (the default)
+    // means MailService uses the SMTP transport below — set it to switch to
+    // Resend's HTTP API instead. Not just a preference: Railway blocks
+    // outbound SMTP entirely below its Pro plan, so production has to go
+    // over HTTPS instead (ADR-0021's follow-up finding, 2026-08-13).
     SMTP_HOST: z.string().default('127.0.0.1'),
     SMTP_PORT: z.coerce.number().int().positive().default(1025),
     SMTP_SECURE: booleanString('false'),
     SMTP_USER: z.string().optional(),
     SMTP_PASSWORD: z.string().optional(),
     MAIL_FROM: z.string().default('Worldbinder <noreply@worldbinder.local>'),
+    RESEND_API_KEY: z.string().optional(),
 
     // Object storage (MinIO locally; Cloudflare R2 or AWS S3 in production —
     // distinct var names from the compose-facing MINIO_ROOT_USER/PASSWORD,

@@ -1,7 +1,9 @@
 # ADR-0021: Resend selected for production transactional email
 
-**Status:** Accepted
+**Status:** Superseded by [ADR-0022](0022-resend-http-api-over-smtp.md)
 **Date:** 2026-08-12
+
+**2026-08-13 note:** the provider choice (Resend) still stands — only the transport mechanism changed. Real production deployment found that Railway blocks outbound SMTP below its Pro plan, so the SMTP-relay approach this ADR specifies never actually worked in production. Left as-written below for an honest record of the reasoning at the time; see ADR-0022 for what actually shipped.
 
 ## Context
 
