@@ -12,6 +12,11 @@ Every push to `main` should add an entry here. This is meant to be an honest rec
 
 - `LoginPage`'s demo-login button — a second, independent `useLogin()` mutation instance, so its pending/error state doesn't interfere with the real login form.
 - `apps/api/src/demo-content/config.ts`'s `VERIFY_VIA_DB` flag and two new DB-direct helpers in `build-demo-campaign.ts` (`verifyEmailViaDb`, `addMemberViaDb`) for the production path.
+
+### Fixed
+
+- **`CORS_ORIGIN` on the live API only allow-listed `https://worldbinder.net`, not `https://www.worldbinder.net`** — even though Railway DNS-routes both to the same web service, so any visitor landing on the `www` subdomain (a completely normal thing to type or land on) got every API call silently blocked by the browser's CORS check, breaking login entirely. Found live-testing the demo button against `www.worldbinder.net`, not assumed; fixed by widening the production `CORS_ORIGIN` variable to both origins.
+- **The demo-login button's redirect lost a race against `RedirectIfAuthenticated`**: that guard fires synchronously off the same auth-status change a successful login triggers, and its hardcoded `/account/profile` target wins over a plain `navigate()` call from the mutation's `onSuccess` — a real, pre-existing inconsistency this just happened to be the first thing to expose, since the regular login form's default redirect already happened to agree with `RedirectIfAuthenticated`'s hardcoded value. Fixed by having `RedirectIfAuthenticated` respect `location.state.from.pathname` (falling back to its old default), the same channel `LoginPage`'s own submit handler already reads — every other page using this guard (Register/ForgotPassword/ResetPassword) benefits too, not just the demo button.
 - `pnpm --filter @worldbinder/api seed:demo:prod` — same script as the existing `seed:demo`, without the `dotenv -e ../../.env` wrapper (so it doesn't clobber the real production env vars the caller supplies) plus the new flag.
 
 ## [0.20.0] - 2026-08-13

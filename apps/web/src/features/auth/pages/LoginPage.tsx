@@ -37,10 +37,16 @@ export function LoginPage() {
   })
 
   function handleDemoLogin(): void {
-    demoLogin.mutate(
-      { email: DEMO_EMAIL, password: DEMO_PASSWORD },
-      { onSuccess: () => navigate('/app/campaigns', { replace: true }) },
-    )
+    // RedirectIfAuthenticated fires synchronously off the same auth-status
+    // change this mutation triggers, and wins the race against a plain
+    // onSuccess `navigate()` call here — so the desired destination has to
+    // go through location.state.from, the same channel it reads for every
+    // other case, not a direct navigate after the mutation resolves.
+    navigate(location.pathname + location.search, {
+      replace: true,
+      state: { from: { pathname: '/app/campaigns' } },
+    })
+    demoLogin.mutate({ email: DEMO_EMAIL, password: DEMO_PASSWORD })
   }
 
   return (
