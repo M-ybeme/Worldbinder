@@ -1,0 +1,42 @@
+/* MembersPage only. .wb-member-list/.wb-invitation-list previously had
+   zero CSS rules anywhere. */
+.wb-member-list,
+.wb-invitation-list {
+  list-style: none;
+  margin: var(--wb-space-4) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--wb-space-2);
+}
+
+.wb-member-list li,
+.wb-invitation-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--wb-space-2) var(--wb-space-4);
+  padding: var(--wb-space-3) var(--wb-space-4);
+  border: 1px solid var(--wb-border-default);
+  border-radius: var(--wb-radius-md);
+  background: var(--wb-bg-surface-raised);
+}
+
+.wb-member-list__meta {
+  font-size: var(--wb-text-sm);
+  color: var(--wb-text-muted);
+}
+
+.wb-member-list__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--wb-space-2);
+}
+
+.wb-member-list__role {
+  font-size: var(--wb-text-sm);
+  color: var(--wb-text-muted);
+  text-transform: capitalize;
+}

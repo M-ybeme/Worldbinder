@@ -1,4 +1,4 @@
-import { EmptyState, ErrorState, LoadingState } from '@worldbinder/ui'
+import { Badge, EmptyState, ErrorState, LoadingState } from '@worldbinder/ui'
 import { Link } from 'react-router-dom'
 import { useCampaignOutletContext } from '../../campaigns/hooks/useCampaignContext'
 import { useSessionsQuery } from '../hooks/useSessions'
@@ -41,7 +41,12 @@ export function SessionListPage() {
               </Link>
               <span className="wb-session-list__meta">
                 {session.status}
-                {session.visibility === 'gm_only' ? ' · GM only' : ''}
+                {session.visibility === 'gm_only' && (
+                  <>
+                    {' '}
+                    <Badge tone="warning">GM only</Badge>
+                  </>
+                )}
               </span>
             </li>
           ))}

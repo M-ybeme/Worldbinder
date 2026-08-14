@@ -1,5 +1,5 @@
 import type { MapSummary } from '@worldbinder/contracts'
-import { EmptyState, ErrorState, LoadingState } from '@worldbinder/ui'
+import { Badge, EmptyState, ErrorState, LoadingState } from '@worldbinder/ui'
 import { Link } from 'react-router-dom'
 import { useCampaignOutletContext } from '../../campaigns/hooks/useCampaignContext'
 import { useMapsQuery } from '../hooks/useMaps'
@@ -13,7 +13,12 @@ function MapCard({ campaignId, map }: { campaignId: string; map: MapSummary }) {
       <Link to={`/app/campaign/${campaignId}/maps/${map.id}`}>
         {map.imageUrl && <img src={map.imageUrl} alt="" />}
         <span>{map.name}</span>
-        {map.visibility === 'gm_only' && <span className="wb-session-list__meta"> · GM only</span>}
+        {map.visibility === 'gm_only' && (
+          <>
+            {' '}
+            <Badge tone="warning">GM only</Badge>
+          </>
+        )}
       </Link>
     </li>
   )

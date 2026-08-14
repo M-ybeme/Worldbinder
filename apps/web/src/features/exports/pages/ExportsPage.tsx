@@ -1,5 +1,5 @@
 import type { CampaignExportSummary } from '@worldbinder/contracts'
-import { Button, FormMessage } from '@worldbinder/ui'
+import { Button, FormMessage, LoadingState } from '@worldbinder/ui'
 import { useCampaignOutletContext } from '../../campaigns/hooks/useCampaignContext'
 import { useCreateExportMutation, useExportsQuery } from '../hooks/useExports'
 
@@ -58,7 +58,7 @@ export function ExportsPage() {
       <FormMessage message={createExport.error?.message} />
 
       <h2>Export history</h2>
-      {exportsQuery.isLoading && <p>Loading exports…</p>}
+      {exportsQuery.isLoading && <LoadingState label="Loading exports…" />}
       {exportsQuery.isError && <FormMessage message={exportsQuery.error.message} />}
       <ul className="wb-session-list">
         {exportsQuery.data?.map((item) => (

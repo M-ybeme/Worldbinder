@@ -11,6 +11,7 @@ import {
 import { inviteMemberSchema, type InviteMemberInput } from '@worldbinder/validation'
 import { useForm } from 'react-hook-form'
 import { useCampaignOutletContext } from '../../campaigns/hooks/useCampaignContext'
+import '../membership.css'
 import {
   useInvitationsQuery,
   useInviteMemberMutation,

@@ -1,5 +1,13 @@
 import type { MapPinSummary } from '@worldbinder/contracts'
-import { Badge, Button, ConfirmDialog, FormMessage, TextField } from '@worldbinder/ui'
+import {
+  Badge,
+  Button,
+  ConfirmDialog,
+  ErrorState,
+  FormMessage,
+  LoadingState,
+  TextField,
+} from '@worldbinder/ui'
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useCampaignOutletContext } from '../../campaigns/hooks/useCampaignContext'
@@ -46,9 +54,9 @@ export function MapDetailPage() {
   const [confirmDeleteMap, setConfirmDeleteMap] = useState(false)
   const [deletingLayer, setDeletingLayer] = useState<{ id: string; name: string } | null>(null)
 
-  if (mapQuery.isLoading) return <p>Loading…</p>
+  if (mapQuery.isLoading) return <LoadingState label="Loading map…" />
   if (mapQuery.isError || !mapQuery.data) {
-    return <FormMessage message="This map could not be loaded." />
+    return <ErrorState message="This map could not be loaded." onRetry={() => mapQuery.refetch()} />
   }
   const map = mapQuery.data
 

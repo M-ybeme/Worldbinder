@@ -1,4 +1,4 @@
-import { Badge, Button, ConfirmDialog, FormMessage, PageHeader } from '@worldbinder/ui'
+import { Badge, Button, ConfirmDialog, ErrorState, LoadingState, PageHeader } from '@worldbinder/ui'
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { AttachmentsPanel } from '../../attachments/components/AttachmentsPanel'
@@ -19,9 +19,14 @@ export function ThreadDetailPage() {
   const canManage = MANAGEMENT_ROLES.has(campaign.role)
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
 
-  if (threadQuery.isLoading) return <p>Loading…</p>
+  if (threadQuery.isLoading) return <LoadingState label="Loading plot thread…" />
   if (threadQuery.isError || !threadQuery.data) {
-    return <FormMessage message="This plot thread could not be found." />
+    return (
+      <ErrorState
+        message="This plot thread could not be found."
+        onRetry={() => threadQuery.refetch()}
+      />
+    )
   }
 
   const thread = threadQuery.data

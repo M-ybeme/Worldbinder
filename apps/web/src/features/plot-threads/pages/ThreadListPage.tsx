@@ -1,5 +1,5 @@
 import type { PlotThreadSummary } from '@worldbinder/contracts'
-import { EmptyState, ErrorState, LoadingState } from '@worldbinder/ui'
+import { Badge, EmptyState, ErrorState, LoadingState } from '@worldbinder/ui'
 import { Link } from 'react-router-dom'
 import { useCampaignOutletContext } from '../../campaigns/hooks/useCampaignContext'
 import { usePlotThreadsQuery } from '../hooks/usePlotThreads'
@@ -13,7 +13,12 @@ function ThreadRow({ campaignId, thread }: { campaignId: string; thread: PlotThr
       <span className="wb-session-list__meta">
         {thread.status ?? thread.playerFacingStatus}
         {thread.importance ? ` · ${thread.importance}` : ''}
-        {thread.visibility === 'gm_only' ? ' · GM only' : ''}
+        {thread.visibility === 'gm_only' && (
+          <>
+            {' '}
+            <Badge tone="warning">GM only</Badge>
+          </>
+        )}
       </span>
     </li>
   )

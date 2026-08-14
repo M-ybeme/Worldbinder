@@ -1,5 +1,5 @@
 import type { SearchResourceType } from '@worldbinder/contracts'
-import { Checkbox, FormMessage } from '@worldbinder/ui'
+import { Button, Checkbox, FormMessage, LoadingState } from '@worldbinder/ui'
 import { useSearchParams } from 'react-router-dom'
 import { useCampaignOutletContext } from '../../campaigns/hooks/useCampaignContext'
 import { SearchResultRow } from '../components/SearchResultRow'
@@ -109,7 +109,7 @@ export function SearchResultsPage() {
         ))}
       </fieldset>
 
-      {searchResults.isFetching && <p>Searching…</p>}
+      {searchResults.isFetching && <LoadingState label="Searching…" />}
       {searchResults.isError && <FormMessage message={searchResults.error.message} />}
 
       {trimmedQuery.length === 0 && <p>Type a search term to get started.</p>}
@@ -127,23 +127,23 @@ export function SearchResultsPage() {
 
       {(page > 1 || hasNextPage) && (
         <nav className="wb-pagination" aria-label="Search results pages">
-          <button
+          <Button
             type="button"
-            className="wb-button wb-button--secondary"
+            variant="secondary"
             disabled={page <= 1}
             onClick={() => updateParams({ page: page - 1 })}
           >
             Previous
-          </button>
+          </Button>
           <span>Page {page}</span>
-          <button
+          <Button
             type="button"
-            className="wb-button wb-button--secondary"
+            variant="secondary"
             disabled={!hasNextPage}
             onClick={() => updateParams({ page: page + 1 })}
           >
             Next
-          </button>
+          </Button>
         </nav>
       )}
     </section>

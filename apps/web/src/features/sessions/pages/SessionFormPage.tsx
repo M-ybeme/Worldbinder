@@ -1,6 +1,14 @@
 import type { EntityVisibility, TiptapDoc } from '@worldbinder/contracts'
 import { DEFAULT_CALENDAR_CONFIG, type PlotThreadChangeInput } from '@worldbinder/validation'
-import { Button, Checkbox, FormMessage, Select, TextField } from '@worldbinder/ui'
+import {
+  Button,
+  Checkbox,
+  ErrorState,
+  FormMessage,
+  LoadingState,
+  Select,
+  TextField,
+} from '@worldbinder/ui'
 import { useEffect, useState, type FormEvent } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useCampaignOutletContext } from '../../campaigns/hooks/useCampaignContext'
@@ -123,9 +131,14 @@ export function SessionFormPage() {
     navigate(`/app/campaign/${campaign.id}/sessions/${result.id}`)
   }
 
-  if (isEditMode && sessionQuery.isLoading) return <p>Loading…</p>
+  if (isEditMode && sessionQuery.isLoading) return <LoadingState label="Loading session…" />
   if (isEditMode && sessionQuery.isError) {
-    return <FormMessage message="This session could not be loaded." />
+    return (
+      <ErrorState
+        message="This session could not be loaded."
+        onRetry={() => sessionQuery.refetch()}
+      />
+    )
   }
 
   const mutation = isEditMode ? updateSession : createSession

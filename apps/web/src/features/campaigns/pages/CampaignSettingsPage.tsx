@@ -1,5 +1,12 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Button, ConfirmDialog, FileDropzone, FormMessage, TextField } from '@worldbinder/ui'
+import {
+  Button,
+  ConfirmDialog,
+  FileDropzone,
+  FormMessage,
+  LoadingState,
+  TextField,
+} from '@worldbinder/ui'
 import {
   DEFAULT_CALENDAR_CONFIG,
   updateCampaignSchema,
@@ -115,11 +122,7 @@ export function CampaignSettingsPage() {
         <>
           <h2>Cover image</h2>
           {campaign.coverImageUrl && (
-            <img
-              src={campaign.coverImageUrl}
-              alt="Campaign cover"
-              style={{ maxWidth: 240, borderRadius: 6, display: 'block', marginBottom: '0.75rem' }}
-            />
+            <img src={campaign.coverImageUrl} alt="Campaign cover" className="wb-image-preview" />
           )}
           <FileDropzone
             label={campaign.coverImageUrl ? 'Replace cover image' : 'Upload a cover image'}
@@ -134,7 +137,9 @@ export function CampaignSettingsPage() {
               })
             }}
           />
-          {(uploadCover.isPending || pendingCoverId) && <p>Uploading and processing…</p>}
+          {(uploadCover.isPending || pendingCoverId) && (
+            <LoadingState label="Uploading and processing…" />
+          )}
           <FormMessage message={uploadCover.error?.message ?? coverError} tone="error" />
         </>
       )}

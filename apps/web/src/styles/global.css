@@ -171,6 +171,16 @@ a:focus-visible {
   gap: var(--wb-space-1);
 }
 
+/* Uploaded-image preview thumbnail (map image on MapFormPage, cover image
+   on CampaignSettingsPage) — both hand-rolled the identical inline style
+   object independently before this. */
+.wb-image-preview {
+  max-width: 280px;
+  border-radius: var(--wb-radius-sm);
+  display: block;
+  margin-bottom: var(--wb-space-3);
+}
+
 /* List-page title + optional single action, used by 10 pages spanning 8
    features (maps, search, plot-threads, timeline, sessions, entities,
    imports, exports, audit) — a near-duplicate of .wb-entity-header's

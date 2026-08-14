@@ -1,5 +1,14 @@
 import type { WorldDate } from '@worldbinder/contracts'
-import { Badge, Button, ConfirmDialog, FormMessage, PageHeader, TextField } from '@worldbinder/ui'
+import {
+  Badge,
+  Button,
+  ConfirmDialog,
+  ErrorState,
+  FormMessage,
+  LoadingState,
+  PageHeader,
+  TextField,
+} from '@worldbinder/ui'
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { AttachmentsPanel } from '../../attachments/components/AttachmentsPanel'
@@ -45,9 +54,14 @@ export function SessionDetailPage() {
   const [revealEntityId, setRevealEntityId] = useState<string | undefined>(undefined)
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
 
-  if (sessionQuery.isLoading) return <p>Loading…</p>
+  if (sessionQuery.isLoading) return <LoadingState label="Loading session…" />
   if (sessionQuery.isError || !sessionQuery.data) {
-    return <FormMessage message="This session could not be found." />
+    return (
+      <ErrorState
+        message="This session could not be found."
+        onRetry={() => sessionQuery.refetch()}
+      />
+    )
   }
 
   const session = sessionQuery.data

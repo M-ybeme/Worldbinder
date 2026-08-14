@@ -1,4 +1,4 @@
-import { FileDropzone, FormMessage } from '@worldbinder/ui'
+import { Button, FileDropzone, FormMessage, LoadingState } from '@worldbinder/ui'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
@@ -38,10 +38,10 @@ export function ImportCampaignPage() {
           }}
         />
       )}
-      {upload.isPending && <p>Uploading…</p>}
+      {upload.isPending && <LoadingState label="Uploading…" />}
       <FormMessage message={upload.error?.message} />
 
-      {status === 'validating' && <p>Validating archive…</p>}
+      {status === 'validating' && <LoadingState label="Validating archive…" />}
 
       {status === 'dry_run_ready' && summary?.dryRunReport && (
         <>
@@ -63,19 +63,14 @@ export function ImportCampaignPage() {
               </ul>
             </>
           )}
-          <button
-            type="button"
-            className="wb-button wb-button--primary"
-            disabled={confirm.isPending}
-            onClick={() => confirm.mutate()}
-          >
+          <Button type="button" disabled={confirm.isPending} onClick={() => confirm.mutate()}>
             {confirm.isPending ? 'Starting import…' : 'Confirm import'}
-          </button>
+          </Button>
           <FormMessage message={confirm.error?.message} />
         </>
       )}
 
-      {status === 'importing' && <p>Importing…</p>}
+      {status === 'importing' && <LoadingState label="Importing…" />}
 
       {status === 'completed' && summary?.resultCampaignId && (
         <>

@@ -1,5 +1,13 @@
 import type { EntityVisibility, PlotThreadImportance, TiptapDoc } from '@worldbinder/contracts'
-import { Button, FormMessage, Select, TextField, Textarea } from '@worldbinder/ui'
+import {
+  Button,
+  ErrorState,
+  FormMessage,
+  LoadingState,
+  Select,
+  TextField,
+  Textarea,
+} from '@worldbinder/ui'
 import { useEffect, useState, type FormEvent } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useCampaignOutletContext } from '../../campaigns/hooks/useCampaignContext'
@@ -89,9 +97,14 @@ export function ThreadFormPage() {
     navigate(`/app/campaign/${campaign.id}/threads/${result.id}`)
   }
 
-  if (isEditMode && threadQuery.isLoading) return <p>Loading…</p>
+  if (isEditMode && threadQuery.isLoading) return <LoadingState label="Loading plot thread…" />
   if (isEditMode && threadQuery.isError) {
-    return <FormMessage message="This plot thread could not be loaded." />
+    return (
+      <ErrorState
+        message="This plot thread could not be loaded."
+        onRetry={() => threadQuery.refetch()}
+      />
+    )
   }
 
   const mutation = isEditMode ? updateThread : createThread

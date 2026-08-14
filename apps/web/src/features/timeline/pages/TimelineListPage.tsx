@@ -1,6 +1,6 @@
 import type { TimelineEventSummary } from '@worldbinder/contracts'
 import { DEFAULT_CALENDAR_CONFIG } from '@worldbinder/validation'
-import { EmptyState, ErrorState, LoadingState, TextField } from '@worldbinder/ui'
+import { Badge, EmptyState, ErrorState, LoadingState, TextField } from '@worldbinder/ui'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useCampaignOutletContext } from '../../campaigns/hooks/useCampaignContext'
@@ -18,7 +18,12 @@ function EventRow({ campaignId, event }: { campaignId: string; event: TimelineEv
       <Link to={`/app/campaign/${campaignId}/world/timeline/${event.id}`}>{event.title}</Link>
       <span className="wb-session-list__meta">
         {formatTimelineDate(event.startDateJson, event.datePrecision, calendarConfig)}
-        {event.visibility === 'gm_only' ? ' · GM only' : ''}
+        {event.visibility === 'gm_only' && (
+          <>
+            {' '}
+            <Badge tone="warning">GM only</Badge>
+          </>
+        )}
       </span>
     </li>
   )

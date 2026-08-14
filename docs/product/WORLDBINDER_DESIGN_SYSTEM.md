@@ -1856,8 +1856,61 @@ display-layer symptom (`||` instead of `??`); the schema-level question of
 whether an empty string should even be storable is a separate, bigger
 conversation than this phase's scope.
 
-### Phases 6–7 — not started
+### Phase 6 — Remaining feature screens (shipped)
 
-See this document's own phase structure (§39) for scope; the rollout plan
-tracks these as separate checkpoints, each getting the same real-browser
-verification before being called done.
+Covered the plan's full checklist: Session/Thread/Map/Timeline
+list+detail+form (12 pages), `SearchResultsPage`, `MembersPage`,
+`CampaignSettingsPage`, `ImportCampaignPage`, `ExportsPage`, `HelpPage` —
+plus the required decision on `StatusPage`/`AuditPage`, both outside the
+design doc's own page list: **no special treatment** — they already reuse
+the same tokenized primitives (`status-panel`, `wb-world-header`,
+`wb-session-list`, `wb-pagination`) every other page does, so they just
+get the same consistency pass as anything else, not a bespoke pattern.
+
+By far the biggest finding this phase, found by grepping across the whole
+app rather than page-by-page: **the exact `<p>Loading…</p>` bug flagged
+back in Phase 1 and fixed on `EntityDetailPage`/`EntityFormPage` in
+Phases 2 and 5 was never actually fixed anywhere else** —
+`SessionDetailPage`, `ThreadDetailPage`, `MapDetailPage`,
+`TimelineEventDetailPage`, and all four of their `*FormPage` counterparts
+(8 files) still had it, for both their loading state (raw `<p>`, no
+spinner) and their error state (bare `FormMessage`, no retry button). All
+8 fixed to `LoadingState`/`ErrorState` in this pass, closing out a gap
+that had actually spanned every phase of this rollout so far.
+
+Also fixed, once found:
+
+- `.wb-member-list`/`.wb-invitation-list` (`MembersPage`) — zero CSS
+  anywhere, same pattern as every other list class this rollout has
+  found; new `features/membership/membership.css`.
+- Five more `" · GM only"` plain-text visibility flags upgraded to
+  `Badge` (`SessionListPage`, `ThreadListPage`, `MapListPage`,
+  `TimelineListPage`, plus `WorldListPage`'s in Phase 5) — every list page
+  showing this flag now shows it the same way.
+- `MapFormPage` and `CampaignSettingsPage` each independently hand-rolled
+  the identical inline `style={{maxWidth, borderRadius, display,
+  marginBottom}}` object for their uploaded-image preview. New shared
+  `.wb-image-preview` utility (`global.css`) replaces both.
+- `ImportCampaignPage`'s confirm-import action was a raw `<button
+  className="wb-button wb-button--primary">` instead of the `Button`
+  component; found while touching the file, fixed along with the same
+  pattern in `SearchResultsPage`'s and `AuditPage`'s pagination controls.
+- Assorted raw `<p>` transient-status text (`Uploading…`,
+  `Validating archive…`, `Importing…`, `Searching…`, `Uploading and
+  processing…`) upgraded to `LoadingState` for the same reason every
+  other loading state in the app uses it — a consistent, recognizable
+  "something is happening" affordance instead of plain text that looks
+  identical to static content.
+
+**Verification:** typecheck/lint/build/tests clean (two unused-import
+lint errors from the `ErrorState` swap-in, fixed immediately); a real
+Playwright pass against local dev covering all of Sessions/Threads/Maps/
+Timeline/Members/Settings/Import-Export/Audit/Search/Help for a logged-in
+GM, no console errors, no visual regressions.
+
+### Phase 7 — not started
+
+Polish pass: loading/empty/error consistency (now largely already done as
+a side effect of Phases 1-6's find-as-you-go fixes), hover/focus review,
+responsive review, a real accessibility re-check given Milestone 13's
+original audit predates this entire visual layer.

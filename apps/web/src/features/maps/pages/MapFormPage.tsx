@@ -1,5 +1,14 @@
 import type { EntityVisibility } from '@worldbinder/contracts'
-import { Button, FileDropzone, FormMessage, TextField, Textarea, Select } from '@worldbinder/ui'
+import {
+  Button,
+  ErrorState,
+  FileDropzone,
+  FormMessage,
+  LoadingState,
+  TextField,
+  Textarea,
+  Select,
+} from '@worldbinder/ui'
 import { useEffect, useState, type FormEvent } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
@@ -75,8 +84,10 @@ export function MapFormPage() {
     navigate(`/app/campaign/${campaign.id}/maps/${result.id}/edit`)
   }
 
-  if (isEditMode && mapQuery.isLoading) return <p>Loading…</p>
-  if (isEditMode && mapQuery.isError) return <FormMessage message="This map could not be loaded." />
+  if (isEditMode && mapQuery.isLoading) return <LoadingState label="Loading map…" />
+  if (isEditMode && mapQuery.isError) {
+    return <ErrorState message="This map could not be loaded." onRetry={() => mapQuery.refetch()} />
+  }
 
   const mutation = isEditMode ? updateMap : createMap
 
@@ -116,11 +127,7 @@ export function MapFormPage() {
         <>
           <h2>Map image</h2>
           {mapQuery.data.imageUrl && (
-            <img
-              src={mapQuery.data.imageUrl}
-              alt="Map"
-              style={{ maxWidth: 320, borderRadius: 6, display: 'block', marginBottom: '0.75rem' }}
-            />
+            <img src={mapQuery.data.imageUrl} alt="Map" className="wb-image-preview" />
           )}
           <FileDropzone
             label={mapQuery.data.imageUrl ? 'Replace map image' : 'Upload a map image'}
@@ -135,7 +142,9 @@ export function MapFormPage() {
               })
             }}
           />
-          {(uploadImage.isPending || pendingImageId) && <p>Uploading and processing…</p>}
+          {(uploadImage.isPending || pendingImageId) && (
+            <LoadingState label="Uploading and processing…" />
+          )}
           <FormMessage message={uploadImage.error?.message ?? imageError} tone="error" />
         </>
       )}

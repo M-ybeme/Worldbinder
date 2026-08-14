@@ -1,5 +1,5 @@
 import { DEFAULT_CALENDAR_CONFIG } from '@worldbinder/validation'
-import { Badge, Button, ConfirmDialog, FormMessage, PageHeader } from '@worldbinder/ui'
+import { Badge, Button, ConfirmDialog, ErrorState, LoadingState, PageHeader } from '@worldbinder/ui'
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useCampaignOutletContext } from '../../campaigns/hooks/useCampaignContext'
@@ -20,9 +20,14 @@ export function TimelineEventDetailPage() {
   const canManage = MANAGEMENT_ROLES.has(campaign.role)
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
 
-  if (eventQuery.isLoading) return <p>Loading…</p>
+  if (eventQuery.isLoading) return <LoadingState label="Loading timeline event…" />
   if (eventQuery.isError || !eventQuery.data) {
-    return <FormMessage message="This timeline event could not be found." />
+    return (
+      <ErrorState
+        message="This timeline event could not be found."
+        onRetry={() => eventQuery.refetch()}
+      />
+    )
   }
 
   const event = eventQuery.data

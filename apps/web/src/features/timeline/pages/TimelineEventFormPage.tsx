@@ -1,6 +1,15 @@
 import type { EntityVisibility, TiptapDoc } from '@worldbinder/contracts'
 import { DEFAULT_CALENDAR_CONFIG } from '@worldbinder/validation'
-import { Button, FormMessage, Select, TagInput, TextField, Textarea } from '@worldbinder/ui'
+import {
+  Button,
+  ErrorState,
+  FormMessage,
+  LoadingState,
+  Select,
+  TagInput,
+  TextField,
+  Textarea,
+} from '@worldbinder/ui'
 import { useEffect, useState, type FormEvent } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useCampaignOutletContext } from '../../campaigns/hooks/useCampaignContext'
@@ -89,9 +98,14 @@ export function TimelineEventFormPage() {
     navigate(`/app/campaign/${campaign.id}/world/timeline/${result.id}`)
   }
 
-  if (isEditMode && eventQuery.isLoading) return <p>Loading…</p>
+  if (isEditMode && eventQuery.isLoading) return <LoadingState label="Loading timeline event…" />
   if (isEditMode && eventQuery.isError) {
-    return <FormMessage message="This timeline event could not be loaded." />
+    return (
+      <ErrorState
+        message="This timeline event could not be loaded."
+        onRetry={() => eventQuery.refetch()}
+      />
+    )
   }
 
   const mutation = isEditMode ? updateEvent : createEvent

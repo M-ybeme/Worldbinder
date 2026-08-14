@@ -1,5 +1,5 @@
 import type { CampaignAuditEventType } from '@worldbinder/contracts'
-import { FormMessage } from '@worldbinder/ui'
+import { Button, EmptyState, FormMessage, LoadingState } from '@worldbinder/ui'
 import { useState } from 'react'
 import { useCampaignOutletContext } from '../../campaigns/hooks/useCampaignContext'
 import { useAuditEventsQuery } from '../hooks/useAudit'
@@ -38,12 +38,12 @@ export function AuditPage() {
         <h1>Activity log</h1>
       </header>
 
-      {eventsQuery.isLoading && <p>Loading…</p>}
+      {eventsQuery.isLoading && <LoadingState label="Loading activity log…" />}
       {eventsQuery.isError && (
         <FormMessage message="You don't have permission to view this campaign's activity log." />
       )}
       {!eventsQuery.isLoading && !eventsQuery.isError && events.length === 0 && (
-        <p>No activity recorded yet.</p>
+        <EmptyState message="No activity recorded yet." />
       )}
 
       <ul className="wb-session-list">
@@ -68,23 +68,23 @@ export function AuditPage() {
 
       {(page > 1 || hasNextPage) && (
         <nav className="wb-pagination" aria-label="Activity log pages">
-          <button
+          <Button
             type="button"
-            className="wb-button wb-button--secondary"
+            variant="secondary"
             disabled={page <= 1}
             onClick={() => setPage((p) => p - 1)}
           >
             Previous
-          </button>
+          </Button>
           <span>Page {page}</span>
-          <button
+          <Button
             type="button"
-            className="wb-button wb-button--secondary"
+            variant="secondary"
             disabled={!hasNextPage}
             onClick={() => setPage((p) => p + 1)}
           >
             Next
-          </button>
+          </Button>
         </nav>
       )}
     </section>

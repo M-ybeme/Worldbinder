@@ -4,6 +4,19 @@ All notable changes to this project are documented here. Format follows [Keep a 
 
 Every push to `main` should add an entry here. This is meant to be an honest record of what actually shipped, not a restatement of the roadmap's aspirations — if something was attempted and reverted, or shipped partially, say so.
 
+## [0.24.0] - 2026-08-13
+
+**Design system rollout, Phase 6 (remaining feature screens).** Session/Thread/Map/Timeline list+detail+form, SearchResultsPage, MembersPage, CampaignSettingsPage, ImportCampaignPage, ExportsPage, HelpPage, plus a decision on StatusPage/AuditPage (no special treatment — they already reuse the same tokenized primitives everything else does). See `docs/product/WORLDBINDER_DESIGN_SYSTEM.md` §45.
+
+### Fixed
+
+- **The `<p>Loading…</p>` bug flagged in Phase 1 and fixed on `EntityDetailPage`/`EntityFormPage` in Phases 2/5 was never actually fixed anywhere else.** Found by grepping the whole app rather than page-by-page: `SessionDetailPage`, `ThreadDetailPage`, `MapDetailPage`, `TimelineEventDetailPage`, and all four of their `*FormPage` counterparts (8 files total) still had it, for both loading (no spinner) and error (no retry) states. All 8 now use `LoadingState`/`ErrorState`.
+- `.wb-member-list`/`.wb-invitation-list` had zero CSS anywhere — same pattern every phase of this rollout has found. New `features/membership/membership.css`.
+- Five more `" · GM only"` plain-text flags upgraded to `Badge` (`SessionListPage`, `ThreadListPage`, `MapListPage`, `TimelineListPage`).
+- `MapFormPage` and `CampaignSettingsPage` each hand-rolled the identical inline-style image-preview object independently; replaced both with a shared `.wb-image-preview` utility.
+- `ImportCampaignPage`'s confirm-import button, plus `SearchResultsPage`'s and `AuditPage`'s pagination controls, were raw `<button className="wb-button ...">` instead of the `Button` component — normalized to match the rest of the app.
+- Assorted raw transient-status text (`Uploading…`, `Validating archive…`, `Importing…`, `Searching…`) upgraded to `LoadingState`.
+
 ## [0.23.0] - 2026-08-13
 
 **Design system rollout, Phase 5 (high-value campaign screens).** `CampaignsListPage`, `CampaignOverviewPage`, `WorldListPage`, `EntityFormPage` (`EntityDetailPage` was already done in Phase 2). Three of these five pages were completely unstyled — `.wb-campaign-list`, `.wb-world-filters`/`.wb-entity-list`, and `.wb-world-header` (used by 10 pages across 8 features) all had zero CSS anywhere, the same shape of gap every phase this rollout has found, just bigger this time. See `docs/product/WORLDBINDER_DESIGN_SYSTEM.md` §45.
