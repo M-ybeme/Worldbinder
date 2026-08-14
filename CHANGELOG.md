@@ -4,6 +4,24 @@ All notable changes to this project are documented here. Format follows [Keep a 
 
 Every push to `main` should add an entry here. This is meant to be an honest record of what actually shipped, not a restatement of the roadmap's aspirations — if something was attempted and reverted, or shipped partially, say so.
 
+## [0.25.0] - 2026-08-13
+
+**Design system rollout, Phase 7 (polish) — final phase, rollout complete.** Loading/empty/error consistency was already closed out as a side effect of Phases 1–6's find-as-you-go fixes, so this phase covered the three items that needed a dedicated pass: a hover/focus-visible audit, an automated WCAG accessibility scan (axe-core via Playwright, injecting the already-present transitive dependency rather than adding a new package), and a 768px responsive review. See `docs/product/WORLDBINDER_DESIGN_SYSTEM.md` §45.
+
+### Fixed
+
+- Four real keyboard-focus gaps with no `:focus-visible` styling at all: `TagInput`'s chip remove button, `CampaignSwitcher`'s `<select>` (previously relying on the browser's inconsistent default ring), `EntityMultiPicker`'s chip remove buttons, and `AccessiblePinList`'s pin-activation buttons — the last being the accessibility-critical keyboard equivalent of clicking a map pin, not optional polish.
+- `RichTextEditor`'s TipTap contenteditable div had no accessible name; fixed with `role="textbox"` + `aria-labelledby` together (the label alone is invalid ARIA on a bare `<div>`'s implicit role).
+- `SearchOverlay`'s results list now only carries `role="listbox"` when it actually contains a `role="option"` — WAI-ARIA requires a listbox to have at least one; the status-message `<li>`s' own role override tracks the same condition so neither state breaks the other.
+- `FileDropzone` was a `role="button"` div wrapping a hidden, keyboard-inert file input (flagged as `nested-interactive` plus a missing accessible name). Rewritten on the native `<label>`-wraps-`<input>` pattern, eliminating all the custom keyboard-handling code it previously needed.
+- Two `TextField` instances (`CalendarMonthsEditor`, `TimelineListPage`) were manually-controlled without `id`/`name`, silently breaking label association via the primitive's `id ?? name` fallback. Fixed both; swept all ~35+ `TextField`/`Textarea`/`Select` call sites app-wide to confirm no other instance of the bug remains.
+
+### Verified
+
+- Automated accessibility scan: 0 violations (WCAG 2A/2AA/2.1A/2.1AA) across 14 page/state combinations, including the search overlay's previously-untested "has results" branch.
+- Responsive review at 768px: no horizontal overflow found across 8 primary pages plus the search overlay and a `ConfirmDialog`; the existing sidebar collapse breakpoint (built in Phase 3) held up with no changes needed.
+- typecheck/lint/build clean; full unit suite green (146 tests across api/web/worker/config).
+
 ## [0.24.0] - 2026-08-13
 
 **Design system rollout, Phase 6 (remaining feature screens).** Session/Thread/Map/Timeline list+detail+form, SearchResultsPage, MembersPage, CampaignSettingsPage, ImportCampaignPage, ExportsPage, HelpPage, plus a decision on StatusPage/AuditPage (no special treatment — they already reuse the same tokenized primitives everything else does). See `docs/product/WORLDBINDER_DESIGN_SYSTEM.md` §45.

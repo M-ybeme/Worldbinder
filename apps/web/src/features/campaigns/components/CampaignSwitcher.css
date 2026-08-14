@@ -8,3 +8,8 @@
   font-size: var(--wb-text-sm);
   font-family: inherit;
 }
+
+.wb-campaign-switcher:focus-visible {
+  outline: 2px solid var(--wb-accent);
+  outline-offset: 1px;
+}

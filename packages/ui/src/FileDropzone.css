@@ -1,4 +1,5 @@
 .wb-dropzone {
+  display: block;
   position: relative;
   padding: var(--wb-space-5);
   border: 1px dashed var(--wb-border-default);
@@ -14,7 +15,9 @@
   color: var(--wb-text-muted);
 }
 
-.wb-dropzone:focus-visible {
+/* :focus-within, not :focus-visible — the real focus target is the input
+   nested inside this label, not the label itself. */
+.wb-dropzone:focus-within {
   outline: 2px solid var(--wb-accent);
   outline-offset: 1px;
 }
@@ -24,7 +27,7 @@
   background: var(--wb-bg-surface-hover);
 }
 
-.wb-dropzone[aria-disabled='true'] {
+.wb-dropzone--disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }

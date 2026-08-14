@@ -810,7 +810,9 @@ async function main(): Promise<void> {
   ] as const) {
     if (VERIFY_VIA_DB) {
       await addMemberViaDb(campaign.id, account.userId, role);
-      console.log(`  ${account.email} added as ${role} (campaign ${campaign.id})`);
+      console.log(
+        `  ${account.email} added as ${role} (campaign ${campaign.id})`,
+      );
       continue;
     }
 

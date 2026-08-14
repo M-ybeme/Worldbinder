@@ -6,6 +6,7 @@ import TableHeader from '@tiptap/extension-table-header'
 import TableRow from '@tiptap/extension-table-row'
 import { EditorContent, useEditor, type Editor, type JSONContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
+import { useId } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { EntityMention } from './entityMentionExtension'
 
@@ -34,8 +35,19 @@ export function RichTextEditor({
   campaignId,
 }: RichTextEditorProps) {
   const navigate = useNavigate()
+  const labelId = useId()
 
   const editor = useEditor({
+    editorProps: {
+      // The visible label is a <span>, not a <label htmlFor>, since
+      // TipTap's contenteditable div isn't a real form control — this is
+      // the ARIA equivalent, set as a real DOM attribute on the
+      // ProseMirror-managed element via editorProps rather than a prop
+      // EditorContent doesn't forward. role="textbox" is required too —
+      // a plain <div>'s implicit role doesn't permit aria-labelledby at
+      // all, an automated scan caught aria-labelledby alone as invalid.
+      attributes: { role: 'textbox', 'aria-multiline': 'true', 'aria-labelledby': labelId },
+    },
     extensions: [
       StarterKit,
       Link.configure({ openOnClick: false }),
@@ -63,7 +75,9 @@ export function RichTextEditor({
 
   return (
     <div className="wb-field">
-      <span className="wb-field__label">{label}</span>
+      <span id={labelId} className="wb-field__label">
+        {label}
+      </span>
       {editable && <RichTextToolbar editor={editor} />}
       <div className="wb-richtext">
         <EditorContent editor={editor} />

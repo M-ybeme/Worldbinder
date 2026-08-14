@@ -93,6 +93,7 @@ export function CalendarMonthsEditor({ value, onChange }: CalendarMonthsEditorPr
       </Button>
 
       <TextField
+        id="era-label"
         label="Era label (optional)"
         value={value.eraLabel ?? ''}
         onChange={(e) => onChange({ ...value, eraLabel: e.target.value || undefined })}

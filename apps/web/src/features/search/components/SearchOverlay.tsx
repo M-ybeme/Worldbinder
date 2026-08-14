@@ -103,8 +103,29 @@ export function SearchOverlay({ campaignId }: SearchOverlayProps) {
         onChange={(event) => setQuery(event.target.value)}
         onKeyDown={handleKeyDown}
       />
-      <ul id="wb-search-overlay-listbox" role="listbox" className="wb-search-overlay__results">
-        {searchResults.isFetching && <li className="wb-search-overlay__status">Searching…</li>}
+      {/* role="listbox" only when there's at least one real role="option"
+          child — the role structurally *requires* one (WAI-ARIA
+          aria-required-children), which an always-on role="listbox"
+          can't satisfy while the search box is empty or mid-query. The
+          status messages below mirror that same condition for their own
+          role: role="presentation" (out of the listbox's child-role
+          bookkeeping) when a listbox IS active, or no override at all
+          (a plain <ul>'s <li> needs its native listitem role intact)
+          when it isn't — hardcoding one or the other broke whichever
+          case it wasn't written for. */}
+      <ul
+        id="wb-search-overlay-listbox"
+        role={results.length > 0 ? 'listbox' : undefined}
+        className="wb-search-overlay__results"
+      >
+        {searchResults.isFetching && (
+          <li
+            role={results.length > 0 ? 'presentation' : undefined}
+            className="wb-search-overlay__status"
+          >
+            Searching…
+          </li>
+        )}
         {!searchResults.isFetching && trimmedQuery.length > 0 && results.length === 0 && (
           <li className="wb-search-overlay__status">No matches</li>
         )}

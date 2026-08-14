@@ -64,7 +64,12 @@ export function TimelineListPage() {
           value={entityId}
           onChange={setEntityId}
         />
-        <TextField label="Filter by tag" value={tag} onChange={(e) => setTag(e.target.value)} />
+        <TextField
+          id="timeline-tag-filter"
+          label="Filter by tag"
+          value={tag}
+          onChange={(e) => setTag(e.target.value)}
+        />
       </div>
 
       {eventsQuery.isLoading && <LoadingState label="Loading timeline…" />}

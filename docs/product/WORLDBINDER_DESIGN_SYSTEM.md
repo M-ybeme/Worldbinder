@@ -1889,15 +1889,15 @@ Also fixed, once found:
   showing this flag now shows it the same way.
 - `MapFormPage` and `CampaignSettingsPage` each independently hand-rolled
   the identical inline `style={{maxWidth, borderRadius, display,
-  marginBottom}}` object for their uploaded-image preview. New shared
+marginBottom}}` object for their uploaded-image preview. New shared
   `.wb-image-preview` utility (`global.css`) replaces both.
 - `ImportCampaignPage`'s confirm-import action was a raw `<button
-  className="wb-button wb-button--primary">` instead of the `Button`
+className="wb-button wb-button--primary">` instead of the `Button`
   component; found while touching the file, fixed along with the same
   pattern in `SearchResultsPage`'s and `AuditPage`'s pagination controls.
 - Assorted raw `<p>` transient-status text (`Uploading…`,
   `Validating archive…`, `Importing…`, `Searching…`, `Uploading and
-  processing…`) upgraded to `LoadingState` for the same reason every
+processing…`) upgraded to `LoadingState` for the same reason every
   other loading state in the app uses it — a consistent, recognizable
   "something is happening" affordance instead of plain text that looks
   identical to static content.
@@ -1908,9 +1908,69 @@ Playwright pass against local dev covering all of Sessions/Threads/Maps/
 Timeline/Members/Settings/Import-Export/Audit/Search/Help for a logged-in
 GM, no console errors, no visual regressions.
 
-### Phase 7 — not started
+### Phase 7 — Polish (shipped)
 
-Polish pass: loading/empty/error consistency (now largely already done as
-a side effect of Phases 1-6's find-as-you-go fixes), hover/focus review,
-responsive review, a real accessibility re-check given Milestone 13's
-original audit predates this entire visual layer.
+Loading/empty/error consistency was already closed out as a side effect
+of Phases 1–6's find-as-you-go fixes, so this phase's real scope was the
+three items that needed a dedicated pass: hover/focus review, a
+responsive review at 768px, and a real automated accessibility re-check
+(Milestone 13's original audit predates this entire visual layer).
+
+**Hover/focus-visible audit** — grepped every interactive element in
+`packages/ui` and `apps/web` against existing `:focus-visible` rules.
+Four real gaps found and fixed, all genuine keyboard-navigation misses
+rather than cosmetic:
+
+- `TagInput`'s chip remove `<button>` — no focus style at all.
+- `CampaignSwitcher`'s `<select>` — relied on the browser's inconsistent
+  default ring instead of the app's accent outline.
+- `EntityMultiPicker`'s chip remove buttons — same gap as `TagInput`.
+- `AccessiblePinList`'s pin-activation buttons — the accessibility-critical
+  keyboard equivalent of clicking a map pin had no visible focus
+  indicator, the one case in this list where the fix isn't optional
+  polish.
+
+**Automated accessibility scan** — no `@axe-core/playwright` dependency
+existed, but `axe-core` was already present transitively; injected the
+raw `axe.min.js` bundle into real pages via Playwright
+(`page.addScriptTag` + `page.evaluate(() => axe.run(...))`, filtered to
+`wcag2a`/`wcag2aa`/`wcag21a`/`wcag21aa`) rather than adding a new
+package for a one-off. Covered 14 page/state combinations (every primary
+nav destination, an entity detail page, a `ConfirmDialog` open, and the
+search overlay in both its empty and populated-results states). Found
+and fixed:
+
+- `RichTextEditor`'s TipTap contenteditable div had no accessible name
+  (`aria-input-field-name`); fixing it needed both `role="textbox"` and
+  `aria-labelledby` together — the label alone was flagged as
+  `aria-prohibited-attr` since a bare `<div>`'s implicit role doesn't
+  permit `aria-labelledby` at all.
+- `SearchOverlay`'s results `<ul>` conditionally carries `role="listbox"`
+  (WAI-ARIA requires a listbox to have at least one `role="option"`
+  child, which an empty query can't provide) — getting this right took
+  three iterations, since the status `<li>`s' own role override has to
+  track the exact same condition as the parent's, not be hardcoded to
+  one state.
+- `FileDropzone` was a `role="button"` div wrapping a hidden,
+  `aria-hidden`, keyboard-inert `<input type="file">` — flagged as both
+  `nested-interactive` and a missing accessible name. Rewritten on the
+  native `<label>`-wraps-`<input>` HTML pattern, which needed no custom
+  keyboard handling at all (removed `useRef`, `openPicker()`,
+  `handleKeyDown()`, and every custom ARIA attribute it had accumulated).
+- Two `TextField` instances (`CalendarMonthsEditor`'s era-label field,
+  `TimelineListPage`'s tag filter) were manually-controlled without
+  `id` or `name`, silently producing `htmlFor={undefined}` via the
+  primitive's `id ?? name` fallback. Fixed both, then grepped all
+  ~35+ `TextField`/`Textarea`/`Select` call sites app-wide to confirm no
+  other instance of the same bug class remained.
+
+Final scan: **0 violations across all 14 page/state combinations.**
+
+**Responsive review (768px)** — screenshotted all 8 primary campaign
+pages plus the search overlay and a `ConfirmDialog` at 768px viewport
+width, checking `document.documentElement.scrollWidth` against the
+viewport for horizontal overflow at each. None found — the sidebar's
+existing collapse-to-horizontal-nav breakpoint (already built in Phase 3) held up cleanly with no new CSS needed.
+
+**Verification:** typecheck/lint/build clean; full unit suite green
+(146 tests across api/web/worker/config).

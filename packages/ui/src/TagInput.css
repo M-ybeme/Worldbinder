@@ -53,6 +53,11 @@
   color: var(--wb-danger);
 }
 
+.wb-tag-input__remove:focus-visible {
+  outline: 2px solid var(--wb-accent);
+  outline-offset: 1px;
+}
+
 .wb-tag-input__field {
   flex: 1;
   min-width: 120px;
