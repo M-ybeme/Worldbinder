@@ -26,6 +26,55 @@ body {
   color: var(--wb-text-primary);
 }
 
+/* Baseline typography — every page's bare <h1>/<h2>/<h3>/<p> was rendering
+   with raw browser defaults (UA-stylesheet font sizes/margins) instead of
+   the type scale, since nothing set them globally. A class selector (e.g.
+   .wb-page-header__title) still wins over these on specificity, so
+   PageHeader and other componentized headings are unaffected. */
+h1 {
+  margin: 0 0 var(--wb-space-2);
+  font-size: var(--wb-text-2xl);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+h2 {
+  margin: var(--wb-space-6) 0 var(--wb-space-2);
+  font-size: var(--wb-text-lg);
+  font-weight: 600;
+}
+
+h3 {
+  margin: var(--wb-space-4) 0 var(--wb-space-1);
+  font-size: var(--wb-text-md);
+  font-weight: 600;
+}
+
+p {
+  margin: 0 0 var(--wb-space-3);
+  line-height: 1.5;
+}
+
+/* Design doc §4.2: accent is the designated color for links, alongside
+   primary actions/active nav/focus rings. No rule set this anywhere, so
+   every plain <a>/<Link> in the app (there are hundreds) was rendering
+   with the browser's default link blue instead of the brand accent. Any
+   component with its own anchor color (search results, sidebar links,
+   entity mentions, ...) already overrides this via class-selector
+   specificity, so this is safe to set globally. */
+a {
+  color: var(--wb-accent);
+}
+
+a:hover {
+  color: var(--wb-accent-hover);
+}
+
+a:focus-visible {
+  outline: 2px solid var(--wb-accent);
+  outline-offset: 1px;
+}
+
 .app-shell {
   min-height: 100svh;
   display: flex;

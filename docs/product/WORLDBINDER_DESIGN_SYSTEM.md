@@ -1755,7 +1755,58 @@ spotted, but deliberately left alone as out of this phase's scope: a
 missing space between a campaign name and its `owner · draft` meta text
 on `CampaignsListPage` — unrelated content-page styling, Phase 6's job.
 
-### Phases 4–7 — not started
+### Phase 4 — Auth and account pages (shipped)
+
+Covered the plan's full checklist: `LoginPage`, `RegisterPage`,
+`ForgotPasswordPage`, `ResetPasswordPage`, `VerifyEmailPage`,
+`AcceptInvitationPage`, `ProfilePage`, `SecurityPage`, `SessionsPage`. Most
+of these pages turned out to already be in reasonable shape structurally
+(consistent form/`FormMessage`/`Button` usage from Phase 1's token pass) —
+the real work this phase found was two **foundational, app-wide** gaps
+these link/heading-heavy pages happened to expose clearly, not something
+scoped to just these nine files:
+
+- **No global heading typography anywhere.** `h1`/`h2`/`h3` had zero CSS
+  rules in the whole app — every bare heading on every page (not just
+  these nine) was rendering with raw browser UA-stylesheet defaults
+  instead of the type scale. Added global `h1`/`h2`/`h3`/`p` rules to
+  `global.css`; a class selector (`.wb-page-header__title`, etc.) still
+  wins on specificity, so already-componentized headings are unaffected.
+- **No global link color, despite the design doc mandating one (§4.2:
+  "Use the accent for: ... Links").** Every plain `<a>`/`<Link>` in the
+  app — and these auth pages are almost entirely links and form
+  labels — was rendering the browser's default link blue. Added a global
+  `a { color: var(--wb-accent) }` (plus hover/focus-visible). Anything
+  with its own anchor color (search results, sidebar links, buttons
+  styled as links, entity mentions) already overrides this via class
+  specificity, confirmed case-by-case before landing it, not assumed.
+
+Page-specific fixes, once those two landed:
+
+- **`AccountLayout`'s Profile/Security/Sessions tab nav had the exact
+  same missing-active-state bug Phase 3 already found and fixed for
+  `CampaignLayout`'s sidebar** — plain `<NavLink>` usage without the
+  function-form `className`, so `isActive` was never exposed. Fixed the
+  same way. Also had to give the tab nav an explicit inactive color
+  (`--wb-text-secondary`) scoped to `.wb-account-layout__bar`, since the
+  new global link-accent default would otherwise make active and
+  inactive tabs the same color — caught by actually looking at the
+  screenshot, not assumed from the CSS alone.
+- **`AcceptInvitationPage`'s loading state was a raw `<p>Loading
+invitation…</p>`** instead of the `LoadingState` primitive every other
+  loading page in the app already uses; its error branch also had no
+  heading, unlike every other page's error state. Fixed both.
+
+**Verification:** typecheck/lint/build/unit-tests clean, and — real
+browser check this time via Playwright against local dev, not just
+production. Hit a genuine Playwright/Vite-dev gotcha along the way:
+`waitUntil: 'networkidle'` never resolves against Vite's dev server,
+because its HMR WebSocket keeps the connection permanently "active" —
+switched to `waitUntil: 'load'` plus explicit element waits instead, the
+same fix this project's own `run` skill documentation already calls out
+as the standard workaround.
+
+### Phases 5–7 — not started
 
 See this document's own phase structure (§39) for scope; the rollout plan
 tracks these as separate checkpoints, each getting the same real-browser

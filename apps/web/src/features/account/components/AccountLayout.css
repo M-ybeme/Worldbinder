@@ -1,0 +1,34 @@
+.wb-account-layout__bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--wb-space-4);
+  padding-bottom: var(--wb-space-4);
+  border-bottom: 1px solid var(--wb-border-default);
+  margin-bottom: var(--wb-space-6);
+}
+
+.wb-account-layout__bar .wb-links {
+  margin-top: 0;
+}
+
+/* The global `a { color: accent }` default (global.css) makes every plain
+   link accent-colored, including these — fine for one-off links, but it
+   erases the active/inactive contrast a tab-style nav needs (design doc
+   §9.2: "active route clearly highlighted"). Overriding the inactive
+   color here restores that contrast without touching the global default
+   other .wb-links usages (auth pages' footer links) still want. */
+.wb-account-layout__bar .wb-links a {
+  color: var(--wb-text-secondary);
+  text-decoration: none;
+}
+
+.wb-account-layout__bar .wb-links a:hover {
+  color: var(--wb-text-primary);
+}
+
+.wb-account-layout__bar .wb-links a.wb-links__link--active {
+  color: var(--wb-accent);
+  font-weight: 600;
+}

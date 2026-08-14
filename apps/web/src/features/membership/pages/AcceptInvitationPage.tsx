@@ -1,6 +1,9 @@
-import { Button, FormMessage } from '@worldbinder/ui'
+import { Button, FormMessage, LoadingState } from '@worldbinder/ui'
 import { useNavigate, useParams } from 'react-router-dom'
-import { useAcceptInvitationMutation, useInvitationPreviewQuery } from '../hooks/useInvitationAccept'
+import {
+  useAcceptInvitationMutation,
+  useInvitationPreviewQuery,
+} from '../hooks/useInvitationAccept'
 
 export function AcceptInvitationPage() {
   const { token } = useParams<{ token: string }>()
@@ -8,10 +11,15 @@ export function AcceptInvitationPage() {
   const previewQuery = useInvitationPreviewQuery(token ?? '')
   const acceptInvitation = useAcceptInvitationMutation()
 
-  if (previewQuery.isLoading) return <p>Loading invitation…</p>
+  if (previewQuery.isLoading) return <LoadingState label="Loading invitation…" />
 
   if (!token || previewQuery.isError || !previewQuery.data) {
-    return <FormMessage message="This invitation link is invalid or has expired." />
+    return (
+      <section>
+        <h1>Invitation</h1>
+        <FormMessage message="This invitation link is invalid or has expired." />
+      </section>
+    )
   }
 
   const preview = previewQuery.data

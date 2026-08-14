@@ -4,6 +4,20 @@ All notable changes to this project are documented here. Format follows [Keep a 
 
 Every push to `main` should add an entry here. This is meant to be an honest record of what actually shipped, not a restatement of the roadmap's aspirations — if something was attempted and reverted, or shipped partially, say so.
 
+## [0.22.0] - 2026-08-13
+
+**Design system rollout, Phase 4 (auth and account pages).** Covered the full checklist (Login/Register/ForgotPassword/ResetPassword/VerifyEmail/AcceptInvitation/Profile/Security/Sessions), but the real finding was two app-wide gaps these link- and heading-heavy pages happened to expose: no global heading typography at all (`h1`/`h2`/`h3` used raw browser defaults everywhere, not just here) and no global link color despite the design doc explicitly mandating one. Both fixed at the `global.css` level, not page-by-page. See `docs/product/WORLDBINDER_DESIGN_SYSTEM.md` §45 for detail.
+
+### Added
+
+- Global `h1`/`h2`/`h3`/`p` typography baseline in `global.css`, using the type scale tokens.
+- Global `a { color: var(--wb-accent) }` (+ hover/focus-visible) — design doc §4.2 calls for accent-colored links; nothing implemented it until now.
+
+### Fixed
+
+- **`AccountLayout`'s Profile/Security/Sessions tab nav had the same missing-active-state bug Phase 3 already fixed for `CampaignLayout`'s sidebar** — same root cause (`NavLink` needs the function-form `className` to expose `isActive`), same fix. Also needed an explicit inactive tab color scoped to `.wb-account-layout__bar`, since the new global link-accent default would otherwise make active and inactive tabs visually identical.
+- **`AcceptInvitationPage`'s loading state was a raw `<p>Loading invitation…</p>`** instead of the `LoadingState` primitive every other page uses; its error branch had no heading either. Both fixed.
+
 ## [0.21.0] - 2026-08-13
 
 **Public demo login.** So people can see a populated Worldbinder campaign without registering an account, `LoginPage` gets a "View the demo campaign" button that logs straight in as the GM of a real seeded campaign, "Ashgate Crossing" — 39 entities, 48 relationships, 7 plot threads, 6 sessions, 14 timeline events, 2 maps, 6 attachments, wiki-link enrichment, and real revision history, built by the existing `demo-content` fixture (`apps/api/src/demo-content/`, previously local-dev-only). That fixture's account verification and campaign-invitation acceptance both depended on polling Mailpit for real emails — unavailable in production, which sends through Resend instead (ADR-0022) — so both got a production-safe path that writes the equivalent end state (`users.emailVerifiedAt`, a `campaign_members` row) directly via a DB connection instead, gated behind a new opt-in `DEMO_CONTENT_VERIFY_VIA_DB` flag so local dev's Mailpit-based behavior is unchanged. Actually run against the live production database this session (`pnpm --filter @worldbinder/api seed:demo:prod` via a Railway Postgres tunnel) — real accounts and a full campaign now exist on worldbinder.net, and all 10 of the script's own PASS/FAIL verification checks (including permission-filtered search) passed against it for real.
