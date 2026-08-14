@@ -1698,7 +1698,64 @@ either — a human visual pass covering at least one delete confirmation,
 the search overlay, and a couple of the migrated detail pages is still
 outstanding.
 
-### Phases 3–7 — not started
+### Phase 3 — App shell (shipped, scoped down from the original plan)
+
+The original rollout plan described this phase as "replace `App.tsx`'s
+flat header with the doc's sidebar+topbar structure; fold
+`CampaignLayout.tsx`'s current horizontal nav into the new sidebar." On
+inspection that's not quite right: §9's sidebar content (Dashboard/World/
+Sessions/Threads/Maps/Search + Members/Settings/Import-Export) is entirely
+campaign-scoped — none of it applies to `App.tsx`'s non-campaign routes
+(login, account, status, help, the campaigns list). So the real sidebar+
+topbar rebuild landed in `CampaignLayout.tsx` only, which is the actual
+owner of that nav; `App.tsx`'s lightweight top-level header (already
+token-driven since Phase 1) is unchanged — there's nothing campaign-scoped
+to put in a sidebar there.
+
+**What shipped**, all in `CampaignLayout.tsx`/`.css` (+ a small
+`CampaignSwitcher.css`):
+
+- A real fixed sidebar: primary nav (Dashboard/World/Sessions/Threads/
+  Maps/Search) and secondary nav (Members/Settings/Import-Export),
+  icons via `lucide-react` (first real usage — added inert in Phase 1),
+  the "All campaigns" back link and campaign switcher at the top.
+- **Active-route highlighting** — confirmed via grep that no `.active`
+  CSS existed anywhere before this (react-router's `NavLink` needs the
+  function form of `className` to expose `isActive`; the old code passed
+  a bare string, so it never could have worked), despite the design doc
+  explicitly requiring it (§9.2). Real gap, now fixed.
+- A topbar: campaign name (truncates with an ellipsis for long names),
+  search (opens the same Ctrl/Cmd+K overlay), help, and account —
+  the last two are direct icon-links, not a dropdown menu, since
+  Dropdown/Menu has no other real caller yet either (still correctly
+  deferred from Phase 2).
+- Responsive collapse at 768px (Milestone 13's own established tablet
+  floor): sidebar becomes a horizontal wrapped nav row above the
+  content instead of a fixed column, matching the wrap-based pattern
+  `global.css`'s `.wb-links` already used elsewhere, rather than adding
+  a drawer/toggle-button that nothing else in the app has precedent for.
+- `AuditPage` was **not** added to the sidebar nav — checked its own
+  code comment first, which explicitly documents it as reachable only
+  via a link from Settings, not the fixed primary/secondary nav. The
+  rollout plan's "wire up AuditPage's missing nav entry" line was based
+  on stale notes from before that comment (and the Settings link) were
+  read directly; corrected here rather than carried forward.
+
+**A real browser check this time** (Playwright driving headless
+Chromium — no `chromium-cli` in this sandbox, so a small throwaway
+script under `apps/web/`, deleted after use, launched the full stack
+via `pnpm dev`, logged in as the seeded demo user, and screenshotted the
+sidebar, active-link state, a form page, and the search overlay). It
+caught a real, pre-existing bug the previous two phases' build/lint/test
+checks couldn't have: `.wb-button` and `.wb-icon-button` never reset
+`text-decoration`, so every `<Link>` styled as a button (this app's own
+established pattern for "Edit"/"New entity"-type actions, used well
+before this rollout) rendered underlined. Fixed in both files. Also
+spotted, but deliberately left alone as out of this phase's scope: a
+missing space between a campaign name and its `owner · draft` meta text
+on `CampaignsListPage` — unrelated content-page styling, Phase 6's job.
+
+### Phases 4–7 — not started
 
 See this document's own phase structure (§39) for scope; the rollout plan
 tracks these as separate checkpoints, each getting the same real-browser

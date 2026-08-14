@@ -1,9 +1,16 @@
+/* Also applied directly to react-router <Link>s styled as buttons
+   throughout the app (e.g. "Edit"/"New entity" actions) — text-decoration
+   reset is for those; a real <button> never had underline to begin with. */
 .wb-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   padding: var(--wb-space-2) var(--wb-space-4);
   border-radius: var(--wb-radius-sm);
   border: 1px solid transparent;
   font-size: var(--wb-text-md);
   font-weight: 500;
+  text-decoration: none;
   cursor: pointer;
 }
 

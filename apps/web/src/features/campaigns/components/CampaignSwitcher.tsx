@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom'
 import { useCampaignsQuery } from '../hooks/useCampaigns'
+import './CampaignSwitcher.css'
 
 interface CampaignSwitcherProps {
   currentCampaignId: string

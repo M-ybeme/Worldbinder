@@ -1,0 +1,10 @@
+.wb-campaign-switcher {
+  width: 100%;
+  padding: var(--wb-space-2) var(--wb-space-3);
+  border: 1px solid var(--wb-border-default);
+  border-radius: var(--wb-radius-sm);
+  background: var(--wb-field-bg);
+  color: var(--wb-text-primary);
+  font-size: var(--wb-text-sm);
+  font-family: inherit;
+}

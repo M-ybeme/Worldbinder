@@ -20,6 +20,16 @@ See `docs/architecture/environment-variables.md` for every variable and its actu
 - **Railway blocks outbound SMTP (ports 25/465/587/2525) below its Pro plan** — a platform firewall policy, not a per-app config issue. No SMTP port swap fixes it; the fix is either upgrading to Pro or sending mail over HTTPS instead (ADR-0022).
 - **`railway logs` streams indefinitely by default** — always pass `--since`/`--lines` for a bounded, non-streaming fetch when scripting against it, or a command chained after it will appear to hang forever.
 - **`railway run <cmd>` executes locally** with the target service's real env vars injected — genuinely useful for one-off verification (running a migration through an SSH tunnel via `railway connect <service> --tunnel-only`, or sending a real test exception to Sentry with the real production DSN) without touching the live deployed containers at all.
+- **`railway run`'s command is not passed through a real POSIX shell on Windows** — an inline `bash -c 'VAR=val ... | grep ...'` one-liner gets mangled (tokens get run as if by `cmd.exe`, not `bash`), the same shape of failure hit once before with a multi-line inline Sentry-verification script. The reliable fix both times: write a real temporary script file that does the env-var overriding itself (`process.env.FOO = '...'` at the top, in the actual language being run) and pass `railway run --service "<name>" -- <interpreter> <file>` with no shell metacharacters in the command line at all; delete the temp file after.
+
+## Public demo account
+
+`worldbinder.net`'s login page has a "View the demo campaign" button — logs in as `demo-gm@worldbinder.local`, GM of a real seeded campaign ("Ashgate Crossing", built by `apps/api/src/demo-content/build-demo-campaign.ts`). To rebuild it (the script is idempotent — re-running deletes and recreates the campaign, keeping the demo accounts):
+
+1. `railway connect Postgres --tunnel-only` (separate terminal, leave running) and note the local tunnel URL it prints.
+2. From `apps/api`: `railway run --service "Worldbinder/API" -- pnpm exec tsx <a temp script that sets DATABASE_URL to the tunnel URL, DEMO_CONTENT_BASE_URL=https://api.worldbinder.net, and DEMO_CONTENT_VERIFY_VIA_DB=true, then imports build-demo-campaign.ts>` — see the shell-quoting gotcha above for why this needs a real file rather than inline env vars.
+3. Confirm: the script's own PASS/FAIL verification checks must all pass (it throws otherwise), and `curl -X POST https://api.worldbinder.net/auth/login -d '{"email":"demo-gm@worldbinder.local","password":"ashgate-crossing-demo-9!"}'` should return a 200 with an access token.
+4. Close the tunnel.
 
 ## First deployment checklist (completed 2026-08-13)
 

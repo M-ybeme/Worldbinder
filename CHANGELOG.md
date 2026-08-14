@@ -4,6 +4,31 @@ All notable changes to this project are documented here. Format follows [Keep a 
 
 Every push to `main` should add an entry here. This is meant to be an honest record of what actually shipped, not a restatement of the roadmap's aspirations — if something was attempted and reverted, or shipped partially, say so.
 
+## [0.21.0] - 2026-08-13
+
+**Public demo login.** So people can see a populated Worldbinder campaign without registering an account, `LoginPage` gets a "View the demo campaign" button that logs straight in as the GM of a real seeded campaign, "Ashgate Crossing" — 39 entities, 48 relationships, 7 plot threads, 6 sessions, 14 timeline events, 2 maps, 6 attachments, wiki-link enrichment, and real revision history, built by the existing `demo-content` fixture (`apps/api/src/demo-content/`, previously local-dev-only). That fixture's account verification and campaign-invitation acceptance both depended on polling Mailpit for real emails — unavailable in production, which sends through Resend instead (ADR-0022) — so both got a production-safe path that writes the equivalent end state (`users.emailVerifiedAt`, a `campaign_members` row) directly via a DB connection instead, gated behind a new opt-in `DEMO_CONTENT_VERIFY_VIA_DB` flag so local dev's Mailpit-based behavior is unchanged. Actually run against the live production database this session (`pnpm --filter @worldbinder/api seed:demo:prod` via a Railway Postgres tunnel) — real accounts and a full campaign now exist on worldbinder.net, and all 10 of the script's own PASS/FAIL verification checks (including permission-filtered search) passed against it for real.
+
+### Added
+
+- `LoginPage`'s demo-login button — a second, independent `useLogin()` mutation instance, so its pending/error state doesn't interfere with the real login form.
+- `apps/api/src/demo-content/config.ts`'s `VERIFY_VIA_DB` flag and two new DB-direct helpers in `build-demo-campaign.ts` (`verifyEmailViaDb`, `addMemberViaDb`) for the production path.
+- `pnpm --filter @worldbinder/api seed:demo:prod` — same script as the existing `seed:demo`, without the `dotenv -e ../../.env` wrapper (so it doesn't clobber the real production env vars the caller supplies) plus the new flag.
+
+## [0.20.0] - 2026-08-13
+
+**Design system rollout, Phase 3 (app shell).** `CampaignLayout.tsx` gets a real sidebar+topbar shell — the only place in the app where a sidebar makes sense, since its nav content (Dashboard/World/Sessions/Threads/Maps/Search/Members/Settings/Import-Export) is entirely campaign-scoped; `App.tsx`'s lighter top-level header (auth/account/status/help) is unchanged. Verified this time with a real headless-browser pass (Playwright, no `chromium-cli` in this sandbox), not just build/lint/test — see `docs/product/WORLDBINDER_DESIGN_SYSTEM.md` §45 for detail and a scope correction (the original plan's "wire up AuditPage's missing nav entry" was wrong — its own code comment documents that omission as deliberate).
+
+### Added
+
+- Sidebar with primary/secondary nav, `lucide-react` icons (first real usage), the campaign switcher, and an "All campaigns" back link.
+- **Active-route highlighting**, which never actually worked anywhere in the app before this — confirmed via grep that no `.active` CSS existed and the old `NavLink` usage passed a plain string `className`, which doesn't expose react-router's active state at all.
+- Topbar with campaign name, search (Ctrl/Cmd+K), help, and account.
+- Responsive collapse at 768px, matching the wrap-based pattern already used elsewhere rather than adding a new drawer/toggle pattern.
+
+### Fixed
+
+- **`.wb-button` and `.wb-icon-button` never reset `text-decoration`**, so every `<Link>` styled as a button (an established pattern in this app, e.g. "Edit"/"New entity" actions) rendered underlined — invisible in code review, caught immediately by this phase's real browser screenshots.
+
 ## [0.19.0] - 2026-08-13
 
 **Design system rollout, Phase 2 (core primitives).** Built only the primitives with a confirmed real call site in the codebase (grepped for `window.confirm`, raw checkboxes, `<h1>`, tooltips, tables, and tablists before writing anything, per the design doc's §37 rule) — Dialog, ConfirmDialog, IconButton, Checkbox, Badge, PageHeader, plus a `danger` Button variant. Card, Tabs, Tooltip, Dropdown/Menu, Toast, Avatar, Skeleton, Breadcrumbs, table primitives, and sidebar nav item are deliberately deferred — no real need for them yet. See `docs/product/WORLDBINDER_DESIGN_SYSTEM.md` §45 for full detail.

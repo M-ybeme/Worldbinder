@@ -1,3 +1,6 @@
+/* Also applied directly to <Link>s used as icon-only nav actions (e.g.
+   CampaignLayout's topbar Help/Account) — text-decoration reset covers
+   that case, same reasoning as Button.css's .wb-button. */
 .wb-icon-button {
   display: inline-flex;
   align-items: center;
@@ -10,6 +13,7 @@
   border-radius: var(--wb-radius-sm);
   background: transparent;
   color: var(--wb-text-muted);
+  text-decoration: none;
   cursor: pointer;
 }
 

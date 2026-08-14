@@ -2,7 +2,7 @@ import { apiEnvSchema, loadEnv } from '@worldbinder/config';
 import { eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
-import { campaigns, users } from '../database/schema';
+import { campaignMembers, campaigns, users } from '../database/schema';
 import {
   ApiError,
   api,
@@ -18,6 +18,7 @@ import {
   DEMO_GM_EMAIL,
   DEMO_PASSWORD,
   DEMO_PLAYER_EMAIL,
+  VERIFY_VIA_DB,
 } from './config';
 import { DEMO_ATTACHMENTS } from './data/attachments';
 import { DEMO_ENTITIES } from './data/entities';
@@ -47,6 +48,17 @@ import { mentionRef, ref, resolveMentions, resolveRefs } from './refs';
  * `pnpm --filter @worldbinder/api seed:demo` against a running dev stack
  * (`pnpm infra:up` + `pnpm dev`) — real HTTP calls throughout, see
  * `api-client.ts`'s doc comment for why.
+ *
+ * Also runnable against production (`pnpm --filter @worldbinder/api
+ * seed:demo:prod`, see that script's env vars) to populate the public
+ * "log in as demo" account on worldbinder.net — `DEMO_CONTENT_BASE_URL`
+ * points at the real API and `DEMO_CONTENT_VERIFY_VIA_DB=true` swaps
+ * account verification to a direct DB write instead of polling Mailpit
+ * (unavailable in production; see `config.ts`'s `VERIFY_VIA_DB` doc
+ * comment). `DATABASE_URL` still needs to resolve to the real production
+ * Postgres from wherever this runs — e.g. `railway connect Postgres
+ * --tunnel-only` and pointing `DATABASE_URL` at the resulting local
+ * tunnel address.
  *
  * Idempotent, but deliberately only re-creates the CAMPAIGN on each run,
  * not the demo accounts: `POST /auth/register` is rate-limited to 5/hour
@@ -85,6 +97,50 @@ async function cleanupPreviousCampaign(): Promise<void> {
   await pool.end();
 }
 
+/** VERIFY_VIA_DB path only — mirrors database/seed.ts's direct
+ * `emailVerifiedAt` write, skipping the token/email flow entirely rather
+ * than trying to fetch a Resend-delivered email in production. Opens and
+ * closes its own short-lived connection, same self-contained shape as
+ * `cleanupPreviousCampaign` below. */
+async function verifyEmailViaDb(email: string): Promise<void> {
+  const env = loadEnv(apiEnvSchema);
+  const pool = new Pool({ connectionString: env.DATABASE_URL });
+  const db = drizzle(pool);
+  await db
+    .update(users)
+    .set({ emailVerifiedAt: new Date() })
+    .where(eq(users.email, email));
+  await pool.end();
+}
+
+/** VERIFY_VIA_DB path only — the campaign-invitation email has the same
+ * Mailpit dependency as account verification (see `verifyEmailViaDb`
+ * above), but there's no direct-column-flip equivalent for it: the
+ * accept flow's token is only ever stored hashed
+ * (`campaignInvitations.tokenHash`), so an already-sent invitation can't
+ * be "accepted" after the fact without the raw token. Inserting the
+ * `campaign_members` row directly is the actual end state that flow
+ * produces anyway (an active membership at the given role) — this just
+ * skips the token roundtrip that only exists to prove the invited
+ * address controls that inbox, which doesn't apply to a script running
+ * with direct database access. */
+async function addMemberViaDb(
+  campaignId: string,
+  userId: string,
+  role: 'editor' | 'player',
+): Promise<void> {
+  const env = loadEnv(apiEnvSchema);
+  const pool = new Pool({ connectionString: env.DATABASE_URL });
+  const db = drizzle(pool);
+  await db
+    .insert(campaignMembers)
+    .values({ campaignId, userId, role, status: 'active' })
+    .onConflictDoNothing({
+      target: [campaignMembers.campaignId, campaignMembers.userId],
+    });
+  await pool.end();
+}
+
 async function ensureAccount(
   email: string,
   displayName: string,
@@ -97,8 +153,15 @@ async function ensureAccount(
   }
 
   await register(email, DEMO_PASSWORD, displayName);
-  const token = await findEmailToken(email, 'Verify your Worldbinder account');
-  await verifyEmail(token);
+  if (VERIFY_VIA_DB) {
+    await verifyEmailViaDb(email);
+  } else {
+    const token = await findEmailToken(
+      email,
+      'Verify your Worldbinder account',
+    );
+    await verifyEmail(token);
+  }
   const { token: accessToken, userId } = await login(email, DEMO_PASSWORD);
 
   return { email, displayName, token: accessToken, userId };
@@ -745,6 +808,12 @@ async function main(): Promise<void> {
     [editor, 'editor'],
     [player, 'player'],
   ] as const) {
+    if (VERIFY_VIA_DB) {
+      await addMemberViaDb(campaign.id, account.userId, role);
+      console.log(`  ${account.email} added as ${role} (campaign ${campaign.id})`);
+      continue;
+    }
+
     await api.post(
       `/campaigns/${campaign.id}/invitations`,
       { email: account.email, role },
