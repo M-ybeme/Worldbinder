@@ -11,6 +11,7 @@ import { createCampaignSchema, type CreateCampaignInput } from '@worldbinder/val
 import { useForm } from 'react-hook-form'
 import { Link } from 'react-router-dom'
 import { useCampaignsQuery, useCreateCampaignMutation } from '../hooks/useCampaigns'
+import '../campaigns.css'
 
 export function CampaignsListPage() {
   const campaignsQuery = useCampaignsQuery()

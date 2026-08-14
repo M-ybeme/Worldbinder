@@ -1,0 +1,32 @@
+/* CampaignsListPage only. Previously had zero CSS rules — the list
+   rendered with no gap at all between a campaign's name and its
+   "role · status" meta text, reading as one run-on word (e.g.
+   "Ashgate Crossingowner · active"). A flex row with justify-content:
+   space-between, matching .wb-session-list/.wb-entity-list's established
+   card-row pattern, both adds real separation and gives each row a
+   defined boundary instead of a bare list item. */
+.wb-campaign-list {
+  list-style: none;
+  margin: var(--wb-space-4) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--wb-space-2);
+}
+
+.wb-campaign-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--wb-space-2) var(--wb-space-4);
+  padding: var(--wb-space-3) var(--wb-space-4);
+  border: 1px solid var(--wb-border-default);
+  border-radius: var(--wb-radius-md);
+  background: var(--wb-bg-surface-raised);
+}
+
+.wb-campaign-list__meta {
+  font-size: var(--wb-text-sm);
+  color: var(--wb-text-muted);
+}

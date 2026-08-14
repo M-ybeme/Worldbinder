@@ -4,6 +4,22 @@ All notable changes to this project are documented here. Format follows [Keep a 
 
 Every push to `main` should add an entry here. This is meant to be an honest record of what actually shipped, not a restatement of the roadmap's aspirations — if something was attempted and reverted, or shipped partially, say so.
 
+## [0.23.0] - 2026-08-13
+
+**Design system rollout, Phase 5 (high-value campaign screens).** `CampaignsListPage`, `CampaignOverviewPage`, `WorldListPage`, `EntityFormPage` (`EntityDetailPage` was already done in Phase 2). Three of these five pages were completely unstyled — `.wb-campaign-list`, `.wb-world-filters`/`.wb-entity-list`, and `.wb-world-header` (used by 10 pages across 8 features) all had zero CSS anywhere, the same shape of gap every phase this rollout has found, just bigger this time. See `docs/product/WORLDBINDER_DESIGN_SYSTEM.md` §45.
+
+### Added
+
+- Card-row styling for `.wb-campaign-list`/`.wb-entity-list`, matching the already-styled `.wb-session-list` — this is the actual fix for the "missing space" bug flagged back in Phase 3: there was no missing space, there was no layout on the row at all.
+- Shared `.wb-world-header` utility (global.css) for the 9 pages outside this phase's scope that use it; `WorldListPage` itself migrated fully to the `PageHeader` primitive instead.
+- `Badge` on `WorldListPage`'s per-row "GM only" indicator, matching every other visibility flag in the app.
+
+### Fixed
+
+- `EntityFormPage`'s edit-mode loading/error states were a raw `<p>Loading…</p>` — the exact normalization target flagged back in Phase 1's initial research. Fixed to `LoadingState`/`ErrorState`.
+- `CampaignOverviewPage`'s `<dl className="wb-campaign-overview">` was a near-duplicate of `ProfilePage`'s already-styled `.status-panel` layout; switched to reuse it instead of writing a third copy of the same CSS.
+- **A real bug found live-testing, unrelated to CSS**: `campaign.systemName ?? '—'` doesn't catch the empty string the create-campaign form actually submits for a blank optional field, so the "System" row rendered with no visible value — looked like a layout bug until traced back. Fixed the display-layer symptom (`||` instead of `??`); whether an empty string should be storable at all is a separate question for the schema layer, out of this phase's scope.
+
 ## [0.22.0] - 2026-08-13
 
 **Design system rollout, Phase 4 (auth and account pages).** Covered the full checklist (Login/Register/ForgotPassword/ResetPassword/VerifyEmail/AcceptInvitation/Profile/Security/Sessions), but the real finding was two app-wide gaps these link- and heading-heavy pages happened to expose: no global heading typography at all (`h1`/`h2`/`h3` used raw browser defaults everywhere, not just here) and no global link color despite the design doc explicitly mandating one. Both fixed at the `global.css` level, not page-by-page. See `docs/product/WORLDBINDER_DESIGN_SYSTEM.md` §45 for detail.

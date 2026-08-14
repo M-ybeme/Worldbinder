@@ -1806,7 +1806,57 @@ switched to `waitUntil: 'load'` plus explicit element waits instead, the
 same fix this project's own `run` skill documentation already calls out
 as the standard workaround.
 
-### Phases 5–7 — not started
+### Phase 5 — High-value campaign screens (shipped)
+
+Covered the plan's checklist: `CampaignsListPage`, `CampaignOverviewPage`,
+`WorldListPage`, `EntityDetailPage` (already done in Phase 2),
+`EntityFormPage`. Same story as Phase 4 — three of these five pages turned
+out to be **completely unstyled**, not just inconsistent:
+
+- `.wb-campaign-list`/`.wb-campaign-list__meta` (`CampaignsListPage`),
+  `.wb-world-filters`/`.wb-entity-list`/`.wb-entity-list__meta`
+  (`WorldListPage`), and **`.wb-world-header` — used by 10 pages across 8
+  features** (maps, search, plot-threads, timeline, sessions, entities,
+  imports, exports, audit) — all had zero CSS rules anywhere. This is the
+  same shape of gap Phases 1-4 kept finding (`.wb-tag-input`,
+  `.wb-entity-header`, `.wb-campaign-header`), just at a larger scale: a
+  cross-feature utility used by a third of the app's list pages, never
+  styled once.
+  - Gave `.wb-campaign-list`/`.wb-entity-list` the same card-row treatment
+    as the already-styled `.wb-session-list` (flex row, `space-between`,
+    border, radius) — this is also the real fix for the "missing space"
+    bug flagged back in Phase 3's live testing: it wasn't a missing
+    space, it was zero layout on the row at all, so the name and its
+    `role · status`/type/tag meta just sat glued together inline.
+  - `.wb-world-header` got the shared-utility treatment (like
+    `.wb-entity-header__actions` in Phase 2) for the 9 pages outside this
+    phase's scope. `WorldListPage` itself — the one page in this phase
+    that actually has this shape — migrated fully to `PageHeader`
+    instead, since its two-link action group needed real internal gap
+    handling a single shared class couldn't give it without becoming
+    PageHeader's own logic reimplemented a second time.
+- `CampaignOverviewPage`'s `<dl className="wb-campaign-overview">` was
+  also unstyled; rather than write a third near-duplicate of
+  `.status-panel`'s key-value layout (already used by `ProfilePage`),
+  switched its className to reuse `.status-panel` directly.
+- `EntityFormPage`'s edit-mode loading/error states were the raw
+  `<p>Loading…</p>` this document already flagged as a normalization
+  target back in Phase 1's research — fixed to `LoadingState`/`ErrorState`
+  like every other page.
+- Added `Badge` to `WorldListPage`'s per-row "GM only" indicator, the same
+  treatment every other visibility flag in the app got in Phase 2.
+
+**A real bug found live-testing, unrelated to CSS**: `CampaignOverviewPage`
+rendered `campaign.systemName ?? '—'`, but the create-campaign form
+submits an empty string for a left-blank optional field (its Zod schema
+has no `.nullable()` or empty-to-`undefined` transform) — `??` doesn't
+catch `''`, so the "System" row rendered with no visible value at all,
+looking like a layout bug until traced to its actual cause. Fixed the
+display-layer symptom (`||` instead of `??`); the schema-level question of
+whether an empty string should even be storable is a separate, bigger
+conversation than this phase's scope.
+
+### Phases 6–7 — not started
 
 See this document's own phase structure (§39) for scope; the rollout plan
 tracks these as separate checkpoints, each getting the same real-browser

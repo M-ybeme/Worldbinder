@@ -1,6 +1,15 @@
 import type { EntityStatus, EntityType, EntityVisibility, TiptapDoc } from '@worldbinder/contracts'
 import type { UpdateEntityInput } from '@worldbinder/validation'
-import { Button, FormMessage, Select, TagInput, TextField, Textarea } from '@worldbinder/ui'
+import {
+  Button,
+  ErrorState,
+  FormMessage,
+  LoadingState,
+  Select,
+  TagInput,
+  TextField,
+  Textarea,
+} from '@worldbinder/ui'
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useCampaignOutletContext } from '../../campaigns/hooks/useCampaignContext'
@@ -230,9 +239,11 @@ export function EntityFormPage() {
     navigate(`/app/campaign/${campaign.id}/world/${result.id}`)
   }
 
-  if (isEditMode && entityQuery.isLoading) return <p>Loading…</p>
+  if (isEditMode && entityQuery.isLoading) return <LoadingState label="Loading entity…" />
   if (isEditMode && entityQuery.isError) {
-    return <FormMessage message="This entry could not be loaded." />
+    return (
+      <ErrorState message="This entry could not be loaded." onRetry={() => entityQuery.refetch()} />
+    )
   }
 
   const showGmContent = isEditMode ? hasGmAccess : canSetGmContentOnCreate

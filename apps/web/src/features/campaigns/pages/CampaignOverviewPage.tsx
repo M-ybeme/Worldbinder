@@ -34,9 +34,18 @@ export function CampaignOverviewPage() {
   return (
     <section>
       <p>{campaign.description ?? 'No description yet.'}</p>
-      <dl className="wb-campaign-overview">
+      {/* Reuses ProfilePage's key-value dl treatment rather than
+          introducing a near-duplicate .wb-campaign-overview class — same
+          shape (a handful of label/value pairs), no reason for its own
+          styling. */}
+      <dl className="status-panel">
         <dt>System</dt>
-        <dd>{campaign.systemName ?? '—'}</dd>
+        {/* || not ?? — the create-campaign form submits an empty string,
+            not null/undefined, for a blank optional field (its Zod schema
+            has no .nullable() or empty-to-undefined transform), so ??
+            alone left this dd silently blank. Found by an entry that
+            visibly had no value in a real screenshot, not assumed. */}
+        <dd>{campaign.systemName || '—'}</dd>
         <dt>Status</dt>
         <dd>{campaign.status}</dd>
         <dt>Your role</dt>
