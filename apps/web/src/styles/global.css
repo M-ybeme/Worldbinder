@@ -19,6 +19,20 @@
   box-sizing: border-box;
 }
 
+/* Defense-in-depth on top of each component's own per-instance
+   prefers-reduced-motion gating (Dialog.css, LoadingState.css) — protects
+   any transition/animation a later phase adds and forgets to gate
+   individually. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 body {
   margin: 0;
   font-family: var(--wb-font-sans);
@@ -109,6 +123,23 @@ a:focus-visible {
   max-width: 640px;
   margin-inline: auto;
   padding: var(--wb-space-8) var(--wb-space-6);
+}
+
+/* The campaign workspace (CampaignLayout's sidebar+topbar+content shell)
+   manages its own width internally (see CampaignLayout.css's
+   --wb-container-workspace cap) and needs the full viewport, not the
+   narrow centered column every other route (auth/account/status/help)
+   wants — App.tsx applies this instead of the default above when the
+   active route is inside /app/campaign/:id. Deliberately NOT display:flex
+   here — .wb-campaign-layout (CampaignLayout's root) has no width/flex of
+   its own and relies on the plain block-level "fill available width"
+   behavior it already gets today; making this a flex container would turn
+   it into a flex item sized to its content instead. Its own
+   min-height: 100svh already handles full-height sidebar borders. */
+.app-shell__main--full {
+  max-width: none;
+  margin-inline: 0;
+  padding: 0;
 }
 
 .status-panel {
@@ -232,6 +263,14 @@ a:focus-visible {
   align-items: center;
   gap: var(--wb-space-2) var(--wb-space-4);
   background: var(--wb-bg-surface-raised);
+  transition:
+    border-color var(--wb-motion-duration-fast) var(--wb-motion-ease),
+    background-color var(--wb-motion-duration-fast) var(--wb-motion-ease);
+}
+
+.wb-session-list li:hover {
+  border-color: var(--wb-border-strong);
+  background: var(--wb-bg-surface-hover);
 }
 
 .wb-session-list__meta {

@@ -1,0 +1,5 @@
+.wb-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--wb-card-grid-min-width, 280px), 1fr));
+  gap: var(--wb-space-4);
+}

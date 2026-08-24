@@ -413,6 +413,7 @@ export class CampaignsService {
         id: entity.id,
         title: entity.name,
         updatedAt: entity.updatedAt.toISOString(),
+        entityType: entity.entityType,
       })),
       ...recentSessions.map((session) => ({
         resourceType: 'session' as const,

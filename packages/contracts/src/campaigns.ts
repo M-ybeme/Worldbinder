@@ -1,4 +1,5 @@
 import type { CalendarConfig, WorldDate } from './calendar.js'
+import type { EntityType } from './entities.js'
 import type { PlotThreadSummary } from './plot-threads.js'
 import type { CampaignSessionSummary } from './sessions.js'
 
@@ -38,6 +39,9 @@ export interface CampaignActivityItem {
   id: string
   title: string
   updatedAt: string
+  /** Only set when resourceType is 'entity' — lets the dashboard render a
+   * per-entity-type icon instead of a generic one. */
+  entityType?: EntityType
 }
 
 /**

@@ -7,6 +7,7 @@
   align-items: flex-start;
   justify-content: center;
   padding: 10vh var(--wb-space-4) var(--wb-space-4);
+  animation: wb-dialog-backdrop-in var(--wb-motion-duration-base) var(--wb-motion-ease);
 }
 
 .wb-dialog__panel {
@@ -20,6 +21,30 @@
   border-radius: var(--wb-radius-lg);
   box-shadow: var(--wb-shadow-lg);
   overflow: hidden;
+  animation: wb-dialog-panel-in var(--wb-motion-duration-base) var(--wb-motion-ease);
+}
+
+/* Dialog mounts fresh on every open (Dialog.tsx: `if (!open) return null`),
+   so a plain CSS animation on mount is sufficient — no exit animation is in
+   scope (design doc §35 calls for "Dialog appearance," not close). */
+@keyframes wb-dialog-backdrop-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes wb-dialog-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wb-dialog__backdrop,
+  .wb-dialog__panel {
+    animation: none;
+  }
 }
 
 .wb-dialog__header {

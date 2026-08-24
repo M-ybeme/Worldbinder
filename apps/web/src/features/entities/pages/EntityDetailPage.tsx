@@ -21,6 +21,8 @@ import {
   useEntitySessionsQuery,
 } from '../hooks/useEntities'
 import { clearDraft } from '../lib/draftDb'
+import { EntityTypeIcon } from '../lib/entityTypeIcons'
+import '../entities.css'
 
 const MANAGEMENT_ROLES = new Set(['owner', 'gm', 'editor'])
 
@@ -48,7 +50,12 @@ export function EntityDetailPage() {
   return (
     <section>
       <PageHeader
-        title={entity.name}
+        title={
+          <span className="wb-entity-header__title">
+            <EntityTypeIcon type={entity.entityType} size={20} />
+            {entity.name}
+          </span>
+        }
         meta={
           <>
             <span>{entity.entityType}</span>

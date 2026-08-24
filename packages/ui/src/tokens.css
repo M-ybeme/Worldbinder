@@ -96,6 +96,25 @@
   --wb-z-overlay: 100;
   --wb-z-modal: 200;
   --wb-z-toast: 300;
+
+  /* --- Layout: width & breakpoint constants ---
+     NOT usable inside @media (CSS custom properties don't resolve in media
+     feature values) — every actual @media rule still hard-codes its pixel
+     number, with a comment naming the constant it corresponds to. These
+     exist so consuming CSS can reference a named width instead of a bare
+     magic number. --- */
+  --wb-container-narrow: 640px; /* auth/account/status/help pages — app-shell__main's default */
+  --wb-container-workspace: 1800px; /* campaign section outer ceiling — CampaignLayout.css */
+  --wb-container-reading: 720px; /* prose measure cap for a detail page's main content column */
+  --wb-breakpoint-tablet: 768px; /* existing sidebar-reflow breakpoint, named */
+  --wb-breakpoint-wide: 1200px; /* detail/dashboard pages switch to a rail/grid layout */
+  --wb-breakpoint-xwide: 1600px; /* card grids grow an extra column tier */
+
+  /* --- Motion (design doc §35: restrained, 100-200ms, hover/focus/dialog/
+     small state changes only — no page transitions or decorative motion) --- */
+  --wb-motion-duration-fast: 120ms; /* hover/focus/small state changes */
+  --wb-motion-duration-base: 180ms; /* panel/dialog appearance, layout reflow */
+  --wb-motion-ease: ease-out;
 }
 
 /* Cross-package a11y utility: primitives in this package (e.g. TagInput's

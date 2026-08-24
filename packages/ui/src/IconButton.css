@@ -15,6 +15,9 @@
   color: var(--wb-text-muted);
   text-decoration: none;
   cursor: pointer;
+  transition:
+    background-color var(--wb-motion-duration-fast) var(--wb-motion-ease),
+    color var(--wb-motion-duration-fast) var(--wb-motion-ease);
 }
 
 .wb-icon-button:hover:not(:disabled) {

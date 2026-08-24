@@ -1,8 +1,11 @@
 import type { CampaignActivityItem, WorldDate } from '@worldbinder/contracts'
 import { ErrorState, LoadingState } from '@worldbinder/ui'
+import { CalendarDays, GitBranch } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { EntityTypeIcon } from '../../entities/lib/entityTypeIcons'
 import { useCampaignOutletContext } from '../hooks/useCampaignContext'
 import { useCampaignDashboardQuery } from '../hooks/useCampaigns'
+import '../campaigns.css'
 
 function formatWorldDate(date: WorldDate | null | undefined): string | null {
   if (!date) return null
@@ -17,6 +20,16 @@ function activityLink(campaignId: string, item: CampaignActivityItem): string {
   if (item.resourceType === 'entity') return `${base}/world/${item.id}`
   if (item.resourceType === 'session') return `${base}/sessions/${item.id}`
   return `${base}/threads/${item.id}`
+}
+
+// Reuses the same icons CampaignLayout's sidebar nav already uses for
+// Sessions/Threads, for visual consistency across the app.
+function ActivityIcon({ item }: { item: CampaignActivityItem }) {
+  if (item.resourceType === 'entity' && item.entityType) {
+    return <EntityTypeIcon type={item.entityType} />
+  }
+  if (item.resourceType === 'session') return <CalendarDays size={16} aria-hidden="true" />
+  return <GitBranch size={16} aria-hidden="true" />
 }
 
 /**
@@ -131,7 +144,8 @@ export function CampaignOverviewPage() {
             {dashboard && dashboard.recentActivity.length === 0 && <p>Nothing yet.</p>}
             <ul className="wb-relationship-list">
               {dashboard?.recentActivity.map((item) => (
-                <li key={`${item.resourceType}-${item.id}`}>
+                <li key={`${item.resourceType}-${item.id}`} className="wb-dashboard-activity__item">
+                  <ActivityIcon item={item} />
                   <Link to={activityLink(campaign.id, item)}>{item.title}</Link>
                   {` · ${item.resourceType.replace('_', ' ')}`}
                 </li>

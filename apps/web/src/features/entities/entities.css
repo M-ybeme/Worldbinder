@@ -46,9 +46,25 @@
   border: 1px solid var(--wb-border-default);
   border-radius: var(--wb-radius-md);
   background: var(--wb-bg-surface-raised);
+  transition:
+    border-color var(--wb-motion-duration-fast) var(--wb-motion-ease),
+    background-color var(--wb-motion-duration-fast) var(--wb-motion-ease);
+}
+
+.wb-entity-list li:hover {
+  border-color: var(--wb-border-strong);
+  background: var(--wb-bg-surface-hover);
 }
 
 .wb-entity-list__meta {
   font-size: var(--wb-text-sm);
   color: var(--wb-text-muted);
+}
+
+/* EntityDetailPage's PageHeader title — icon + name, inline since this
+   renders inside PageHeader's own <h1>. */
+.wb-entity-header__title {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--wb-space-2);
 }

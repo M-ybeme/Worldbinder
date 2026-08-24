@@ -1974,3 +1974,158 @@ existing collapse-to-horizontal-nav breakpoint (already built in Phase 3) held u
 
 **Verification:** typecheck/lint/build clean; full unit suite green
 (146 tests across api/web/worker/config).
+
+## 46. UI/UX Rework
+
+The 7-phase rollout above (§45) shipped a consistent token/primitive system
+but, per direct user feedback after using the live result, left two real
+problems unaddressed: the app felt "too narrow on a large screen" and
+"isn't dynamic." Both had a single, concrete root cause each (see Phase 1
+below) rather than being diffuse polish issues — this is a separate,
+7-phase rework, tracked here as its own section since §45's rollout is
+already closed out as complete.
+
+### Phase 1 — Foundation: root-cause width fix, tokens, CardGrid (shipped)
+
+- **Root cause of "too narrow on a large screen," found and fixed**:
+  `apps/web/src/app/App.tsx` is the one root layout for every route, and
+  `global.css`'s `.app-shell__main { max-width: 640px }` — sized for
+  narrow auth forms — wrapped the entire campaign section too (sidebar,
+  topbar, dashboard, entity pages), confirmed via 1920px screenshots to
+  leave roughly two-thirds of the viewport empty on every campaign page.
+  Fixed by conditionally rendering: `App.tsx` now checks
+  `location.pathname.startsWith('/app/campaign/')` (the singular
+  campaign-workspace prefix, distinct from the plural `/app/campaigns`
+  list route — no collision) and, when true, skips the outer
+  `<header>` entirely (`CampaignLayout` already duplicates all of it —
+  back-link, Help, Account — in its own sidebar/topbar) and swaps in a
+  new `.app-shell__main--full` class instead of the default narrow one.
+  Auth/account/status/help/campaigns-list routes are untouched and stay
+  narrow, exactly as before.
+- **A real sizing bug caught before it shipped**: the first version of
+  `.app-shell__main--full` also set `display: flex`, intended to make
+  `<main>` stretch to fill the shell's height. This would have broken
+  `.wb-campaign-layout` (CampaignLayout's root, which has no `width`/
+  `flex` of its own) — turning it from a block element that naturally
+  fills 100% of its parent's width into a flex item sized to its own
+  content instead. Caught by reasoning through CSS flex-item sizing
+  before testing, not after; removed `display: flex` since
+  `.wb-campaign-layout`'s own `min-height: 100svh` already handles
+  full-height sidebar borders without it.
+- `CampaignLayout.css`'s inner content cap raised from a hardcoded
+  `1100px` to a new `--wb-container-workspace` token (1800px) — not
+  edge-to-edge, since several campaign pages (Members/Settings/Search/
+  Import-Export/Audit/Maps-list) are still simple single-column forms
+  that would look broken fully stretched on a 4K/ultrawide display; the
+  pages getting real wide-screen treatment (Phases 4–5) define their own
+  responsive grid inside this ceiling.
+- New width/breakpoint constants and motion-duration tokens added to
+  `packages/ui/src/tokens.css` (the app had zero of either before this —
+  every width in the app was a hardcoded magic number). Width/breakpoint
+  tokens are documentation-only (CSS custom properties can't appear
+  inside `@media` feature values); every consuming `@media` rule still
+  hard-codes its pixel number with a comment naming the constant.
+- New `CardGrid` primitive (`packages/ui/src/CardGrid.tsx`) — a
+  `repeat(auto-fill, minmax(...))` responsive grid, the one new layout
+  primitive this rework needs (justified by 2 real consumers from day
+  one: WorldListPage's entity grid and the dashboard's widget grid,
+  Phases 4–5). No `Card`/rail-split primitive was added — each of those
+  has only one real consumer and belongs as page-local CSS, matching
+  `packages/ui`'s existing "built up only as real screens need them"
+  philosophy.
+
+**Verification:** typecheck/lint/build/vitest clean. Real Playwright
+checks at 700/1024/1920/2560px confirmed: the campaign workspace's
+`app-shell__main` now spans the full viewport at every width (was
+hard-capped at 640px before); the campaign content itself scales up to
+the new 1800px ceiling; the outer header is correctly absent throughout
+the campaign section; `/account/profile` (outside the campaign workspace)
+stays narrow and centered at 640px at every viewport width, confirming
+the narrow-page behavior is untouched; the existing 768px sidebar-collapse
+breakpoint still works correctly.
+
+### Phase 2 — Motion pass (shipped)
+
+Implements §35's motion guidance literally — of 26 CSS files in the app,
+exactly one (`LoadingState.css`, the spinner) had any `transition`/
+`animation` before this phase; every hover/focus/active state elsewhere
+snapped instantly. Scoped to what §35 actually asks for: "Dialog
+appearance" (entrance only, not exit — `Dialog.tsx` already unmounts
+synchronously on close via `if (!open) return null`, so a CSS-only mount
+animation is sufficient and needed no component changes), hover/focus
+transitions, and smoothing the existing 768px sidebar reflow (no new
+collapse *feature* — none exists today, building one would be a UX
+feature decision out of scope for a motion pass).
+
+- `.wb-button`/`.wb-icon-button` (`packages/ui/src/Button.css`/
+  `IconButton.css`): `transition` on background-color/border-color/color
+  at `--wb-motion-duration-fast` (120ms).
+- `.wb-sidebar__link` (`CampaignLayout.css`): same transition;
+  `.wb-sidebar` itself gets `transition: width` at
+  `--wb-motion-duration-base` (180ms), so a live resize across 768px now
+  animates the sidebar's width change instead of snapping.
+- `Dialog.css`: `@keyframes` mount animation on `.wb-dialog__backdrop`
+  (opacity fade) and `.wb-dialog__panel` (opacity + `translateY(-8px)
+  scale(0.98)` → resting), both gated behind
+  `@media (prefers-reduced-motion: reduce)` individually, following
+  `LoadingState.css`'s existing precedent.
+- Card-row hover states added to `.wb-entity-list li`/`.wb-session-list
+  li`/`.wb-campaign-list li` (`entities.css`/`global.css`/
+  `campaigns.css`) — none had a `:hover` state at all before this; border/
+  background shift + transition. This is the base Phase 4's entity card
+  grid restyle builds on.
+- `global.css` gained a blanket
+  `@media (prefers-reduced-motion: reduce) { * { transition-duration:
+  0.01ms !important; ... } }` as defense-in-depth on top of the
+  per-component gating above — protects any transition a later phase adds
+  and forgets to gate individually.
+
+**Verification:** typecheck/lint/build/vitest clean. Real Playwright
+checks: confirmed the sidebar link's computed `transition-duration` is
+actually `0.12s` (not just present in the CSS source); confirmed the
+dialog panel's computed `animation-name` is `wb-dialog-panel-in` under
+normal motion and `none` under `page.emulateMedia({ reducedMotion:
+'reduce' })` — the per-component gating actually takes effect at runtime,
+not just in the stylesheet; a screenshot taken immediately on dialog-open
+caught it mid-fade, confirming the animation genuinely runs rather than
+being a dead CSS rule.
+
+### Phase 3 — Entity type icons (shipped)
+
+Implements §17.1's conceptual icon mapping, verified 1:1 against
+`entityTypeEnum`'s 11 real values. `lucide-react` was already a
+dependency (added Phase 1, used only in `CampaignLayout.tsx`'s sidebar
+nav before this) — confirmed all 11 needed icon names
+(`User`/`MapPin`/`Flag`/`Building2`/`Package`/`Star`/`PawPrint`/
+`CalendarDays`/`Route`/`BookOpen`/`Shapes`) exist in the installed
+version before writing the mapping.
+
+- New `apps/web/src/features/entities/lib/entityTypeIcons.tsx`:
+  `ENTITY_TYPE_ICONS` map + an `<EntityTypeIcon type size?/>` wrapper.
+  `faction` and `quest` both offered "flag" as one of two suggested icon
+  options in §17.1 — assigned to faction, quest gets its other suggested
+  option (route) so no two entity types share an icon.
+- Wired into `EntityDetailPage.tsx`'s `PageHeader` title (no `PageHeader`
+  change needed — `title: ReactNode` already accepts arbitrary nodes).
+- Dashboard "Recent Activity" needed one small backend addition first:
+  `CampaignActivityItem` (`packages/contracts`) gained an optional
+  `entityType?: EntityType`, populated by a one-line addition to
+  `CampaignsService`'s existing `recentEntities` mapping (that query
+  already selected the full entity row, so no new query was needed).
+  Session/plot-thread activity rows reuse the same `CalendarDays`/
+  `GitBranch` icons `CampaignLayout.tsx`'s sidebar nav already uses, for
+  visual consistency.
+- WorldListPage's type-filter `<Select>` stays plain text, unchanged —
+  native `<option>` elements can't render an icon in any browser; the
+  WorldListPage entity cards themselves get their icon in Phase 4
+  alongside the card-grid rework.
+
+**Verification:** typecheck/lint/build clean across all affected
+packages (`@worldbinder/contracts`/`@worldbinder/api`/
+`@worldbinder/web`, confirming the new optional contract field doesn't
+break API compilation); full web vitest suite (11/11) and full API jest
+suite (96/96) green. Real browser: confirmed via screenshot that the
+dashboard's Recent Activity rows show the correct icon per type
+(character entity → person icon, session → calendar icon, plot thread →
+branch icon) and the entity detail page header shows the same icon
+beside the entity name.

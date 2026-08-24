@@ -12,6 +12,10 @@
   font-weight: 500;
   text-decoration: none;
   cursor: pointer;
+  transition:
+    background-color var(--wb-motion-duration-fast) var(--wb-motion-ease),
+    border-color var(--wb-motion-duration-fast) var(--wb-motion-ease),
+    color var(--wb-motion-duration-fast) var(--wb-motion-ease);
 }
 
 .wb-button:disabled {
