@@ -6,7 +6,6 @@ import { EntityPicker } from '../../entities/components/EntityPicker'
 import {
   useCreateRelationshipMutation,
   useDeleteRelationshipMutation,
-  useEntityBacklinksQuery,
   useEntityRelationshipsQuery,
   useRelationshipTypesQuery,
 } from '../hooks/useRelationships'
@@ -19,9 +18,11 @@ export interface RelatedContentPanelProps {
 }
 
 /**
- * Combines relationships (outgoing/incoming) and wiki-link backlinks into
- * one "related content" section on the entity detail page — the roadmap's
- * "start on any page and discover related information" principle.
+ * Outgoing/incoming relationships for the entity detail page's rail —
+ * the roadmap's "start on any page and discover related information"
+ * principle. Backlinks used to render here too; split into its own
+ * BacklinksPanel so the rail can position it after Attachments, matching
+ * docs/planning/ui-ux.md's specified section order.
  */
 export function RelatedContentPanel({
   campaignId,
@@ -30,7 +31,6 @@ export function RelatedContentPanel({
   campaignRole,
 }: RelatedContentPanelProps) {
   const relationshipsQuery = useEntityRelationshipsQuery(campaignId, entityId)
-  const backlinksQuery = useEntityBacklinksQuery(campaignId, entityId)
   const typesQuery = useRelationshipTypesQuery(campaignId)
   const createRelationship = useCreateRelationshipMutation(campaignId)
   const deleteRelationship = useDeleteRelationshipMutation(campaignId)
@@ -50,7 +50,6 @@ export function RelatedContentPanel({
   const relationships = relationshipsQuery.data ?? []
   const outgoing = relationships.filter((r) => r.direction === 'outgoing')
   const incoming = relationships.filter((r) => r.direction === 'incoming')
-  const backlinks = backlinksQuery.data ?? []
 
   async function handleCreate() {
     if (!relationshipTypeId || !targetEntityId) return
@@ -89,7 +88,7 @@ export function RelatedContentPanel({
   }
 
   return (
-    <section className="wb-related-content">
+    <div className="wb-related-content">
       <div>
         <h2>Relationships</h2>
 
@@ -170,32 +169,6 @@ export function RelatedContentPanel({
           </>
         )}
       </div>
-
-      <div>
-        <h2>Backlinks</h2>
-        {backlinksQuery.isLoading && <LoadingState label="Loading backlinks…" />}
-        {backlinksQuery.isError && (
-          <ErrorState
-            message={backlinksQuery.error.message}
-            onRetry={() => backlinksQuery.refetch()}
-          />
-        )}
-        {!backlinksQuery.isLoading && !backlinksQuery.isError && backlinks.length === 0 && (
-          <EmptyState message="No backlinks yet." />
-        )}
-        {!backlinksQuery.isLoading && !backlinksQuery.isError && backlinks.length > 0 && (
-          <ul className="wb-backlink-list">
-            {backlinks.map((link) => (
-              <li key={`${link.sourceEntity.id}-${link.section}`}>
-                <Link to={`/app/campaign/${campaignId}/world/${link.sourceEntity.id}`}>
-                  {link.sourceEntity.name}
-                </Link>
-                {link.section === 'gm' ? ' (GM only)' : ''}
-              </li>
-            ))}
-          </ul>
-        )}
-      </div>
-    </section>
+    </div>
   )
 }

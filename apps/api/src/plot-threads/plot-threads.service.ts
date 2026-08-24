@@ -485,6 +485,46 @@ export class PlotThreadsService {
     return results;
   }
 
+  /** Entity detail page's Plot Threads rail section — same shape as
+   * listForSession above, just joined through plotThreadEntities instead
+   * of sessionPlotThreads (a plain two-column junction with no per-row
+   * "action" to carry, unlike sessions). */
+  async listForEntity(
+    campaignId: string,
+    entityId: string,
+    membership: CampaignMembership,
+  ): Promise<PlotThreadSummary[]> {
+    const rows = await this.db
+      .select({ thread: plotThreads })
+      .from(plotThreadEntities)
+      .innerJoin(
+        plotThreads,
+        eq(plotThreads.id, plotThreadEntities.plotThreadId),
+      )
+      .where(
+        and(
+          eq(plotThreadEntities.entityId, entityId),
+          eq(plotThreads.campaignId, campaignId),
+          isNull(plotThreads.deletedAt),
+        ),
+      );
+
+    const results: PlotThreadSummary[] = [];
+    for (const row of rows) {
+      if (
+        !this.policy.canViewVisibility(
+          row.thread.visibility,
+          membership.role,
+          membership.editorSecretAccess,
+        )
+      ) {
+        continue;
+      }
+      results.push(this.toSummary(row.thread, null, false, membership));
+    }
+    return results;
+  }
+
   private async toDetail(
     thread: PlotThreadRow,
     membership: CampaignMembership,

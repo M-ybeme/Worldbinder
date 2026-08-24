@@ -36,3 +36,19 @@ export function EntityTypeIcon({ type, size = 16 }: { type: EntityType; size?: n
   const Icon = ENTITY_TYPE_ICONS[type]
   return <Icon size={size} aria-hidden="true" />
 }
+
+export const ENTITY_TYPE_LABELS: Record<EntityType, string> = {
+  character: 'Character',
+  location: 'Location',
+  faction: 'Faction',
+  organization: 'Organization',
+  item: 'Item',
+  deity: 'Deity',
+  creature: 'Creature',
+  event: 'Event',
+  quest: 'Quest',
+  lore: 'Lore',
+  custom: 'Custom',
+}
+
+export const ENTITY_TYPES = Object.keys(ENTITY_TYPE_ICONS) as EntityType[]

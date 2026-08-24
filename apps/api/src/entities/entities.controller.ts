@@ -18,6 +18,7 @@ import type {
   EntityDetail,
   EntityRelationshipView,
   EntitySummary,
+  PlotThreadSummary,
 } from '@worldbinder/contracts';
 import {
   createEntitySchema,
@@ -51,8 +52,9 @@ export class EntitiesController {
     @Query(new ZodValidationPipe(listEntitiesQuerySchema))
     query: ListEntitiesQuery,
     @CurrentMembership() membership: CampaignMembership,
+    @CurrentUser() user: AccessTokenPayload,
   ): Promise<EntitySummary[]> {
-    return this.entities.list(campaignId, membership, query);
+    return this.entities.list(campaignId, membership, query, user.sub);
   }
 
   @RequireCampaignRole('owner', 'gm', 'editor')
@@ -72,8 +74,9 @@ export class EntitiesController {
     @Param('campaignId', ParseUUIDPipe) campaignId: string,
     @Param('entityId', ParseUUIDPipe) entityId: string,
     @CurrentMembership() membership: CampaignMembership,
+    @CurrentUser() user: AccessTokenPayload,
   ): Promise<EntityDetail> {
-    return this.entities.getById(campaignId, entityId, membership);
+    return this.entities.getById(campaignId, entityId, membership, user.sub);
   }
 
   @Get(':entityId/relationships')
@@ -105,6 +108,41 @@ export class EntitiesController {
       entityId,
       membership,
     );
+  }
+
+  @Get(':entityId/plot-threads')
+  getPlotThreads(
+    @Param('campaignId', ParseUUIDPipe) campaignId: string,
+    @Param('entityId', ParseUUIDPipe) entityId: string,
+    @CurrentMembership() membership: CampaignMembership,
+  ): Promise<PlotThreadSummary[]> {
+    return this.entities.getPlotThreads(campaignId, entityId, membership);
+  }
+
+  @Post(':entityId/favorite')
+  @HttpCode(HttpStatus.OK)
+  favorite(
+    @Param('campaignId', ParseUUIDPipe) campaignId: string,
+    @Param('entityId', ParseUUIDPipe) entityId: string,
+    @CurrentMembership() membership: CampaignMembership,
+    @CurrentUser() user: AccessTokenPayload,
+  ): Promise<{ message: string }> {
+    return this.entities
+      .favorite(campaignId, entityId, membership, user.sub)
+      .then(() => ({ message: 'Entity favorited' }));
+  }
+
+  @Delete(':entityId/favorite')
+  @HttpCode(HttpStatus.OK)
+  unfavorite(
+    @Param('campaignId', ParseUUIDPipe) campaignId: string,
+    @Param('entityId', ParseUUIDPipe) entityId: string,
+    @CurrentMembership() membership: CampaignMembership,
+    @CurrentUser() user: AccessTokenPayload,
+  ): Promise<{ message: string }> {
+    return this.entities
+      .unfavorite(campaignId, entityId, membership, user.sub)
+      .then(() => ({ message: 'Entity unfavorited' }));
   }
 
   @RequireCampaignRole('owner', 'gm', 'editor')

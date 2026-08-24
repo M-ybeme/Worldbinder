@@ -1,8 +1,12 @@
-import type { CampaignActivityItem, WorldDate } from '@worldbinder/contracts'
-import { ErrorState, LoadingState } from '@worldbinder/ui'
+import type { CampaignActivityItem, EntityType, WorldDate } from '@worldbinder/contracts'
+import { Button, CardGrid, ErrorState, LoadingState } from '@worldbinder/ui'
 import { CalendarDays, GitBranch } from 'lucide-react'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
+import { QuickCreateEntityDialog } from '../../entities/components/QuickCreateEntityDialog'
 import { EntityTypeIcon } from '../../entities/lib/entityTypeIcons'
+import { QuickCreateThreadDialog } from '../../plot-threads/components/QuickCreateThreadDialog'
+import { QuickCreateSessionDialog } from '../../sessions/components/QuickCreateSessionDialog'
 import { useCampaignOutletContext } from '../hooks/useCampaignContext'
 import { useCampaignDashboardQuery } from '../hooks/useCampaigns'
 import '../campaigns.css'
@@ -43,9 +47,28 @@ export function CampaignOverviewPage() {
   const { campaign } = useCampaignOutletContext()
   const dashboardQuery = useCampaignDashboardQuery(campaign.id)
   const dashboard = dashboardQuery.data
+  const [entityDialogType, setEntityDialogType] = useState<EntityType | null>(null)
+  const [sessionDialogOpen, setSessionDialogOpen] = useState(false)
+  const [threadDialogOpen, setThreadDialogOpen] = useState(false)
 
   return (
     <section>
+      <QuickCreateEntityDialog
+        campaignId={campaign.id}
+        open={entityDialogType !== null}
+        onClose={() => setEntityDialogType(null)}
+        fixedType={entityDialogType ?? 'character'}
+      />
+      <QuickCreateSessionDialog
+        campaignId={campaign.id}
+        open={sessionDialogOpen}
+        onClose={() => setSessionDialogOpen(false)}
+      />
+      <QuickCreateThreadDialog
+        campaignId={campaign.id}
+        open={threadDialogOpen}
+        onClose={() => setThreadDialogOpen(false)}
+      />
       <p>{campaign.description ?? 'No description yet.'}</p>
       {/* Reuses ProfilePage's key-value dl treatment rather than
           introducing a near-duplicate .wb-campaign-overview class — same
@@ -80,8 +103,8 @@ export function CampaignOverviewPage() {
       )}
 
       {!dashboardQuery.isLoading && !dashboardQuery.isError && (
-        <div className="wb-related-content">
-          <div>
+        <CardGrid minItemWidth={320}>
+          <div className="wb-dashboard-widget">
             <h2>Sessions</h2>
             <p>
               Upcoming:{' '}
@@ -109,7 +132,7 @@ export function CampaignOverviewPage() {
             </p>
           </div>
 
-          <div>
+          <div className="wb-dashboard-widget">
             <h2>Active Plot Threads</h2>
             {dashboard && dashboard.activeThreads.length === 0 && <p>No active plot threads.</p>}
             <ul className="wb-relationship-list">
@@ -125,7 +148,7 @@ export function CampaignOverviewPage() {
           </div>
 
           {dashboard && dashboard.neglectedThreads.length > 0 && (
-            <div>
+            <div className="wb-dashboard-widget">
               <h2>Dormant Threads Requiring Attention</h2>
               <ul className="wb-relationship-list">
                 {dashboard.neglectedThreads.map((thread) => (
@@ -139,7 +162,7 @@ export function CampaignOverviewPage() {
             </div>
           )}
 
-          <div>
+          <div className="wb-dashboard-widget">
             <h2>Recent Activity</h2>
             {dashboard && dashboard.recentActivity.length === 0 && <p>Nothing yet.</p>}
             <ul className="wb-relationship-list">
@@ -153,30 +176,24 @@ export function CampaignOverviewPage() {
             </ul>
           </div>
 
-          <div>
+          <div className="wb-dashboard-widget">
             <h2>Quick Actions</h2>
             <div className="wb-entity-header__actions">
-              <Link
-                className="wb-button wb-button--secondary"
-                to={`/app/campaign/${campaign.id}/world/new`}
-              >
-                New Entity
-              </Link>
-              <Link
-                className="wb-button wb-button--secondary"
-                to={`/app/campaign/${campaign.id}/sessions/new`}
-              >
+              <Button variant="secondary" onClick={() => setEntityDialogType('character')}>
+                New Character
+              </Button>
+              <Button variant="secondary" onClick={() => setEntityDialogType('location')}>
+                New Location
+              </Button>
+              <Button variant="secondary" onClick={() => setSessionDialogOpen(true)}>
                 New Session
-              </Link>
-              <Link
-                className="wb-button wb-button--secondary"
-                to={`/app/campaign/${campaign.id}/threads/new`}
-              >
+              </Button>
+              <Button variant="secondary" onClick={() => setThreadDialogOpen(true)}>
                 New Plot Thread
-              </Link>
+              </Button>
             </div>
           </div>
-        </div>
+        </CardGrid>
       )}
     </section>
   )

@@ -67,3 +67,26 @@ export function useEntitySessionsQuery(campaignId: string, entityId: string | un
     enabled: !!entityId,
   })
 }
+
+export function useEntityPlotThreadsQuery(campaignId: string, entityId: string | undefined) {
+  return useQuery({
+    queryKey: [...entityQueryKey(campaignId, entityId ?? ''), 'plot-threads'],
+    queryFn: () => entitiesApi.getEntityPlotThreads(campaignId, entityId as string),
+    enabled: !!entityId,
+  })
+}
+
+export function useToggleFavoriteMutation(campaignId: string, entityId: string) {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: (nextIsFavorite: boolean) =>
+      nextIsFavorite
+        ? entitiesApi.favoriteEntity(campaignId, entityId)
+        : entitiesApi.unfavoriteEntity(campaignId, entityId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: entityQueryKey(campaignId, entityId) })
+      void queryClient.invalidateQueries({ queryKey: entitiesListKey(campaignId) })
+    },
+  })
+}

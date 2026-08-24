@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { CampaignAuditModule } from '../audit/campaign-audit.module';
 import { AuthModule } from '../auth/auth.module';
 import { MembershipModule } from '../membership/membership.module';
+import { PlotThreadsModule } from '../plot-threads/plot-threads.module';
 import { RelationshipsModule } from '../relationships/relationships.module';
 import { RevisionRecorderModule } from '../revisions/revision-recorder.module';
 import { SessionsModule } from '../sessions/sessions.module';
@@ -15,6 +16,7 @@ import { WikiLinksService } from './wiki-links.service';
     MembershipModule,
     RelationshipsModule,
     SessionsModule,
+    PlotThreadsModule,
     RevisionRecorderModule,
     CampaignAuditModule,
   ],

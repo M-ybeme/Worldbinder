@@ -12,6 +12,7 @@ import type {
   EntityRelationshipView,
   EntitySummary,
   EntityType,
+  PlotThreadSummary,
   TiptapDoc,
 } from '@worldbinder/contracts';
 import type {
@@ -19,11 +20,25 @@ import type {
   ListEntitiesQuery,
   UpdateEntityInput,
 } from '@worldbinder/validation';
-import { and, desc, eq, ilike, inArray, isNull, type SQL } from 'drizzle-orm';
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  ilike,
+  inArray,
+  isNull,
+  type SQL,
+} from 'drizzle-orm';
 import { randomBytes } from 'node:crypto';
 import { CampaignAuditService } from '../audit/campaign-audit.service';
 import { DRIZZLE, type Database } from '../database/database.module';
-import { entities, entityTags, tags } from '../database/schema';
+import {
+  entities,
+  entityFavorites,
+  entityTags,
+  tags,
+} from '../database/schema';
 import { CampaignPolicyService } from '../membership/campaign-policy.service';
 import type { CampaignMembership } from '../membership/guards/campaign-membership.guard';
 import { RelationshipsService } from '../relationships/relationships.service';
@@ -35,6 +50,7 @@ import {
   buildWeightedTsvector,
   extractPlainText,
 } from '../search/search-vector.util';
+import { PlotThreadsService } from '../plot-threads/plot-threads.service';
 import { SessionsService } from '../sessions/sessions.service';
 import { WikiLinksService } from './wiki-links.service';
 
@@ -48,6 +64,7 @@ export class EntitiesService {
     private readonly relationships: RelationshipsService,
     private readonly wikiLinks: WikiLinksService,
     private readonly sessions: SessionsService,
+    private readonly plotThreads: PlotThreadsService,
     private readonly revisionRecorder: RevisionRecorderService,
     private readonly audit: CampaignAuditService,
   ) {}
@@ -138,6 +155,7 @@ export class EntitiesService {
     campaignId: string,
     membership: CampaignMembership,
     query: ListEntitiesQuery,
+    userId: string,
   ): Promise<EntitySummary[]> {
     const canViewGm = this.policy.canViewGmContent(
       membership.role,
@@ -153,12 +171,18 @@ export class EntitiesService {
       conditions.push(eq(entities.entityType, query.entityType));
     if (query.search)
       conditions.push(ilike(entities.name, `%${query.search}%`));
+    // Narrows on top of, doesn't replace, the canViewGm condition above —
+    // a non-GM member still can't request gm_only regardless of this filter.
+    if (query.visibility)
+      conditions.push(eq(entities.visibility, query.visibility));
 
     let rows = await this.db
       .select()
       .from(entities)
       .where(and(...conditions))
-      .orderBy(desc(entities.updatedAt));
+      .orderBy(
+        query.sortBy === 'name' ? asc(entities.name) : desc(entities.updatedAt),
+      );
 
     if (query.tag) {
       const normalized = normalizeTagName(query.tag);
@@ -176,6 +200,15 @@ export class EntitiesService {
       rows = rows.filter((row) => idSet.has(row.id));
     }
 
+    if (query.favorite) {
+      const favoriteRows = await this.db
+        .select({ entityId: entityFavorites.entityId })
+        .from(entityFavorites)
+        .where(eq(entityFavorites.userId, userId));
+      const favoriteIdSet = new Set(favoriteRows.map((r) => r.entityId));
+      rows = rows.filter((row) => favoriteIdSet.has(row.id));
+    }
+
     const tagsByEntity = await this.getTagsForEntities(
       rows.map((row) => row.id),
     );
@@ -189,6 +222,7 @@ export class EntitiesService {
     campaignId: string,
     entityId: string,
     membership: CampaignMembership,
+    userId: string,
   ): Promise<EntityDetail> {
     const entity = await this.requireVisibleEntity(
       campaignId,
@@ -196,7 +230,16 @@ export class EntitiesService {
       membership,
     );
     const tagNames = await this.getEntityTags(entityId);
-    return this.toDetail(entity, membership, tagNames);
+    const [favoriteRow] = await this.db
+      .select()
+      .from(entityFavorites)
+      .where(
+        and(
+          eq(entityFavorites.userId, userId),
+          eq(entityFavorites.entityId, entityId),
+        ),
+      );
+    return this.toDetail(entity, membership, tagNames, !!favoriteRow);
   }
 
   async getRelationships(
@@ -224,6 +267,47 @@ export class EntitiesService {
   ): Promise<CampaignSessionSummary[]> {
     await this.requireVisibleEntity(campaignId, entityId, membership);
     return this.sessions.listForEntity(campaignId, entityId, membership);
+  }
+
+  async getPlotThreads(
+    campaignId: string,
+    entityId: string,
+    membership: CampaignMembership,
+  ): Promise<PlotThreadSummary[]> {
+    await this.requireVisibleEntity(campaignId, entityId, membership);
+    return this.plotThreads.listForEntity(campaignId, entityId, membership);
+  }
+
+  async favorite(
+    campaignId: string,
+    entityId: string,
+    membership: CampaignMembership,
+    userId: string,
+  ): Promise<void> {
+    await this.requireVisibleEntity(campaignId, entityId, membership);
+    await this.db
+      .insert(entityFavorites)
+      .values({ userId, entityId })
+      .onConflictDoNothing({
+        target: [entityFavorites.userId, entityFavorites.entityId],
+      });
+  }
+
+  async unfavorite(
+    campaignId: string,
+    entityId: string,
+    membership: CampaignMembership,
+    userId: string,
+  ): Promise<void> {
+    await this.requireVisibleEntity(campaignId, entityId, membership);
+    await this.db
+      .delete(entityFavorites)
+      .where(
+        and(
+          eq(entityFavorites.userId, userId),
+          eq(entityFavorites.entityId, entityId),
+        ),
+      );
   }
 
   async update(
@@ -533,6 +617,7 @@ export class EntitiesService {
     entity: EntityRow,
     membership: CampaignMembership,
     tagNames: string[],
+    isFavorite = false,
   ): EntityDetail {
     const canViewGm = this.policy.canViewGmContent(
       membership.role,
@@ -543,6 +628,7 @@ export class EntitiesService {
       ...this.toSummary(entity, tagNames),
       publicContentJson: entity.publicContentJson as TiptapDoc | null,
       metadataJson: entity.metadataJson as Record<string, unknown> | null,
+      isFavorite,
       ...(canViewGm
         ? { gmContentJson: entity.gmContentJson as TiptapDoc | null }
         : {}),

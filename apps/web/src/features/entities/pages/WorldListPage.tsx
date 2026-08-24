@@ -1,5 +1,8 @@
 import {
   Badge,
+  Button,
+  CardGrid,
+  Checkbox,
   EmptyState,
   ErrorState,
   LoadingState,
@@ -10,22 +13,25 @@ import {
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useCampaignOutletContext } from '../../campaigns/hooks/useCampaignContext'
+import { QuickCreateEntityDialog } from '../components/QuickCreateEntityDialog'
+import { ENTITY_TYPE_LABELS, ENTITY_TYPES, EntityTypeIcon } from '../lib/entityTypeIcons'
 import { useEntitiesQuery } from '../hooks/useEntities'
 import '../entities.css'
 
 const ENTITY_TYPE_OPTIONS = [
   { value: '', label: 'All types' },
-  { value: 'character', label: 'Character' },
-  { value: 'location', label: 'Location' },
-  { value: 'faction', label: 'Faction' },
-  { value: 'organization', label: 'Organization' },
-  { value: 'item', label: 'Item' },
-  { value: 'deity', label: 'Deity' },
-  { value: 'creature', label: 'Creature' },
-  { value: 'event', label: 'Event' },
-  { value: 'quest', label: 'Quest' },
-  { value: 'lore', label: 'Lore' },
-  { value: 'custom', label: 'Custom' },
+  ...ENTITY_TYPES.map((type) => ({ value: type, label: ENTITY_TYPE_LABELS[type] })),
+]
+
+const VISIBILITY_OPTIONS = [
+  { value: '', label: 'All visibility' },
+  { value: 'public', label: 'Public' },
+  { value: 'gm_only', label: 'GM only' },
+]
+
+const SORT_OPTIONS = [
+  { value: 'updatedAt', label: 'Recently updated' },
+  { value: 'name', label: 'Name (A–Z)' },
 ]
 
 const MANAGEMENT_ROLES = new Set(['owner', 'gm', 'editor'])
@@ -35,12 +41,19 @@ export function WorldListPage() {
   const [entityType, setEntityType] = useState('')
   const [tag, setTag] = useState('')
   const [search, setSearch] = useState('')
+  const [visibility, setVisibility] = useState('')
+  const [sortBy, setSortBy] = useState<'updatedAt' | 'name'>('updatedAt')
+  const [favoritesOnly, setFavoritesOnly] = useState(false)
+  const [quickCreateOpen, setQuickCreateOpen] = useState(false)
   const canCreate = MANAGEMENT_ROLES.has(campaign.role)
 
   const entitiesQuery = useEntitiesQuery(campaign.id, {
     entityType: (entityType || undefined) as never,
     tag: tag || undefined,
     search: search || undefined,
+    visibility: (visibility || undefined) as never,
+    sortBy,
+    favorite: favoritesOnly ? 'true' : undefined,
   })
 
   return (
@@ -55,16 +68,15 @@ export function WorldListPage() {
             >
               Timeline
             </Link>
-            {canCreate && (
-              <Link
-                className="wb-button wb-button--primary"
-                to={`/app/campaign/${campaign.id}/world/new`}
-              >
-                New entity
-              </Link>
-            )}
+            {canCreate && <Button onClick={() => setQuickCreateOpen(true)}>New entity</Button>}
           </>
         }
+      />
+
+      <QuickCreateEntityDialog
+        campaignId={campaign.id}
+        open={quickCreateOpen}
+        onClose={() => setQuickCreateOpen(false)}
       />
 
       <div className="wb-world-filters">
@@ -82,6 +94,25 @@ export function WorldListPage() {
           onChange={(e) => setEntityType(e.target.value)}
         />
         <TextField id="tag" label="Tag" value={tag} onChange={(e) => setTag(e.target.value)} />
+        <Select
+          id="visibilityFilter"
+          label="Visibility"
+          options={VISIBILITY_OPTIONS}
+          value={visibility}
+          onChange={(e) => setVisibility(e.target.value)}
+        />
+        <Select
+          id="sortByFilter"
+          label="Sort"
+          options={SORT_OPTIONS}
+          value={sortBy}
+          onChange={(e) => setSortBy(e.target.value as 'updatedAt' | 'name')}
+        />
+        <Checkbox
+          label="Favorites only"
+          checked={favoritesOnly}
+          onChange={(e) => setFavoritesOnly(e.target.checked)}
+        />
       </div>
 
       {entitiesQuery.isLoading && <LoadingState label="Loading entities…" />}
@@ -93,23 +124,28 @@ export function WorldListPage() {
       )}
 
       {!entitiesQuery.isLoading && !entitiesQuery.isError && !!entitiesQuery.data?.length && (
-        <ul className="wb-entity-list">
+        <CardGrid>
           {entitiesQuery.data.map((entity) => (
-            <li key={entity.id}>
-              <Link to={`/app/campaign/${campaign.id}/world/${entity.id}`}>{entity.name}</Link>
-              <span className="wb-entity-list__meta">
+            <Link
+              key={entity.id}
+              to={`/app/campaign/${campaign.id}/world/${entity.id}`}
+              className="wb-entity-card"
+            >
+              <div className="wb-entity-card__header">
+                <EntityTypeIcon type={entity.entityType} />
+                <span className="wb-entity-card__name">{entity.name}</span>
+              </div>
+              {entity.summary && <p className="wb-entity-card__summary">{entity.summary}</p>}
+              <span className="wb-entity-card__meta">
                 {entity.entityType}
-                {entity.tags.length > 0 ? ` · ${entity.tags.join(', ')}` : ''}
-                {entity.visibility === 'gm_only' && (
-                  <>
-                    {' '}
-                    <Badge tone="warning">GM only</Badge>
-                  </>
-                )}
+                {entity.visibility === 'gm_only' && <Badge tone="warning">GM only</Badge>}
               </span>
-            </li>
+              {entity.tags.length > 0 && (
+                <span className="wb-entity-card__tags">{entity.tags.join(', ')}</span>
+              )}
+            </Link>
           ))}
-        </ul>
+        </CardGrid>
       )}
     </section>
   )

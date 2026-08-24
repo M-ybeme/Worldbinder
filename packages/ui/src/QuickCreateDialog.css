@@ -1,0 +1,10 @@
+.wb-quick-create-dialog {
+  max-width: 480px;
+}
+
+.wb-quick-create-dialog__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--wb-space-2);
+  margin-top: var(--wb-space-2);
+}

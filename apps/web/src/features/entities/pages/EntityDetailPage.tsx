@@ -4,13 +4,17 @@ import {
   ConfirmDialog,
   EmptyState,
   ErrorState,
+  IconButton,
   LoadingState,
   PageHeader,
 } from '@worldbinder/ui'
+import { Star } from 'lucide-react'
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { AttachmentsPanel } from '../../attachments/components/AttachmentsPanel'
 import { useCampaignOutletContext } from '../../campaigns/hooks/useCampaignContext'
+import { EntityPlotThreadsPanel } from '../../plot-threads/components/EntityPlotThreadsPanel'
+import { BacklinksPanel } from '../../relationships/components/BacklinksPanel'
 import { RelatedContentPanel } from '../../relationships/components/RelatedContentPanel'
 import { RevisionHistoryPanel } from '../../revisions/components/RevisionHistoryPanel'
 import { ApiError } from '../../../lib/apiClient'
@@ -19,6 +23,7 @@ import {
   useDeleteEntityMutation,
   useEntityQuery,
   useEntitySessionsQuery,
+  useToggleFavoriteMutation,
 } from '../hooks/useEntities'
 import { clearDraft } from '../lib/draftDb'
 import { EntityTypeIcon } from '../lib/entityTypeIcons'
@@ -34,6 +39,7 @@ export function EntityDetailPage() {
   const entityQuery = useEntityQuery(campaign.id, entityId)
   const sessionAppearancesQuery = useEntitySessionsQuery(campaign.id, entityId)
   const deleteEntity = useDeleteEntityMutation(campaign.id)
+  const toggleFavorite = useToggleFavoriteMutation(campaign.id, entityId ?? '')
   const canManage = MANAGEMENT_ROLES.has(campaign.role)
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
 
@@ -72,23 +78,38 @@ export function EntityDetailPage() {
           </>
         }
         actions={
-          canManage && (
-            <>
-              <Link
-                className="wb-button wb-button--secondary"
-                to={`/app/campaign/${campaign.id}/world/${entity.id}/edit`}
-              >
-                Edit
-              </Link>
-              <Button
-                variant="secondary"
-                disabled={deleteEntity.isPending}
-                onClick={() => setConfirmDeleteOpen(true)}
-              >
-                Delete
-              </Button>
-            </>
-          )
+          <>
+            <IconButton
+              label={entity.isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+              className="wb-favorite-toggle"
+              aria-pressed={entity.isFavorite}
+              disabled={toggleFavorite.isPending}
+              onClick={() => toggleFavorite.mutate(!entity.isFavorite)}
+            >
+              <Star
+                size={18}
+                fill={entity.isFavorite ? 'currentColor' : 'none'}
+                aria-hidden="true"
+              />
+            </IconButton>
+            {canManage && (
+              <>
+                <Link
+                  className="wb-button wb-button--secondary"
+                  to={`/app/campaign/${campaign.id}/world/${entity.id}/edit`}
+                >
+                  Edit
+                </Link>
+                <Button
+                  variant="secondary"
+                  disabled={deleteEntity.isPending}
+                  onClick={() => setConfirmDeleteOpen(true)}
+                >
+                  Delete
+                </Button>
+              </>
+            )}
+          </>
         }
       />
 
@@ -111,61 +132,71 @@ export function EntityDetailPage() {
         onCancel={() => setConfirmDeleteOpen(false)}
       />
 
-      {entity.summary && <p>{entity.summary}</p>}
+      <div className="wb-entity-detail">
+        <div className="wb-entity-detail__main">
+          {entity.summary && <p>{entity.summary}</p>}
 
-      <RichTextEditor
-        label="Content"
-        content={entity.publicContentJson}
-        editable={false}
-        campaignId={campaign.id}
-      />
+          <RichTextEditor
+            label="Content"
+            content={entity.publicContentJson}
+            editable={false}
+            campaignId={campaign.id}
+          />
 
-      {'gmContentJson' in entity && (
-        <RichTextEditor
-          label="GM-only content"
-          content={entity.gmContentJson ?? null}
-          editable={false}
-          campaignId={campaign.id}
-        />
-      )}
-
-      <RelatedContentPanel
-        campaignId={campaign.id}
-        entityId={entity.id}
-        canEdit={canManage}
-        campaignRole={campaign.role}
-      />
-
-      <div className="wb-related-content">
-        <div>
-          <h2>Session Appearances</h2>
-          {sessionAppearancesQuery.data?.length === 0 && <p>No session appearances yet.</p>}
-          <ul className="wb-relationship-list">
-            {sessionAppearancesQuery.data?.map((session) => (
-              <li key={session.id}>
-                <Link to={`/app/campaign/${campaign.id}/sessions/${session.id}`}>
-                  Session {session.sessionNumber}: {session.title}
-                </Link>
-              </li>
-            ))}
-          </ul>
+          {'gmContentJson' in entity && (
+            <RichTextEditor
+              label="GM-only content"
+              content={entity.gmContentJson ?? null}
+              editable={false}
+              campaignId={campaign.id}
+            />
+          )}
         </div>
+
+        <aside className="wb-entity-detail__rail">
+          <RelatedContentPanel
+            campaignId={campaign.id}
+            entityId={entity.id}
+            canEdit={canManage}
+            campaignRole={campaign.role}
+          />
+
+          <EntityPlotThreadsPanel campaignId={campaign.id} entityId={entity.id} />
+
+          <div className="wb-related-content">
+            <div>
+              <h2>Session Appearances</h2>
+              {sessionAppearancesQuery.data?.length === 0 && <p>No session appearances yet.</p>}
+              <ul className="wb-relationship-list">
+                {sessionAppearancesQuery.data?.map((session) => (
+                  <li key={session.id}>
+                    <Link to={`/app/campaign/${campaign.id}/sessions/${session.id}`}>
+                      Session {session.sessionNumber}: {session.title}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+
+          <AttachmentsPanel
+            campaignId={campaign.id}
+            resourceType="entity"
+            resourceId={entity.id}
+            canManage={canManage}
+          />
+
+          <BacklinksPanel campaignId={campaign.id} entityId={entity.id} />
+
+          <RevisionHistoryPanel
+            campaignId={campaign.id}
+            resourceType="entity"
+            resourceId={entity.id}
+            canRestore={canManage}
+            onRestored={() => void entityQuery.refetch()}
+          />
+        </aside>
       </div>
-
-      <AttachmentsPanel
-        campaignId={campaign.id}
-        resourceType="entity"
-        resourceId={entity.id}
-        canManage={canManage}
-      />
-
-      <RevisionHistoryPanel
-        campaignId={campaign.id}
-        resourceType="entity"
-        resourceId={entity.id}
-        canRestore={canManage}
-        onRestored={() => void entityQuery.refetch()}
-      />
     </section>
   )
 }

@@ -442,5 +442,137 @@ describe('Entities (e2e)', () => {
       const searchResults = body<EntitySummary[]>(bySearch);
       expect(searchResults.length).toBe(2);
     });
+
+    it('filters by visibility and sorts alphabetically by name', async () => {
+      const { token, campaign } = await createOwnerAndCampaign(
+        'Visibility Sort Campaign',
+      );
+      await request(app.getHttpServer())
+        .post(`/campaigns/${campaign.id}/entities`)
+        .set('Authorization', `Bearer ${token}`)
+        .send(
+          createEntityPayload({
+            name: 'Zephyr the Merchant',
+            tags: [],
+            visibility: 'public',
+          }),
+        );
+      await request(app.getHttpServer())
+        .post(`/campaigns/${campaign.id}/entities`)
+        .set('Authorization', `Bearer ${token}`)
+        .send(
+          createEntityPayload({
+            name: 'Amara the Spy',
+            tags: [],
+            visibility: 'gm_only',
+          }),
+        );
+
+      const publicOnly = await request(app.getHttpServer())
+        .get(`/campaigns/${campaign.id}/entities`)
+        .query({ visibility: 'public' })
+        .set('Authorization', `Bearer ${token}`);
+      const publicResults = body<EntitySummary[]>(publicOnly);
+      expect(publicResults.every((e) => e.visibility === 'public')).toBe(true);
+      expect(publicResults.some((e) => e.name === 'Zephyr the Merchant')).toBe(
+        true,
+      );
+      expect(publicResults.some((e) => e.name === 'Amara the Spy')).toBe(false);
+
+      const byName = await request(app.getHttpServer())
+        .get(`/campaigns/${campaign.id}/entities`)
+        .query({ sortBy: 'name' })
+        .set('Authorization', `Bearer ${token}`);
+      const nameSorted = body<EntitySummary[]>(byName);
+      expect(nameSorted[0]?.name).toBe('Amara the Spy');
+      expect(nameSorted[1]?.name).toBe('Zephyr the Merchant');
+    });
+  });
+
+  describe('favorites', () => {
+    it('toggles favorite status, filters the list, and is idempotent', async () => {
+      const { token, campaign } =
+        await createOwnerAndCampaign('Favorites Campaign');
+      const favEntity = await request(app.getHttpServer())
+        .post(`/campaigns/${campaign.id}/entities`)
+        .set('Authorization', `Bearer ${token}`)
+        .send(createEntityPayload({ name: 'Favorited Entity', tags: [] }));
+      const favEntityId = body<EntityDetail>(favEntity).id;
+      await request(app.getHttpServer())
+        .post(`/campaigns/${campaign.id}/entities`)
+        .set('Authorization', `Bearer ${token}`)
+        .send(createEntityPayload({ name: 'Unfavorited Entity', tags: [] }));
+
+      const beforeFavorite = await request(app.getHttpServer())
+        .get(`/campaigns/${campaign.id}/entities/${favEntityId}`)
+        .set('Authorization', `Bearer ${token}`);
+      expect(body<EntityDetail>(beforeFavorite).isFavorite).toBe(false);
+
+      const favoriteRes = await request(app.getHttpServer())
+        .post(`/campaigns/${campaign.id}/entities/${favEntityId}/favorite`)
+        .set('Authorization', `Bearer ${token}`);
+      expect(favoriteRes.status).toBe(200);
+
+      // Favoriting again must not error (the unique constraint is handled
+      // via onConflictDoNothing, not surfaced as a 409).
+      const favoriteAgainRes = await request(app.getHttpServer())
+        .post(`/campaigns/${campaign.id}/entities/${favEntityId}/favorite`)
+        .set('Authorization', `Bearer ${token}`);
+      expect(favoriteAgainRes.status).toBe(200);
+
+      const afterFavorite = await request(app.getHttpServer())
+        .get(`/campaigns/${campaign.id}/entities/${favEntityId}`)
+        .set('Authorization', `Bearer ${token}`);
+      expect(body<EntityDetail>(afterFavorite).isFavorite).toBe(true);
+
+      const favoritesOnly = await request(app.getHttpServer())
+        .get(`/campaigns/${campaign.id}/entities`)
+        .query({ favorite: 'true' })
+        .set('Authorization', `Bearer ${token}`);
+      const favoritedList = body<EntitySummary[]>(favoritesOnly);
+      expect(favoritedList.map((e) => e.id)).toEqual([favEntityId]);
+
+      const unfavoriteRes = await request(app.getHttpServer())
+        .delete(`/campaigns/${campaign.id}/entities/${favEntityId}/favorite`)
+        .set('Authorization', `Bearer ${token}`);
+      expect(unfavoriteRes.status).toBe(200);
+
+      // Unfavoriting an already-unfavorited entity must not error either.
+      const unfavoriteAgainRes = await request(app.getHttpServer())
+        .delete(`/campaigns/${campaign.id}/entities/${favEntityId}/favorite`)
+        .set('Authorization', `Bearer ${token}`);
+      expect(unfavoriteAgainRes.status).toBe(200);
+
+      const afterUnfavorite = await request(app.getHttpServer())
+        .get(`/campaigns/${campaign.id}/entities/${favEntityId}`)
+        .set('Authorization', `Bearer ${token}`);
+      expect(body<EntityDetail>(afterUnfavorite).isFavorite).toBe(false);
+    });
+
+    it('scopes favorites per user', async () => {
+      const { token, campaign } = await createOwnerAndCampaign(
+        'Favorites Isolation Campaign',
+      );
+      const editor = await addMember(campaign.id, 'editor', 'editor');
+      const entity = await request(app.getHttpServer())
+        .post(`/campaigns/${campaign.id}/entities`)
+        .set('Authorization', `Bearer ${token}`)
+        .send(createEntityPayload({ name: 'Shared Entity', tags: [] }));
+      const entityId = body<EntityDetail>(entity).id;
+
+      await request(app.getHttpServer())
+        .post(`/campaigns/${campaign.id}/entities/${entityId}/favorite`)
+        .set('Authorization', `Bearer ${token}`);
+
+      const ownerView = await request(app.getHttpServer())
+        .get(`/campaigns/${campaign.id}/entities/${entityId}`)
+        .set('Authorization', `Bearer ${token}`);
+      expect(body<EntityDetail>(ownerView).isFavorite).toBe(true);
+
+      const editorView = await request(app.getHttpServer())
+        .get(`/campaigns/${campaign.id}/entities/${entityId}`)
+        .set('Authorization', `Bearer ${editor.token}`);
+      expect(body<EntityDetail>(editorView).isFavorite).toBe(false);
+    });
   });
 });

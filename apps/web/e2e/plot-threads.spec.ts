@@ -44,9 +44,9 @@ test('plot thread lifecycle: introduce, go neglected, resolve, player status pro
 
   await test.step('owner creates a plot thread', async () => {
     await ownerPage.getByRole('link', { name: 'Threads' }).click()
-    await ownerPage.getByRole('link', { name: 'New plot thread' }).click()
+    await ownerPage.getByRole('button', { name: 'New plot thread' }).click()
     await ownerPage.getByLabel('Title').fill(threadTitle)
-    await ownerPage.getByRole('button', { name: 'Create plot thread' }).click()
+    await ownerPage.getByRole('button', { name: 'Create', exact: true }).click()
     await expect(ownerPage.getByRole('heading', { name: threadTitle })).toBeVisible()
   })
 
@@ -56,16 +56,23 @@ test('plot thread lifecycle: introduce, go neglected, resolve, player status pro
     action?: 'introduced' | 'resolved',
   ) {
     await ownerPage.getByRole('link', { name: 'Sessions' }).click()
-    await ownerPage.getByRole('link', { name: 'New session' }).click()
+    await ownerPage.getByRole('button', { name: 'New session' }).click()
     await ownerPage.getByLabel('Title').fill(title)
+    await ownerPage.getByRole('button', { name: 'Create', exact: true }).click()
+    await expect(ownerPage.getByRole('heading', { name: new RegExp(title) })).toBeVisible()
+
     if (linkThread && action) {
+      // Plot-thread changes aren't part of quick-create's minimal field
+      // set — add it via Edit, then "Save changes" (this form isn't
+      // autosaved, unlike the entity form).
+      await ownerPage.getByRole('link', { name: 'Edit' }).click()
       await ownerPage.getByLabel('Plot thread').fill(threadTitle)
       await ownerPage.locator('.wb-combobox__option', { hasText: threadTitle }).first().click()
       await ownerPage.getByLabel('Action').selectOption(action)
       await ownerPage.getByRole('button', { name: 'Add' }).click()
+      await ownerPage.getByRole('button', { name: 'Save changes' }).click()
+      await expect(ownerPage.getByRole('heading', { name: new RegExp(title) })).toBeVisible()
     }
-    await ownerPage.getByRole('button', { name: 'Create session' }).click()
-    await expect(ownerPage.getByRole('heading', { name: new RegExp(title) })).toBeVisible()
 
     await ownerPage.getByRole('button', { name: 'Complete session' }).click()
     await ownerPage.getByRole('button', { name: 'Confirm completion' }).click()
@@ -73,7 +80,7 @@ test('plot thread lifecycle: introduce, go neglected, resolve, player status pro
     // the Revision History panel loads asynchronously and its diff text can
     // also contain the word "completed", making an unscoped locator
     // ambiguous once it finishes loading (timing-dependent across browsers).
-    await expect(ownerPage.locator('.wb-entity-header__meta')).toContainText('completed')
+    await expect(ownerPage.locator('.wb-page-header__meta')).toContainText('completed')
   }
 
   await test.step('owner introduces the thread in session one', async () => {
@@ -109,7 +116,7 @@ test('plot thread lifecycle: introduce, go neglected, resolve, player status pro
     await ownerPage.getByRole('link', { name: 'Threads' }).click()
     await ownerPage.getByRole('link', { name: threadTitle }).first().click()
     await expect(ownerPage.getByRole('heading', { name: threadTitle })).toBeVisible()
-    await expect(ownerPage.locator('.wb-entity-header__meta')).toContainText('resolved')
+    await expect(ownerPage.locator('.wb-page-header__meta')).toContainText('resolved')
   })
 
   await test.step('the player invited to the campaign sees the projected status, not the internal one', async () => {
@@ -125,7 +132,7 @@ test('plot thread lifecycle: introduce, go neglected, resolve, player status pro
     await playerPage.getByRole('link', { name: 'Threads' }).click()
     await playerPage.getByRole('link', { name: threadTitle }).first().click()
     await expect(playerPage.getByRole('heading', { name: threadTitle })).toBeVisible()
-    const playerMeta = playerPage.locator('.wb-entity-header__meta')
+    const playerMeta = playerPage.locator('.wb-page-header__meta')
     await expect(playerMeta).toContainText('completed')
     await expect(playerMeta).not.toContainText('resolved')
   })

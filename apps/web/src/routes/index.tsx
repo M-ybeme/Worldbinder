@@ -135,16 +135,16 @@ export const router = createBrowserRouter([
                   {
                     index: true,
                     lazy: () =>
-                      import('../features/campaigns/pages/CampaignOverviewPage').then(
-                        (m) => ({ Component: m.CampaignOverviewPage }),
-                      ),
+                      import('../features/campaigns/pages/CampaignOverviewPage').then((m) => ({
+                        Component: m.CampaignOverviewPage,
+                      })),
                   },
                   {
                     path: 'settings',
                     lazy: () =>
-                      import('../features/campaigns/pages/CampaignSettingsPage').then(
-                        (m) => ({ Component: m.CampaignSettingsPage }),
-                      ),
+                      import('../features/campaigns/pages/CampaignSettingsPage').then((m) => ({
+                        Component: m.CampaignSettingsPage,
+                      })),
                   },
                   {
                     path: 'members',
@@ -163,16 +163,16 @@ export const router = createBrowserRouter([
                   {
                     path: 'world/new',
                     lazy: () =>
-                      import('../features/entities/pages/EntityFormPage').then((m) => ({
-                        Component: m.EntityFormPage,
+                      import('../features/entities/pages/EntityQuickCreateRoute').then((m) => ({
+                        Component: m.EntityQuickCreateRoute,
                       })),
                   },
                   {
                     path: 'world/:entityId',
                     lazy: () =>
-                      import('../features/entities/pages/EntityDetailPage').then(
-                        (m) => ({ Component: m.EntityDetailPage }),
-                      ),
+                      import('../features/entities/pages/EntityDetailPage').then((m) => ({
+                        Component: m.EntityDetailPage,
+                      })),
                   },
                   {
                     path: 'world/:entityId/edit',
@@ -184,86 +184,86 @@ export const router = createBrowserRouter([
                   {
                     path: 'world/timeline',
                     lazy: () =>
-                      import('../features/timeline/pages/TimelineListPage').then(
-                        (m) => ({ Component: m.TimelineListPage }),
-                      ),
+                      import('../features/timeline/pages/TimelineListPage').then((m) => ({
+                        Component: m.TimelineListPage,
+                      })),
                   },
                   {
                     path: 'world/timeline/new',
                     lazy: () =>
-                      import('../features/timeline/pages/TimelineEventFormPage').then(
-                        (m) => ({ Component: m.TimelineEventFormPage }),
-                      ),
+                      import('../features/timeline/pages/TimelineEventFormPage').then((m) => ({
+                        Component: m.TimelineEventFormPage,
+                      })),
                   },
                   {
                     path: 'world/timeline/:eventId',
                     lazy: () =>
-                      import('../features/timeline/pages/TimelineEventDetailPage').then(
-                        (m) => ({ Component: m.TimelineEventDetailPage }),
-                      ),
+                      import('../features/timeline/pages/TimelineEventDetailPage').then((m) => ({
+                        Component: m.TimelineEventDetailPage,
+                      })),
                   },
                   {
                     path: 'world/timeline/:eventId/edit',
                     lazy: () =>
-                      import('../features/timeline/pages/TimelineEventFormPage').then(
-                        (m) => ({ Component: m.TimelineEventFormPage }),
-                      ),
+                      import('../features/timeline/pages/TimelineEventFormPage').then((m) => ({
+                        Component: m.TimelineEventFormPage,
+                      })),
                   },
                   {
                     path: 'sessions',
                     lazy: () =>
-                      import('../features/sessions/pages/SessionListPage').then(
-                        (m) => ({ Component: m.SessionListPage }),
-                      ),
+                      import('../features/sessions/pages/SessionListPage').then((m) => ({
+                        Component: m.SessionListPage,
+                      })),
                   },
                   {
                     path: 'sessions/new',
                     lazy: () =>
-                      import('../features/sessions/pages/SessionFormPage').then(
-                        (m) => ({ Component: m.SessionFormPage }),
-                      ),
+                      import('../features/sessions/pages/SessionQuickCreateRoute').then((m) => ({
+                        Component: m.SessionQuickCreateRoute,
+                      })),
                   },
                   {
                     path: 'sessions/:sessionId',
                     lazy: () =>
-                      import('../features/sessions/pages/SessionDetailPage').then(
-                        (m) => ({ Component: m.SessionDetailPage }),
-                      ),
+                      import('../features/sessions/pages/SessionDetailPage').then((m) => ({
+                        Component: m.SessionDetailPage,
+                      })),
                   },
                   {
                     path: 'sessions/:sessionId/edit',
                     lazy: () =>
-                      import('../features/sessions/pages/SessionFormPage').then(
-                        (m) => ({ Component: m.SessionFormPage }),
-                      ),
+                      import('../features/sessions/pages/SessionFormPage').then((m) => ({
+                        Component: m.SessionFormPage,
+                      })),
                   },
                   {
                     path: 'threads',
                     lazy: () =>
-                      import('../features/plot-threads/pages/ThreadListPage').then(
-                        (m) => ({ Component: m.ThreadListPage }),
-                      ),
+                      import('../features/plot-threads/pages/ThreadListPage').then((m) => ({
+                        Component: m.ThreadListPage,
+                      })),
                   },
                   {
                     path: 'threads/new',
                     lazy: () =>
-                      import('../features/plot-threads/pages/ThreadFormPage').then(
-                        (m) => ({ Component: m.ThreadFormPage }),
-                      ),
+                      import('../features/plot-threads/pages/ThreadQuickCreateRoute').then((m) => ({
+                        Component: m.ThreadQuickCreateRoute,
+                      })),
                   },
                   {
                     path: 'threads/:threadId',
                     lazy: () =>
-                      import('../features/plot-threads/pages/ThreadDetailPage').then(
-                        (m) => ({ Component: m.ThreadDetailPage }),
-                      ),
+                      import('../features/plot-threads/pages/ThreadDetailPage').then((m) => ({
+                        Component: m.ThreadDetailPage,
+                      })),
                   },
                   {
                     path: 'threads/:threadId/edit',
                     lazy: () =>
-                      import('../features/plot-threads/pages/ThreadFormPage').then(
-                        (m) => ({ Component: m.ThreadFormPage }),
-                      ),
+                      import('../features/plot-threads/pages/ThreadFormPage').then((m) => ({
+                        Component: m.ThreadFormPage,
+                      })),
                   },
                   {
                     path: 'maps',
@@ -296,9 +296,9 @@ export const router = createBrowserRouter([
                   {
                     path: 'search',
                     lazy: () =>
-                      import('../features/search/pages/SearchResultsPage').then(
-                        (m) => ({ Component: m.SearchResultsPage }),
-                      ),
+                      import('../features/search/pages/SearchResultsPage').then((m) => ({
+                        Component: m.SearchResultsPage,
+                      })),
                   },
                   {
                     path: 'audit',
@@ -327,9 +327,9 @@ export const router = createBrowserRouter([
           {
             index: true,
             lazy: () =>
-              import('../features/membership/pages/AcceptInvitationPage').then(
-                (m) => ({ Component: m.AcceptInvitationPage }),
-              ),
+              import('../features/membership/pages/AcceptInvitationPage').then((m) => ({
+                Component: m.AcceptInvitationPage,
+              })),
           },
         ],
       },

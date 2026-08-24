@@ -41,4 +41,8 @@ export interface EntityDetail extends EntitySummary {
   /** Present only when the caller is authorized to see it — omitted
    * entirely otherwise (roadmap §13.2), never sent as `null`. */
   gmContentJson?: TiptapDoc | null
+  /** Whether the current user has favorited this entity. Per-user, not
+   * part of EntitySummary since list rows don't need per-row favorite
+   * status computed (WorldListPage only needs a favorites-only filter). */
+  isFavorite: boolean
 }

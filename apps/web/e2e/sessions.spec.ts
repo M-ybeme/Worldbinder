@@ -49,29 +49,41 @@ test('session lifecycle: create, complete with world date, reveal, session appea
 
   await test.step('owner creates a featured entity and a GM-only secret entity', async () => {
     await ownerPage.getByRole('link', { name: 'World' }).click()
-    await ownerPage.getByRole('link', { name: 'New entity' }).click()
+    await ownerPage.getByRole('button', { name: 'New entity' }).click()
     await ownerPage.getByLabel('Name').fill(npcName)
-    await ownerPage.getByRole('button', { name: 'Create entity' }).click()
+    await ownerPage.getByRole('button', { name: 'Create', exact: true }).click()
     await expect(ownerPage.getByRole('heading', { name: npcName })).toBeVisible()
     npcUrl = ownerPage.url()
 
     await ownerPage.getByRole('link', { name: 'World' }).click()
-    await ownerPage.getByRole('link', { name: 'New entity' }).click()
+    await ownerPage.getByRole('button', { name: 'New entity' }).click()
     await ownerPage.getByLabel('Name').fill(secretName)
-    await ownerPage.getByLabel('Visibility').selectOption('gm_only')
-    await ownerPage.getByRole('button', { name: 'Create entity' }).click()
+    await ownerPage.getByRole('button', { name: 'Create', exact: true }).click()
     await expect(ownerPage.getByRole('heading', { name: secretName })).toBeVisible()
+    // Visibility isn't part of quick-create's minimal field set — set it
+    // via Edit, same "create bare, fill in the rest after" flow the UI
+    // itself now follows.
+    await ownerPage.getByRole('link', { name: 'Edit' }).click()
+    await ownerPage.getByLabel('Visibility').selectOption('gm_only')
+    await expect(ownerPage.getByText('Saved')).toBeVisible({ timeout: 10_000 })
   })
 
   await test.step('owner creates a session with the featured entity', async () => {
     await ownerPage.getByRole('link', { name: 'Sessions' }).click()
-    await ownerPage.getByRole('link', { name: 'New session' }).click()
+    await ownerPage.getByRole('button', { name: 'New session' }).click()
     await ownerPage.getByLabel('Title').fill(sessionTitle)
-    await ownerPage.getByLabel('Add to featured entities').fill(npcName)
-    await ownerPage.locator('.wb-combobox__option', { hasText: npcName }).first().click()
-    await ownerPage.getByRole('button', { name: 'Create session' }).click()
+    await ownerPage.getByRole('button', { name: 'Create', exact: true }).click()
     await expect(ownerPage.getByRole('heading', { name: new RegExp(sessionTitle) })).toBeVisible()
     sessionUrl = ownerPage.url()
+
+    // Featured entities isn't part of quick-create's minimal field set —
+    // add it via Edit, which (unlike the entity form) has an explicit
+    // "Save changes" submit rather than autosave.
+    await ownerPage.getByRole('link', { name: 'Edit' }).click()
+    await ownerPage.getByLabel('Add to featured entities').fill(npcName)
+    await ownerPage.locator('.wb-combobox__option', { hasText: npcName }).first().click()
+    await ownerPage.getByRole('button', { name: 'Save changes' }).click()
+    await expect(ownerPage.getByRole('heading', { name: new RegExp(sessionTitle) })).toBeVisible()
   })
 
   await test.step('owner completes the session with an in-world end date', async () => {
@@ -85,7 +97,7 @@ test('session lifecycle: create, complete with world date, reveal, session appea
     // the Revision History panel loads asynchronously and its diff text can
     // also contain the word "completed", making an unscoped locator
     // ambiguous once it finishes loading (timing-dependent across browsers).
-    await expect(ownerPage.locator('.wb-entity-header__meta')).toContainText('completed')
+    await expect(ownerPage.locator('.wb-page-header__meta')).toContainText('completed')
   })
 
   await test.step('owner reveals the secret entity', async () => {
@@ -108,7 +120,10 @@ test('session lifecycle: create, complete with world date, reveal, session appea
 
   await test.step('player can now see the revealed entity', async () => {
     await playerPage.goto(npcUrl.replace(new RegExp(`/world/.+$`), `/world`))
-    await playerPage.getByLabel('Search').fill(secretName)
+    // Not just getByLabel('Search') — the topbar's Ctrl/Cmd+K search
+    // button's aria-label ("Search (Ctrl/Cmd+K)") also matches that
+    // substring, making it ambiguous with the World list's own Search field.
+    await playerPage.getByLabel('Search', { exact: true }).fill(secretName)
     await expect(playerPage.getByRole('link', { name: secretName })).toBeVisible()
   })
 

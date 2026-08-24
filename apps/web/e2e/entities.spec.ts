@@ -41,11 +41,16 @@ test('entity lifecycle: create, visibility, edit, tag filter, delete', async ({ 
 
   let entityUrl = ''
 
-  await test.step('owner creates an entity with tags and split content', async () => {
+  await test.step('owner quick-creates an entity, then adds tags and split content via Edit', async () => {
     await ownerPage.getByRole('link', { name: 'World' }).click()
-    await ownerPage.getByRole('link', { name: 'New entity' }).click()
+    await ownerPage.getByRole('button', { name: 'New entity' }).click()
 
     await ownerPage.getByLabel('Name').fill(entityName)
+    await ownerPage.getByRole('button', { name: 'Create', exact: true }).click()
+    await expect(ownerPage.getByRole('heading', { name: entityName })).toBeVisible()
+    entityUrl = ownerPage.url()
+
+    await ownerPage.getByRole('link', { name: 'Edit' }).click()
     await ownerPage.getByLabel('Tags').fill('nobility')
     await ownerPage.getByLabel('Tags').press('Enter')
 
@@ -57,10 +62,10 @@ test('entity lifecycle: create, visibility, edit, tag filter, delete', async ({ 
       .locator('.wb-field', { hasText: 'GM-only content' })
       .locator('[contenteditable="true"]')
       .fill('Secretly funding the rebellion.')
+    // Autosave debounces ~2s after idle, then confirms via the status line.
+    await expect(ownerPage.getByText('Saved')).toBeVisible({ timeout: 10_000 })
 
-    await ownerPage.getByRole('button', { name: 'Create entity' }).click()
-    await expect(ownerPage.getByRole('heading', { name: entityName })).toBeVisible()
-    entityUrl = ownerPage.url()
+    await ownerPage.goto(entityUrl)
   })
 
   await test.step('owner sees both public and GM content', async () => {
@@ -104,8 +109,13 @@ test('entity lifecycle: create, visibility, edit, tag filter, delete', async ({ 
 
   await test.step('owner deletes the entity', async () => {
     await ownerPage.goto(entityUrl)
-    ownerPage.once('dialog', (dialog) => void dialog.accept())
+    // ConfirmDialog replaced the native window.confirm() this app used to
+    // use for delete — a real modal with its own "Delete" button, not a
+    // native dialog. Two elements share that label (the trigger button and
+    // the modal's confirm button), so the second click is scoped to the
+    // dialog to disambiguate.
     await ownerPage.getByRole('button', { name: 'Delete' }).click()
+    await ownerPage.getByRole('dialog').getByRole('button', { name: 'Delete' }).click()
     await expect(ownerPage).toHaveURL(/\/world$/)
   })
 
@@ -126,12 +136,16 @@ test('offline mid-edit: change is preserved locally and synced once back online'
   await setUpOwnerWithCampaign(page, 'PW Draft Owner', campaignName)
 
   await page.getByRole('link', { name: 'World' }).click()
-  await page.getByRole('link', { name: 'New entity' }).click()
+  await page.getByRole('button', { name: 'New entity' }).click()
   await page.getByLabel('Name').fill(entityName)
-  await page.getByRole('button', { name: 'Create entity' }).click()
+  await page.getByRole('button', { name: 'Create', exact: true }).click()
   await expect(page.getByRole('heading', { name: entityName })).toBeVisible()
 
   await page.getByRole('link', { name: 'Edit' }).click()
+  // EntityFormPage is a lazy-loaded route chunk — wait for it to actually
+  // finish loading before going offline, or the dynamic import itself can
+  // lose the race against setOffline(true) and fail to load at all.
+  await page.getByLabel('Summary').waitFor()
 
   await context.setOffline(true)
   await page.getByLabel('Summary').fill('Written while offline.')

@@ -57,9 +57,14 @@ test('search: overlay and results page respect entity visibility for GM vs. play
   await test.step('owner creates a public entity with public and GM-only content', async () => {
     campaignUrl = ownerPage.url()
     await ownerPage.getByRole('link', { name: 'World' }).click()
-    await ownerPage.getByRole('link', { name: 'New entity' }).click()
-
+    await ownerPage.getByRole('button', { name: 'New entity' }).click()
     await ownerPage.getByLabel('Name').fill(publicEntityName)
+    await ownerPage.getByRole('button', { name: 'Create', exact: true }).click()
+    await expect(ownerPage.getByRole('heading', { name: publicEntityName })).toBeVisible()
+
+    // Content fields aren't part of quick-create's minimal field set —
+    // add them via Edit.
+    await ownerPage.getByRole('link', { name: 'Edit' }).click()
     await ownerPage
       .locator('.wb-field', { hasText: 'Public content' })
       .locator('[contenteditable="true"]')
@@ -68,18 +73,19 @@ test('search: overlay and results page respect entity visibility for GM vs. play
       .locator('.wb-field', { hasText: 'GM-only content' })
       .locator('[contenteditable="true"]')
       .fill(`Secretly funding the ${secretPhrase}.`)
-
-    await ownerPage.getByRole('button', { name: 'Create entity' }).click()
-    await expect(ownerPage.getByRole('heading', { name: publicEntityName })).toBeVisible()
+    await expect(ownerPage.getByText('Saved')).toBeVisible({ timeout: 10_000 })
   })
 
   await test.step('owner creates a GM-only entity', async () => {
     await ownerPage.getByRole('link', { name: 'World' }).click()
-    await ownerPage.getByRole('link', { name: 'New entity' }).click()
+    await ownerPage.getByRole('button', { name: 'New entity' }).click()
     await ownerPage.getByLabel('Name').fill(hiddenEntityName)
-    await ownerPage.getByLabel('Visibility').selectOption('gm_only')
-    await ownerPage.getByRole('button', { name: 'Create entity' }).click()
+    await ownerPage.getByRole('button', { name: 'Create', exact: true }).click()
     await expect(ownerPage.getByRole('heading', { name: hiddenEntityName })).toBeVisible()
+
+    await ownerPage.getByRole('link', { name: 'Edit' }).click()
+    await ownerPage.getByLabel('Visibility').selectOption('gm_only')
+    await expect(ownerPage.getByText('Saved')).toBeVisible({ timeout: 10_000 })
   })
 
   await test.step('owner finds both entities and the secret phrase via the search overlay', async () => {

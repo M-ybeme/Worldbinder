@@ -241,6 +241,62 @@ describe('Plot threads (e2e)', () => {
     });
   });
 
+  describe('entity-scoped plot threads (GET /entities/:entityId/plot-threads)', () => {
+    it('lists threads linked to an entity and filters gm_only ones out for a player', async () => {
+      const { token, campaign } = await createOwnerAndCampaign(
+        'Entity Plot Threads Campaign',
+      );
+      const player = await addMember(
+        campaign.id,
+        'entity-threads-player',
+        'player',
+      );
+      const npc = await createEntity(token, campaign.id, { name: 'Cedric' });
+
+      const publicThread = await createThread(token, campaign.id, {
+        title: 'The Missing Caravan',
+        entityIds: [npc.id],
+      });
+      const gmOnlyThread = await createThread(token, campaign.id, {
+        title: 'Secret Cult Activity',
+        visibility: 'gm_only',
+        entityIds: [npc.id],
+      });
+      // A thread NOT linked to this entity — must not appear in the result.
+      await createThread(token, campaign.id, { title: 'Unrelated Thread' });
+
+      const ownerRes = await request(app.getHttpServer())
+        .get(`/campaigns/${campaign.id}/entities/${npc.id}/plot-threads`)
+        .set('Authorization', `Bearer ${token}`);
+      expect(ownerRes.status).toBe(200);
+      const ownerThreads = body<PlotThreadSummary[]>(ownerRes);
+      expect(ownerThreads.map((t) => t.id).sort()).toEqual(
+        [publicThread.id, gmOnlyThread.id].sort(),
+      );
+
+      const playerRes = await request(app.getHttpServer())
+        .get(`/campaigns/${campaign.id}/entities/${npc.id}/plot-threads`)
+        .set('Authorization', `Bearer ${player.token}`);
+      expect(playerRes.status).toBe(200);
+      const playerThreads = body<PlotThreadSummary[]>(playerRes);
+      expect(playerThreads.map((t) => t.id)).toEqual([publicThread.id]);
+    });
+
+    it('returns 404 for a plot-threads lookup on an entity in another campaign', async () => {
+      const { token, campaign } = await createOwnerAndCampaign(
+        'Entity Plot Threads Campaign A',
+      );
+      const { token: tokenB, campaign: campaignB } =
+        await createOwnerAndCampaign('Entity Plot Threads Campaign B');
+      const outsider = await createEntity(tokenB, campaignB.id);
+
+      const res = await request(app.getHttpServer())
+        .get(`/campaigns/${campaign.id}/entities/${outsider.id}/plot-threads`)
+        .set('Authorization', `Bearer ${token}`);
+      expect(res.status).toBe(404);
+    });
+  });
+
   describe('visibility and field omission', () => {
     it('hides a gm_only thread from a player (404, not 403)', async () => {
       const { token, campaign } = await createOwnerAndCampaign(

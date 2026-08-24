@@ -1,7 +1,9 @@
 import type { PlotThreadSummary } from '@worldbinder/contracts'
-import { Badge, EmptyState, ErrorState, LoadingState } from '@worldbinder/ui'
+import { Badge, Button, EmptyState, ErrorState, LoadingState } from '@worldbinder/ui'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useCampaignOutletContext } from '../../campaigns/hooks/useCampaignContext'
+import { QuickCreateThreadDialog } from '../components/QuickCreateThreadDialog'
 import { usePlotThreadsQuery } from '../hooks/usePlotThreads'
 
 const MANAGEMENT_ROLES = new Set(['owner', 'gm', 'editor'])
@@ -28,6 +30,7 @@ export function ThreadListPage() {
   const { campaign } = useCampaignOutletContext()
   const canCreate = MANAGEMENT_ROLES.has(campaign.role)
   const threadsQuery = usePlotThreadsQuery(campaign.id)
+  const [quickCreateOpen, setQuickCreateOpen] = useState(false)
 
   const threads = threadsQuery.data ?? []
   const unresolved = threads.filter(
@@ -40,15 +43,14 @@ export function ThreadListPage() {
     <section>
       <header className="wb-world-header">
         <h1>Threads</h1>
-        {canCreate && (
-          <Link
-            className="wb-button wb-button--primary"
-            to={`/app/campaign/${campaign.id}/threads/new`}
-          >
-            New plot thread
-          </Link>
-        )}
+        {canCreate && <Button onClick={() => setQuickCreateOpen(true)}>New plot thread</Button>}
       </header>
+
+      <QuickCreateThreadDialog
+        campaignId={campaign.id}
+        open={quickCreateOpen}
+        onClose={() => setQuickCreateOpen(false)}
+      />
 
       {threadsQuery.isLoading && <LoadingState label="Loading plot threads…" />}
       {threadsQuery.isError && (

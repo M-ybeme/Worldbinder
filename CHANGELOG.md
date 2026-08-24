@@ -4,6 +4,26 @@ All notable changes to this project are documented here. Format follows [Keep a 
 
 Every push to `main` should add an entry here. This is meant to be an honest record of what actually shipped, not a restatement of the roadmap's aspirations — if something was attempted and reverted, or shipped partially, say so.
 
+## [0.29.0] - 2026-08-24
+
+**UI/UX rework, Phases 4-7: World list card grid, entity-detail/dashboard rail rework, quick-create flow, favorites — final phases, rollout complete.** Continues from Phases 1-3 (0.26.0–0.28.0). See `docs/product/WORLDBINDER_DESIGN_SYSTEM.md` §46.
+
+### Added
+
+- **Phase 4 (World list → responsive card grid)**: `WorldListPage`'s single-column row list replaced by a responsive card grid (icon, name, summary, type, tags) that wraps to more columns as the screen widens. Two new filters — visibility (All/Public/GM only) and sort (Recently updated/Name A–Z) — threaded through `listEntitiesQuerySchema` and `EntitiesService.list()`. `.wb-entity-list` row styling replaced by `.wb-entity-card`, rendered via the `CardGrid` primitive.
+- **Phase 5 (entity detail + dashboard → two-column/rail rework)**: the largest phase, needing one new backend lookup (entity → plot threads, `PlotThreadsService.listForEntity()` + `GET /campaigns/:id/entities/:id/plot-threads`) that didn't exist before. `EntityDetailPage` is now a two-column layout — main content + a `position: sticky` rail (Relationships, new Plot Threads panel, Session Appearances, Attachments, Backlinks, Revision History) — collapsing to one column below 1200px. Backlinks now renders after Attachments instead of right after Relationships, matching `docs/planning/ui-ux.md`'s specified section order (required splitting `RelatedContentPanel` into a Relationships-only component plus a new `BacklinksPanel`). `CampaignOverviewPage`'s 5 dashboard widgets now render through `CardGrid` with a card treatment instead of one stacked column.
+- **Phase 6 (quick-create flow)**: new `QuickCreateDialog` primitive (`packages/ui`) plus per-resource wrappers for entities (with a new icon+label `EntityTypePicker`, since a native `<select>` can't show icons), sessions, and plot threads — implementing `docs/planning/ui-ux.md`'s "type a name, Create, fill in the rest later" flow (the backend already only required a name/title). All 6 "New X" entry points now open the dialog instead of a full-page form; the dashboard's Quick Actions became the doc's exact 4 buttons (New Character/Location/Session/Plot Thread). `/world/new`, `/sessions/new`, `/threads/new` stay valid deep-linkable URLs, opening the same dialog pre-opened instead of a second parallel creation UI — `EntityFormPage`/`SessionFormPage`/`ThreadFormPage` now serve edit mode exclusively.
+- **Phase 7 (favorites)**: no favorites concept existed anywhere before this. New `entity_favorites` join table (following the existing `entityTags` composite-unique junction pattern), idempotent `POST`/`DELETE /campaigns/:id/entities/:id/favorite`, `EntityDetail.isFavorite`, and a `favorite` list filter (deliberately only ever the literal `'true'`, sidestepping the documented `z.coerce.boolean()` footgun by construction). A star toggle on the entity detail page (available to every member — favoriting is personal, not an edit permission) and a "Favorites only" checkbox on the World list.
+- 6 new integration tests across these phases (World-list filters, the new plot-threads endpoint's visibility filtering and cross-campaign isolation, and a favorites round trip plus per-user isolation) — full suite re-run clean at 195/195.
+
+### Fixed
+
+- Four real, pre-existing e2e test bugs found and fixed while re-verifying the affected Playwright specs against a real browser for Phase 6 (none caused by this rework — each predates it, uncovered only because this was the first full re-run since the change that broke them): a delete-confirmation test that never actually clicked the (real, not native) confirm dialog; an offline-mid-edit test racing a lazy-loaded chunk's dynamic import; two specs asserting against a CSS class that stopped existing after an earlier `PageHeader` migration; and an ambiguous `getByLabel('Search')` match against the topbar's search button. All 5 affected e2e spec files verified passing across all 3 browsers (24/24), then re-verified clean again after Phase 7's UI additions.
+
+### Rollout complete
+
+All 7 phases of the UI/UX rework have now shipped: the root-cause width fix, the motion pass, entity type icons, the World list card grid, the entity-detail/dashboard rail rework, the quick-create flow, and favorites.
+
 ## [0.26.0] - 2026-08-24
 
 **UI/UX rework, Phases 1-3: foundation, motion pass, entity type icons.** The just-completed design-system rollout (0.18.0–0.25.0) gave the app consistent tokens, but direct user feedback on the live result was that it's "too narrow on a large screen" and "isn't dynamic" — both traced to concrete, fixable root causes rather than diffuse polish gaps. Further structural rework (World list card grid, entity-detail/dashboard rail layout, quick-create, favorites) continues in later phases. See `docs/product/WORLDBINDER_DESIGN_SYSTEM.md` §46.

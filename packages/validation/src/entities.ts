@@ -266,5 +266,12 @@ export const listEntitiesQuerySchema = z.object({
   entityType: entityTypeSchema.optional(),
   tag: z.string().trim().min(1).optional(),
   search: z.string().trim().min(1).max(200).optional(),
+  visibility: entityVisibilitySchema.optional(),
+  sortBy: z.enum(['updatedAt', 'name']).optional(),
+  // Only ever sent as the literal 'true' (the frontend omits the param
+  // entirely rather than sending 'false') — sidesteps the
+  // z.coerce.boolean() footgun (packages/config/src/env.ts's
+  // booleanString() doc comment) where the string "false" coerces truthy.
+  favorite: z.literal('true').optional(),
 })
 export type ListEntitiesQuery = z.infer<typeof listEntitiesQuerySchema>

@@ -1,6 +1,8 @@
-import { Badge, EmptyState, ErrorState, LoadingState } from '@worldbinder/ui'
+import { Badge, Button, EmptyState, ErrorState, LoadingState } from '@worldbinder/ui'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useCampaignOutletContext } from '../../campaigns/hooks/useCampaignContext'
+import { QuickCreateSessionDialog } from '../components/QuickCreateSessionDialog'
 import { useSessionsQuery } from '../hooks/useSessions'
 
 const MANAGEMENT_ROLES = new Set(['owner', 'gm', 'editor'])
@@ -9,20 +11,20 @@ export function SessionListPage() {
   const { campaign } = useCampaignOutletContext()
   const canCreate = MANAGEMENT_ROLES.has(campaign.role)
   const sessionsQuery = useSessionsQuery(campaign.id)
+  const [quickCreateOpen, setQuickCreateOpen] = useState(false)
 
   return (
     <section>
       <header className="wb-world-header">
         <h1>Sessions</h1>
-        {canCreate && (
-          <Link
-            className="wb-button wb-button--primary"
-            to={`/app/campaign/${campaign.id}/sessions/new`}
-          >
-            New session
-          </Link>
-        )}
+        {canCreate && <Button onClick={() => setQuickCreateOpen(true)}>New session</Button>}
       </header>
+
+      <QuickCreateSessionDialog
+        campaignId={campaign.id}
+        open={quickCreateOpen}
+        onClose={() => setQuickCreateOpen(false)}
+      />
 
       {sessionsQuery.isLoading && <LoadingState label="Loading sessions…" />}
       {sessionsQuery.isError && (

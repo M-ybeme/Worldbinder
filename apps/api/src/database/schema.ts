@@ -373,6 +373,27 @@ export const entityTags = pgTable(
   ],
 );
 
+export const entityFavorites = pgTable(
+  'entity_favorites',
+  {
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    entityId: uuid('entity_id')
+      .notNull()
+      .references(() => entities.id, { onDelete: 'cascade' }),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    unique().on(table.userId, table.entityId),
+    // WorldListPage's favorites-only filter joins on entityId alone,
+    // same shape as entityTags' own tagId reverse index above.
+    index('entity_favorites_entity_id_idx').on(table.entityId),
+  ],
+);
+
 export const relationshipTypes = pgTable(
   'relationship_types',
   {

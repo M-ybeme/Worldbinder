@@ -2054,7 +2054,7 @@ appearance" (entrance only, not exit — `Dialog.tsx` already unmounts
 synchronously on close via `if (!open) return null`, so a CSS-only mount
 animation is sufficient and needed no component changes), hover/focus
 transitions, and smoothing the existing 768px sidebar reflow (no new
-collapse *feature* — none exists today, building one would be a UX
+collapse _feature_ — none exists today, building one would be a UX
 feature decision out of scope for a motion pass).
 
 - `.wb-button`/`.wb-icon-button` (`packages/ui/src/Button.css`/
@@ -2066,17 +2066,17 @@ feature decision out of scope for a motion pass).
   animates the sidebar's width change instead of snapping.
 - `Dialog.css`: `@keyframes` mount animation on `.wb-dialog__backdrop`
   (opacity fade) and `.wb-dialog__panel` (opacity + `translateY(-8px)
-  scale(0.98)` → resting), both gated behind
+scale(0.98)` → resting), both gated behind
   `@media (prefers-reduced-motion: reduce)` individually, following
   `LoadingState.css`'s existing precedent.
 - Card-row hover states added to `.wb-entity-list li`/`.wb-session-list
-  li`/`.wb-campaign-list li` (`entities.css`/`global.css`/
+li`/`.wb-campaign-list li` (`entities.css`/`global.css`/
   `campaigns.css`) — none had a `:hover` state at all before this; border/
   background shift + transition. This is the base Phase 4's entity card
   grid restyle builds on.
 - `global.css` gained a blanket
   `@media (prefers-reduced-motion: reduce) { * { transition-duration:
-  0.01ms !important; ... } }` as defense-in-depth on top of the
+0.01ms !important; ... } }` as defense-in-depth on top of the
   per-component gating above — protects any transition a later phase adds
   and forgets to gate individually.
 
@@ -2129,3 +2129,214 @@ dashboard's Recent Activity rows show the correct icon per type
 (character entity → person icon, session → calendar icon, plot thread →
 branch icon) and the entity detail page header shows the same icon
 beside the entity name.
+
+### Phase 4 — World list → responsive card grid (shipped)
+
+Per the user's confirmed direction (card grid, not an enhanced list),
+`WorldListPage`'s single-column `.wb-entity-list` row layout is replaced
+by the new `CardGrid` primitive (Phase 1) — entity cards (icon, name,
+2-line-clamped summary, type, visibility badge, tags) that wrap to more
+columns as the viewport widens, instead of one entity per row regardless
+of screen size.
+
+- Two new filters added alongside the existing Search/Type/Tag: a
+  visibility filter (All/Public/GM only) and a sort option (Recently
+  updated/Name A–Z). `packages/validation`'s `listEntitiesQuerySchema`
+  gained matching `visibility`/`sortBy` fields; `EntitiesService.list()`
+  gained an `and`-ed visibility condition (narrows on top of, doesn't
+  replace, the existing role-based public-only condition for non-GM
+  members) and branches its `orderBy` between `asc(entities.name)` and
+  the existing `desc(entities.updatedAt)` default.
+- `.wb-entity-list`/`.wb-entity-list li`/`.wb-entity-list__meta` removed
+  from `entities.css` (grepped first to confirm no other real usage, only
+  a stale comment reference elsewhere) — replaced by `.wb-entity-card`
+  and its `__header`/`__name`/`__summary`/`__meta`/`__tags` sub-classes.
+
+**Verification:** typecheck/lint/build clean; full web vitest (11/11) and
+API jest (96/96) green. New integration test (`entities.e2e-spec.ts`)
+covering both new filters — confirmed against real Postgres, full suite
+re-run clean at 191/191 (190 + 1 new). Real browser, seeded with 11 test
+entities spanning every entity type to actually exercise grid wrapping
+(the existing test campaign only had 1 entity): confirmed 5 columns at
+1920px, 2 at 1024px and 700px, correct icon per card, and that both new
+filters actually change the rendered results (not just render correctly)
+— sort-by-name produced a genuinely alphabetical list, filtering by
+entity type correctly narrowed to just that type. Test entities deleted
+after verification.
+
+### Phase 5 — Entity detail + dashboard → two-column/rail rework (shipped)
+
+The largest phase. Needed one new backend lookup that didn't exist
+before: entity → plot threads (the relation only existed thread →
+entities via `plotThreadEntities`).
+
+- **Backend**: `PlotThreadsService.listForEntity()` — joins
+  `plotThreadEntities` → `plotThreads`, filters by entity/campaign/not-
+  deleted, then the same per-row `policy.canViewVisibility` filter as the
+  existing `listForSession`. `EntitiesService.getPlotThreads()` is a thin
+  passthrough (`requireVisibleEntity` guard, then delegate) — mirrors the
+  existing `getSessionAppearances`/`SessionsService.listForEntity` pattern
+  exactly, found by reading that method rather than assumed; new
+  `GET /campaigns/:id/entities/:id/plot-threads` on `EntitiesController`.
+  `PlotThreadsModule` added to `EntitiesModule`'s imports (already
+  exported `PlotThreadsService`, no circular-dependency risk confirmed
+  before wiring).
+- **`EntityDetailPage.tsx`** restructured into a CSS grid: main column
+  (header/summary/rich-text content, capped at a `--wb-container-reading`
+  720px measure) + a `position: sticky` rail (Relationships → new Plot
+  Threads panel → Session Appearances → Attachments → Backlinks → Revision
+  History) that collapses to a single stacked column below the new
+  `--wb-breakpoint-wide` (1200px). This is also the section order fix:
+  Backlinks now correctly renders after Attachments instead of right
+  after Relationships, matching `docs/planning/ui-ux.md`'s specified
+  order.
+- **`RelatedContentPanel`** trimmed to Relationships-only; its Backlinks
+  block extracted into a new `BacklinksPanel.tsx` (same
+  `useEntityBacklinksQuery` hook, unchanged). New
+  `EntityPlotThreadsPanel.tsx` renders the new endpoint's data using the
+  same `wb-relationship-list` markup already shared across every other
+  rail section.
+- **`CampaignOverviewPage.tsx`**'s 5 widget blocks (Current Status,
+  Sessions, Active Threads, Dormant Threads, Recent Activity, Quick
+  Actions) now render through `CardGrid` (Phase 1's primitive, this is
+  its second real consumer) with a new `.wb-dashboard-widget` card
+  treatment, instead of one stacked column.
+
+**Verification:** typecheck/lint/build clean; full web vitest (11/11) and
+API jest (96/96) green. Two new integration tests
+(`plot-threads.e2e-spec.ts`: entity-scoped listing correctly filters out
+a `gm_only` thread for a player while an owner sees both, plus a
+cross-campaign 404 check) — full suite re-run clean at 193/193 (191 + 2
+new). Real browser: confirmed via computed styles (not just visual
+inspection) that `.wb-entity-detail` is a genuine 2-column grid at
+1920px and collapses to 1 column below 1200px, and that the rail's
+`position` is actually `sticky` (not just present in the CSS source);
+screenshot confirmed the exact section order fix and the new Plot
+Threads panel rendering its empty state correctly; dashboard screenshot
+confirmed the new 4-card grid layout.
+
+### Phase 6 — Quick-create flow (shipped)
+
+Implements `docs/planning/ui-ux.md`'s "Creating Information" section
+("type a name, click Create, the app navigates there, then progressively
+add details") — confirmed in an earlier audit that the backend already
+only requires a name/title for entities/sessions/plot threads, so this
+was a pure frontend gap.
+
+- New `packages/ui/src/QuickCreateDialog.tsx` — generic, content-agnostic
+  (built on `Dialog`, following `ConfirmDialog`'s own compositional
+  template) so it hosts a different minimal form per resource type.
+- New `EntityTypePicker.tsx` — an icon+label button grid substituting for
+  a `<select>` specifically for quick-create's type selection (native
+  `<option>` elements can't render an icon in any browser).
+  `entityTypeIcons.tsx` gained `ENTITY_TYPE_LABELS`/`ENTITY_TYPES`
+  exports so this picker and `WorldListPage`'s type filter share one
+  label list instead of maintaining two.
+- `QuickCreateEntityDialog`/`QuickCreateSessionDialog`/
+  `QuickCreateThreadDialog` — each wraps `QuickCreateDialog` with the
+  real create mutation, navigating to the new record's detail page on
+  success (same target the old full forms already used).
+- All 6 known `<Link to=".../new">` entry points (WorldListPage,
+  SessionListPage, ThreadListPage, and the dashboard's 3 Quick Actions)
+  now open the dialog instead of navigating to a full-page form. The
+  dashboard's Quick Actions became the doc's exact 4 buttons (New
+  Character / New Location / New Session / New Plot Thread — the first
+  two pre-fill `EntityTypePicker`'s selection, skipping that step).
+- `/world/new`, `/sessions/new`, `/threads/new` stay valid deep-linkable
+  URLs (bookmarks, back-button) without maintaining a second parallel
+  creation UI — each now routes to a tiny wrapper component
+  (`*QuickCreateRoute.tsx`) that renders the same dialog pre-opened,
+  `onClose` navigating to the list route. `EntityFormPage`/
+  `SessionFormPage`/`ThreadFormPage` are unchanged and now serve edit
+  mode exclusively — genuinely where "progressively fill in details"
+  happens after quick-create's first step.
+
+**Four real, pre-existing bugs found and fixed while re-running the e2e
+suite for real** (none caused by this phase — all predate it, from
+earlier phases of this session's work, just never re-verified against a
+real browser until this run):
+
+- `entities.spec.ts`'s delete step used `page.once('dialog', ...)` for a
+  native `window.confirm()` — but `ConfirmDialog` (added in this
+  rollout's own Phase 2, core primitives) replaced that with a real
+  modal weeks ago. The test's single click only opened the dialog and
+  never confirmed it, so delete silently never ran. Fixed by clicking
+  the dialog-scoped "Delete" button too.
+- The offline-mid-edit test set `context.setOffline(true)` immediately
+  after clicking "Edit," racing the lazy-loaded `EntityFormPage.tsx`
+  chunk's dynamic `import()`. It happened to always win before this
+  phase, because the old create flow used the _same_ `EntityFormPage`
+  component (warming the chunk); quick-create uses a different
+  component, so Edit's dynamic import is now genuinely the first fetch.
+  Fixed by waiting for the edit form to actually render first.
+- `sessions.spec.ts`/`plot-threads.spec.ts` asserted against
+  `.wb-entity-header__meta`, a class that stopped existing once
+  `SessionDetailPage`/`ThreadDetailPage` migrated to the `PageHeader`
+  primitive (`.wb-page-header__meta`) during this rollout's own Phase 2
+  — correct before that migration, stale after, never re-run since.
+- `sessions.spec.ts`'s `getByLabel('Search')` became ambiguous once the
+  topbar's Ctrl/Cmd+K button (`aria-label="Search (Ctrl/Cmd+K)"`, added
+  in this rollout's Phase 3) started substring-matching the same query
+  as the World list's own Search field.
+
+**Verification:** typecheck/lint/build clean; full web vitest (11/11)
+and API jest (96/96) green. Real browser: all 6 entry points confirmed
+opening a dialog (not a page nav) with Escape correctly closing;
+`/world/new` direct-loaded confirmed opening the same dialog with Escape
+navigating back to `/world`; a full create-to-navigate round trip
+exercised for all three resource types (fill name, submit, confirm
+landing on the real new record's detail page), with test data cleaned up
+after. All 5 affected Playwright e2e spec files, rewritten to create
+through the dialog instead of the old full-page forms, verified with a
+full 3-browser run (chromium/firefox/webkit): 24/24 passing.
+
+### Phase 7 — Favorites (shipped, rollout complete)
+
+The smallest, most cuttable phase, and the last one — closes out the
+7-phase UI/UX rework. No favorites concept existed anywhere before this:
+no schema, no API, no UI.
+
+- New `entity_favorites` join table (`apps/api/src/database/schema.ts`),
+  following the exact composite-unique junction pattern `entityTags`
+  already established (`userId`/`entityId`, `unique(userId, entityId)`,
+  a reverse index on `entityId`). Migration reviewed before applying —
+  exactly one new table, no drops/renames — via the `db-migration` skill.
+- `EntitiesService.favorite()`/`unfavorite()` (new `POST`/`DELETE
+  :entityId/favorite`), each guarded by the same `requireVisibleEntity`
+  check the other entity-scoped endpoints use. Favoriting is
+  idempotent (`onConflictDoNothing`), and so is unfavoriting (a plain
+  delete matching zero rows isn't an error) — confirmed with a real
+  double-favorite/double-unfavorite integration test, not assumed.
+- `EntityDetail` gained `isFavorite: boolean`, computed for real only in
+  `getById()` (the actual page-load path) — `create()`/`update()` default
+  it to `false` rather than adding a wasted query to paths that don't
+  need it, since neither response renders the star toggle.
+  `listEntitiesQuerySchema` gained `favorite: z.literal('true').optional()`
+  — deliberately only the literal `'true'` (never `'false'`), sidestepping
+  the `z.coerce.boolean()` footgun documented in `packages/config/src/env.ts`
+  by construction rather than by remembering not to send the string
+  `"false"`.
+- `EntityDetailPage`'s `PageHeader` actions gained a star `IconButton`
+  (filled when favorited), available to every campaign member — favoriting
+  is a personal preference, not an edit permission, so it's not gated
+  behind `canManage` the way Edit/Delete are. `WorldListPage` gained a
+  "Favorites only" checkbox alongside the existing filters.
+
+**Verification:** typecheck/lint/build clean; full web vitest (11/11)
+and API jest (96/96) green. Two new integration tests — a full
+favorite/double-favorite/filter/unfavorite/double-unfavorite round trip,
+and a per-user isolation check (one member's favorite doesn't leak into
+another member's view of the same entity) — full suite re-run clean at
+195/195 (193 + 2 new). Real browser: confirmed the star's `aria-label`
+and `aria-pressed` both flip correctly on click and **persist across a
+full page reload** (proving the round trip actually reaches the database,
+not just local state); confirmed the World list's favorites-only filter
+against two real entities (one favorited, one not) that it genuinely
+excludes the non-favorited one, not just re-displays everything. All 5
+e2e spec files from Phase 6 re-run clean, confirming no regression from
+the new filter/star UI elements.
+
+**Rollout status**: all 7 phases of the UI/UX rework are now shipped —
+the root-cause width fix, the motion pass, entity type icons, the World
+list card grid, the entity-detail/dashboard rail rework, the quick-create
+flow, and favorites.
