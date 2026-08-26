@@ -42,6 +42,7 @@ import {
   buildWeightedTsvector,
   extractPlainText,
 } from '../search/search-vector.util';
+import { TagsService } from '../tags/tags.service';
 
 type PlotThreadRow = typeof plotThreads.$inferSelect;
 type EntityRow = typeof entities.$inferSelect;
@@ -121,6 +122,7 @@ export class PlotThreadsService {
     private readonly policy: CampaignPolicyService,
     private readonly revisionRecorder: RevisionRecorderService,
     private readonly audit: CampaignAuditService,
+    private readonly tagsService: TagsService,
   ) {}
 
   async create(
@@ -161,6 +163,14 @@ export class PlotThreadsService {
 
       if (input.entityIds) {
         await this.syncEntities(tx, campaignId, row.id, input.entityIds);
+      }
+      if (input.tags) {
+        await this.tagsService.syncPlotThreadTags(
+          tx,
+          campaignId,
+          row.id,
+          input.tags,
+        );
       }
 
       const entityIds = await this.getThreadEntityIds(tx, row.id);
@@ -207,6 +217,10 @@ export class PlotThreadsService {
       this.latestCompletedSessionNumber(campaignId),
     ]);
 
+    const tagsByThreadId = await this.tagsService.getPlotThreadTags(
+      rows.map((row) => row.thread.id),
+    );
+
     return rows.map((row) =>
       this.toSummary(
         row.thread,
@@ -219,6 +233,7 @@ export class PlotThreadsService {
           latestCompleted,
         ),
         membership,
+        tagsByThreadId.get(row.thread.id) ?? [],
       ),
     );
   }
@@ -323,6 +338,14 @@ export class PlotThreadsService {
 
       if (input.entityIds !== undefined) {
         await this.syncEntities(tx, campaignId, threadId, input.entityIds);
+      }
+      if (input.tags !== undefined) {
+        await this.tagsService.syncPlotThreadTags(
+          tx,
+          campaignId,
+          threadId,
+          input.tags,
+        );
       }
 
       const entityIds = await this.getThreadEntityIds(tx, threadId);
@@ -579,8 +602,18 @@ export class PlotThreadsService {
         ),
       );
 
+    const tagNames =
+      (await this.tagsService.getPlotThreadTags([thread.id])).get(thread.id) ??
+      [];
+
     return {
-      ...this.toSummary(thread, lastSessionRow ?? null, neglected, membership),
+      ...this.toSummary(
+        thread,
+        lastSessionRow ?? null,
+        neglected,
+        membership,
+        tagNames,
+      ),
       publicContentJson: thread.publicContentJson as TiptapDoc | null,
       ...(canViewGm
         ? { gmContentJson: thread.gmContentJson as TiptapDoc | null }
@@ -750,6 +783,7 @@ export class PlotThreadsService {
     lastSession: SessionRow | null | undefined,
     neglected: boolean,
     membership: CampaignMembership,
+    tagNames: string[] = [],
   ): PlotThreadSummary {
     const canViewGm = this.policy.canViewGmContent(
       membership.role,
@@ -774,6 +808,7 @@ export class PlotThreadsService {
           }
         : null,
       neglected,
+      tags: tagNames,
       createdAt: thread.createdAt.toISOString(),
       updatedAt: thread.updatedAt.toISOString(),
     };
@@ -891,6 +926,9 @@ function toSessionSummary(session: SessionRow): CampaignSessionSummary {
     worldEndDateJson:
       session.worldEndDateJson as CampaignSessionSummary['worldEndDateJson'],
     visibility: session.visibility,
+    // Tags aren't fetched here — same simplification as toEntitySummary
+    // above (this panel doesn't render tags either).
+    tags: [],
     createdAt: session.createdAt.toISOString(),
     updatedAt: session.updatedAt.toISOString(),
   };

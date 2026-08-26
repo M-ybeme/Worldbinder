@@ -2504,3 +2504,128 @@ Escape on the deep-link route returns to the Timeline list; edited a
 session and a plot thread, confirmed the debounced autosave fires (the
 "Saved" banner appears within ~2s of the last edit) with no explicit
 save button remaining on either form.
+
+### Phase 3 — World list filter bar polish (shipped)
+
+`WorldListPage`'s filter bar (Search/Type/Tag/Visibility/Sort/Favorites)
+had 3 gaps: no result count anywhere, no way to reset all 6 filters at
+once, and an identical "No entities yet." empty-state message whether
+the campaign was genuinely empty or a filter combination just matched
+zero rows.
+
+- Added a `hasActiveFilters` check (any of the 6 filter states off its
+  default) driving two things: a "Clear filters" button (filter bar and,
+  duplicated, inline inside the empty state when it's showing) that
+  resets all 6 states in one call, and which empty-state message renders
+  — `EmptyState`'s existing `action` slot hosts the inline Clear-filters
+  button rather than needing a new component.
+- A result count (`entitiesQuery.data?.length` — this list has no
+  server-side pagination today, so length is an accurate total, not an
+  approximation) rendered above the results.
+- `.wb-world-filters > *` now gives every filter control a consistent
+  `flex: 1 1 160px` instead of each one sizing to its own content and
+  reflowing unpredictably; the Favorites checkbox and Clear-filters
+  button are excluded from that rule (`.wb-world-filters > .wb-checkbox,
+.wb-world-filters > .wb-button`) since stretching a checkbox label or
+  a button to a 160px field width would look broken, not consistent.
+
+**Verification:** `pnpm typecheck` / `pnpm lint` / `pnpm build` clean;
+full web vitest (11/11) green. Real browser: confirmed the count reads
+"1 entity" against the seeded demo campaign, applying a search value
+that matches nothing shows "0 entities" + "No entities match your
+filters." + a working Clear-filters button (both copies), and clearing
+resets the search field and the count back to "1 entity."
+
+### Phase 4 — Tags as a real system (shipped)
+
+The largest phase — a schema migration plus a real consolidation
+refactor, not just new UI. Confirmed before starting: `entities.service.ts`
+and `timeline.service.ts` each had their own private, byte-for-byte
+copy-pasted `normalizeTagName()`/`syncTags()` (the latter's own comment
+even said "duplicated rather than shared, consistent with this
+codebase's existing per-module... precedent" — a decision this phase
+deliberately reverses), and neither sessions nor plot threads could be
+tagged at all.
+
+- **New `apps/api/src/tags/` module** — `TagsService` (+ thin
+  `TagsController`), scaffolded via the `new-nest-module` skill. The 4
+  `sync*Tags` methods (entity/timeline-event/session/plot-thread) are
+  thin wrappers around one generic private `syncTags()` helper
+  parameterized by the junction table + its resource-id column + a
+  row-builder callback — not 4 independently duplicated copies, but also
+  not one fully-dynamic method, since each junction table's resource-id
+  column has a different name (matching this codebase's own stated
+  preference for explicit per-module code over cleverness). Critically,
+  `syncTags()` keeps accepting the _caller's own_ `tx: Database` rather
+  than injecting its own DRIZZLE client, so tag-sync still participates
+  in the entity/session/thread's own atomic create/update transaction —
+  the one invariant that had to survive the consolidation intact.
+- **`entities.service.ts`/`timeline.service.ts` now inject `TagsService`**
+  and call `syncEntityTags()`/`syncTimelineEventTags()` instead of their
+  own private functions, which were deleted entirely. Confirmed
+  unchanged behavior via the full existing `entities`/`timeline`
+  integration suites re-run clean, not just by inspection.
+- **Sessions and plot threads can now be tagged.** New `session_tags`/
+  `plot_thread_tags` junction tables — structural mirrors of
+  `entity_tags`/`timeline_event_tags` (composite unique + reverse
+  `tagId` index, migration reviewed before applying: exactly 2 new
+  tables, no drops/renames). `tags: string[]` added to
+  `CampaignSessionSummary`/`PlotThreadSummary` — the several
+  _embedded_-summary builders that construct these types cheaply for a
+  panel that doesn't render tags (`listForSession`/`listForEntity`'s
+  session/thread embeds, the dashboard widgets, timeline's session
+  embed) default it to `[]` rather than issuing an extra query, the same
+  simplification already established for `EntitySummary.tags` on
+  relationship/backlink embeds — confirmed by grep, not assumed, before
+  extending the pattern rather than inventing a new one.
+- **`TagInput` (`packages/ui`) gained an optional `suggestions` prop** —
+  typing shows a filtered dropdown of existing campaign tag names
+  (excluding ones already added), reusing `Combobox`'s
+  `.wb-combobox__listbox`/`.wb-combobox__option` classes for the same
+  visual language rather than inventing new autocomplete styling.
+  Omitting the prop keeps the original freeform-only behavior, so no
+  existing `TagInput` call site needed to change.
+- **New endpoints**: `GET /campaigns/:id/tags` (usage counts merged in
+  JS across the 4 junction tables — matching `search.service.ts`'s own
+  stated "merge in JS, not a cross-table UNION" idiom — open to every
+  campaign member, since tag names aren't sensitive and any editor's
+  autocomplete needs them), `PATCH /campaigns/:id/tags/:tagId` (rename,
+  409 on a name collision), `POST /campaigns/:id/tags/:tagId/merge`
+  (re-points every junction-table row from source to target tag, then
+  deletes the source; a resource already carrying both tags keeps just
+  the target rather than violating the composite-unique constraint —
+  the one real edge case this endpoint has to get right, covered by its
+  own integration test). Rename/merge require the same management roles
+  that can edit tagged resources.
+- **New `apps/web/src/features/tags/` feature** — `TagManagementPage`
+  (list with usage counts, inline rename, merge via `ConfirmDialog`),
+  reachable from a link on campaign Settings rather than a new
+  top-level sidebar item (the secondary nav already grew by one with
+  Phase 1's Audit Log addition; a tag-management page is GM-tooling in
+  the same tier Settings itself is, not a primary navigation surface).
+- **`SessionFormPage`/`ThreadFormPage` gained a `TagInput` field**
+  (with autocomplete), participating in the same autosave those forms
+  got in Phase 2 — no new save mechanism, just a new field feeding the
+  same `buildUpdateInput()`/effect-dependency-array/`applyDraft()` triad
+  every other field on those forms already uses.
+
+**Verification:** migration SQL reviewed before applying (exactly 2 new
+tables). `pnpm typecheck` / `pnpm lint` / `pnpm build` clean across the
+whole workspace. New `tags.service.spec.ts` (pure `normalizeTagName`
+cases) and a new `tags.e2e-spec.ts` (8 integration tests covering merged
+usage counts across all 4 resource types, player read access, rename
+with collision rejection, merge including the already-both-tagged-
+resource edge case, and permission checks on rename/merge) — all
+passing. Full existing `entities`/`timeline`/`sessions`/`plot-threads`/
+`campaigns` integration suites re-run clean, confirming the consolidation
+didn't change existing tagging behavior. Full API jest 99/99; full
+integration suite 198/203 (the 5 failures are pre-existing,
+non-deterministic flakiness in `attachments`/`maps`/`exports`/`imports`
+— modules untouched by this phase, confirmed by re-running them in
+isolation and getting a different failure count each time — not a
+regression from this work). Web vitest 11/11. Real browser: tagged a
+session and confirmed autosave; tagged a plot thread and confirmed the
+autocomplete dropdown suggested the session's tag; opened the tag
+management page and confirmed the tag showed "2 uses," then renamed and
+merged tags and confirmed both changes propagated to the tagged
+resources.

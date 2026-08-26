@@ -4,6 +4,7 @@ import { AuthModule } from '../auth/auth.module';
 import { MembershipModule } from '../membership/membership.module';
 import { PlotThreadsModule } from '../plot-threads/plot-threads.module';
 import { RevisionRecorderModule } from '../revisions/revision-recorder.module';
+import { TagsModule } from '../tags/tags.module';
 import { SessionsController } from './sessions.controller';
 import { SessionsService } from './sessions.service';
 
@@ -14,6 +15,7 @@ import { SessionsService } from './sessions.service';
     PlotThreadsModule,
     RevisionRecorderModule,
     CampaignAuditModule,
+    TagsModule,
   ],
   controllers: [SessionsController],
   providers: [SessionsService],

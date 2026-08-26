@@ -19,6 +19,7 @@ const sessionJoinFields = {
   featuredEntityIds: z.array(uuidField).optional(),
   locationEntityIds: z.array(uuidField).optional(),
   plotThreadChanges: z.array(plotThreadChangeSchema).optional(),
+  tags: z.array(z.string().trim().min(1).max(50)).optional(),
 }
 
 export const createSessionSchema = z.object({

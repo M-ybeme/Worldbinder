@@ -26,6 +26,7 @@ export const createPlotThreadSchema = z.object({
   importance: plotThreadImportanceSchema.optional(),
   visibility: entityVisibilitySchema.optional(),
   entityIds: z.array(uuidField).optional(),
+  tags: z.array(z.string().trim().min(1).max(50)).optional(),
 })
 export type CreatePlotThreadInput = z.infer<typeof createPlotThreadSchema>
 
@@ -38,6 +39,7 @@ export const updatePlotThreadSchema = z.object({
   importance: plotThreadImportanceSchema.optional(),
   visibility: entityVisibilitySchema.optional(),
   entityIds: z.array(uuidField).optional(),
+  tags: z.array(z.string().trim().min(1).max(50)).optional(),
   // Required: the client's last-known version, for optimistic concurrency
   // (roadmap §15.2) — same convention as UpdateEntityInput/UpdateSessionInput.
   updatedAt: z.string().datetime(),

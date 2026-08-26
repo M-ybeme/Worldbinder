@@ -36,16 +36,30 @@ const SORT_OPTIONS = [
 
 const MANAGEMENT_ROLES = new Set(['owner', 'gm', 'editor'])
 
+const DEFAULT_SORT = 'updatedAt' as const
+
 export function WorldListPage() {
   const { campaign } = useCampaignOutletContext()
   const [entityType, setEntityType] = useState('')
   const [tag, setTag] = useState('')
   const [search, setSearch] = useState('')
   const [visibility, setVisibility] = useState('')
-  const [sortBy, setSortBy] = useState<'updatedAt' | 'name'>('updatedAt')
+  const [sortBy, setSortBy] = useState<'updatedAt' | 'name'>(DEFAULT_SORT)
   const [favoritesOnly, setFavoritesOnly] = useState(false)
   const [quickCreateOpen, setQuickCreateOpen] = useState(false)
   const canCreate = MANAGEMENT_ROLES.has(campaign.role)
+
+  const hasActiveFilters =
+    !!entityType || !!tag || !!search || !!visibility || sortBy !== DEFAULT_SORT || favoritesOnly
+
+  function clearFilters() {
+    setEntityType('')
+    setTag('')
+    setSearch('')
+    setVisibility('')
+    setSortBy(DEFAULT_SORT)
+    setFavoritesOnly(false)
+  }
 
   const entitiesQuery = useEntitiesQuery(campaign.id, {
     entityType: (entityType || undefined) as never,
@@ -113,14 +127,35 @@ export function WorldListPage() {
           checked={favoritesOnly}
           onChange={(e) => setFavoritesOnly(e.target.checked)}
         />
+        {hasActiveFilters && (
+          <Button variant="secondary" onClick={clearFilters}>
+            Clear filters
+          </Button>
+        )}
       </div>
+
+      {!entitiesQuery.isLoading && !entitiesQuery.isError && (
+        <p className="wb-world-filters__count">
+          {entitiesQuery.data?.length ?? 0}{' '}
+          {entitiesQuery.data?.length === 1 ? 'entity' : 'entities'}
+        </p>
+      )}
 
       {entitiesQuery.isLoading && <LoadingState label="Loading entities…" />}
       {entitiesQuery.isError && (
         <ErrorState message={entitiesQuery.error.message} onRetry={() => entitiesQuery.refetch()} />
       )}
       {!entitiesQuery.isLoading && !entitiesQuery.isError && entitiesQuery.data?.length === 0 && (
-        <EmptyState message="No entities yet." />
+        <EmptyState
+          message={hasActiveFilters ? 'No entities match your filters.' : 'No entities yet.'}
+          action={
+            hasActiveFilters ? (
+              <Button variant="secondary" onClick={clearFilters}>
+                Clear filters
+              </Button>
+            ) : undefined
+          }
+        />
       )}
 
       {!entitiesQuery.isLoading && !entitiesQuery.isError && !!entitiesQuery.data?.length && (

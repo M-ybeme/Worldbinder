@@ -6,6 +6,7 @@ import { PlotThreadsModule } from '../plot-threads/plot-threads.module';
 import { RelationshipsModule } from '../relationships/relationships.module';
 import { RevisionRecorderModule } from '../revisions/revision-recorder.module';
 import { SessionsModule } from '../sessions/sessions.module';
+import { TagsModule } from '../tags/tags.module';
 import { EntitiesController } from './entities.controller';
 import { EntitiesService } from './entities.service';
 import { WikiLinksService } from './wiki-links.service';
@@ -19,6 +20,7 @@ import { WikiLinksService } from './wiki-links.service';
     PlotThreadsModule,
     RevisionRecorderModule,
     CampaignAuditModule,
+    TagsModule,
   ],
   controllers: [EntitiesController],
   providers: [EntitiesService, WikiLinksService],

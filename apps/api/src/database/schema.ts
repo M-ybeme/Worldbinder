@@ -1119,6 +1119,40 @@ export const timelineEventTags = pgTable(
   ],
 );
 
+export const sessionTags = pgTable(
+  'session_tags',
+  {
+    sessionId: uuid('session_id')
+      .notNull()
+      .references(() => sessions.id, { onDelete: 'cascade' }),
+    tagId: uuid('tag_id')
+      .notNull()
+      .references(() => tags.id, { onDelete: 'cascade' }),
+  },
+  (table) => [
+    unique().on(table.sessionId, table.tagId),
+    // TagsService resolves a tag by name then joins on tagId alone — same
+    // reverse-index reasoning as entityTags/timelineEventTags above.
+    index('session_tags_tag_id_idx').on(table.tagId),
+  ],
+);
+
+export const plotThreadTags = pgTable(
+  'plot_thread_tags',
+  {
+    plotThreadId: uuid('plot_thread_id')
+      .notNull()
+      .references(() => plotThreads.id, { onDelete: 'cascade' }),
+    tagId: uuid('tag_id')
+      .notNull()
+      .references(() => tags.id, { onDelete: 'cascade' }),
+  },
+  (table) => [
+    unique().on(table.plotThreadId, table.tagId),
+    index('plot_thread_tags_tag_id_idx').on(table.tagId),
+  ],
+);
+
 // Milestone 12 — Export and Import. Job-tracking tables, not part of the
 // roadmap's literal §9 schema list (which only specifies the archive
 // *format*, §17) — same "necessary but undocumented" position

@@ -147,6 +147,13 @@ export const router = createBrowserRouter([
                       })),
                   },
                   {
+                    path: 'tags',
+                    lazy: () =>
+                      import('../features/tags/pages/TagManagementPage').then((m) => ({
+                        Component: m.TagManagementPage,
+                      })),
+                  },
+                  {
                     path: 'members',
                     lazy: () =>
                       import('../features/membership/pages/MembersPage').then((m) => ({

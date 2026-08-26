@@ -84,3 +84,4 @@ export type {
   ImportReport,
   PresignedImportUploadResponse,
 } from './imports.js'
+export type { CampaignTagSummary } from './tags.js'

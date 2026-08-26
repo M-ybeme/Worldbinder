@@ -53,6 +53,7 @@ import {
   buildWeightedTsvector,
   extractPlainText,
 } from '../search/search-vector.util';
+import { TagsService } from '../tags/tags.service';
 
 type SessionRow = typeof sessions.$inferSelect;
 type EntityRow = typeof entities.$inferSelect;
@@ -75,6 +76,7 @@ export class SessionsService {
     private readonly plotThreads: PlotThreadsService,
     private readonly revisionRecorder: RevisionRecorderService,
     private readonly audit: CampaignAuditService,
+    private readonly tagsService: TagsService,
   ) {}
 
   async create(
@@ -156,6 +158,14 @@ export class SessionsService {
           input.plotThreadChanges,
         );
       }
+      if (input.tags) {
+        await this.tagsService.syncSessionTags(
+          tx,
+          campaignId,
+          row.id,
+          input.tags,
+        );
+      }
 
       const joinState = await this.getSessionJoinState(tx, row.id);
       await this.revisionRecorder.recordRevision(tx, {
@@ -194,7 +204,12 @@ export class SessionsService {
       .where(and(...conditions))
       .orderBy(sql`${sessions.sessionNumber} desc`);
 
-    return rows.map((row) => this.toSummary(row));
+    const tagsBySessionId = await this.tagsService.getSessionTags(
+      rows.map((row) => row.id),
+    );
+    return rows.map((row) =>
+      this.toSummary(row, tagsBySessionId.get(row.id) ?? []),
+    );
   }
 
   async getById(
@@ -352,6 +367,14 @@ export class SessionsService {
           sessionId,
           existing.sessionNumber,
           input.plotThreadChanges,
+        );
+      }
+      if (input.tags !== undefined) {
+        await this.tagsService.syncSessionTags(
+          tx,
+          campaignId,
+          sessionId,
+          input.tags,
         );
       }
 
@@ -602,9 +625,15 @@ export class SessionsService {
       byId.set(row.session.id, row.session);
     }
 
-    return Array.from(byId.values())
-      .sort((a, b) => b.sessionNumber - a.sessionNumber)
-      .map((row) => this.toSummary(row));
+    const sessionRows = Array.from(byId.values()).sort(
+      (a, b) => b.sessionNumber - a.sessionNumber,
+    );
+    const tagsBySessionId = await this.tagsService.getSessionTags(
+      sessionRows.map((row) => row.id),
+    );
+    return sessionRows.map((row) =>
+      this.toSummary(row, tagsBySessionId.get(row.id) ?? []),
+    );
   }
 
   private async nextSessionNumber(
@@ -917,7 +946,10 @@ export class SessionsService {
     }
   }
 
-  private toSummary(row: SessionRow): CampaignSessionSummary {
+  private toSummary(
+    row: SessionRow,
+    tagNames: string[] = [],
+  ): CampaignSessionSummary {
     return {
       id: row.id,
       campaignId: row.campaignId,
@@ -929,6 +961,7 @@ export class SessionsService {
       worldStartDateJson: row.worldStartDateJson as WorldDate | null,
       worldEndDateJson: row.worldEndDateJson as WorldDate | null,
       visibility: row.visibility,
+      tags: tagNames,
       createdAt: row.createdAt.toISOString(),
       updatedAt: row.updatedAt.toISOString(),
     };
@@ -998,9 +1031,11 @@ export class SessionsService {
       row.id,
       membership,
     );
+    const tagNames =
+      (await this.tagsService.getSessionTags([row.id])).get(row.id) ?? [];
 
     return {
-      ...this.toSummary(row),
+      ...this.toSummary(row, tagNames),
       recapContentJson: row.recapContentJson as TiptapDoc | null,
       ...(canViewGm
         ? {

@@ -709,6 +709,11 @@ function toThreadSummary(
         }
       : null,
     neglected,
+    // Cheap dashboard-widget embed, not the full computed value — same
+    // simplification `listForSession`/`listForEntity` already use for this
+    // exact field, avoiding a per-row tag query for a widget that doesn't
+    // render tags.
+    tags: [],
     createdAt: thread.createdAt.toISOString(),
     updatedAt: thread.updatedAt.toISOString(),
   };
@@ -728,6 +733,8 @@ function toSessionSummary(session: SessionRow): CampaignSessionSummary {
     worldEndDateJson:
       session.worldEndDateJson as CampaignSessionSummary['worldEndDateJson'],
     visibility: session.visibility,
+    // Same dashboard-widget simplification as toThreadSummary's tags above.
+    tags: [],
     createdAt: session.createdAt.toISOString(),
     updatedAt: session.updatedAt.toISOString(),
   };

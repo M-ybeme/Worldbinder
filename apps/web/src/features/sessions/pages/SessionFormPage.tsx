@@ -11,6 +11,7 @@ import {
   FormMessage,
   LoadingState,
   Select,
+  TagInput,
   TextField,
 } from '@worldbinder/ui'
 import { useEffect, useRef, useState } from 'react'
@@ -28,6 +29,7 @@ import {
   structuredToWorldDate,
   worldDateToStructured,
 } from '../../calendar/lib/structuredDate'
+import { useCampaignTagsQuery } from '../../tags/hooks/useTags'
 import * as sessionsApi from '../api/sessionsApi'
 import { useSessionQuery } from '../hooks/useSessions'
 
@@ -49,6 +51,7 @@ export function SessionFormPage() {
 
   const sessionQuery = useSessionQuery(campaign.id, sessionId)
   const membersQuery = useMembersQuery(campaign.id)
+  const campaignTagsQuery = useCampaignTagsQuery(campaign.id)
 
   const canSetGmContent = campaign.role === 'owner' || campaign.role === 'gm'
   const calendarConfig = campaign.calendarConfigJson ?? DEFAULT_CALENDAR_CONFIG
@@ -64,6 +67,7 @@ export function SessionFormPage() {
   const [featuredEntityIds, setFeaturedEntityIds] = useState<string[]>([])
   const [locationEntityIds, setLocationEntityIds] = useState<string[]>([])
   const [plotThreadChanges, setPlotThreadChanges] = useState<PlotThreadChangeInput[]>([])
+  const [tags, setTags] = useState<string[]>([])
   const [updatedAt, setUpdatedAt] = useState<string | null>(null)
   const [draftBanner, setDraftBanner] = useState<ResourceDraft | null>(null)
 
@@ -89,6 +93,7 @@ export function SessionFormPage() {
         action: change.action,
       })),
     )
+    setTags(session.tags)
     setUpdatedAt(session.updatedAt)
     hydratedRef.current = true
   }, [sessionQuery.data])
@@ -125,6 +130,7 @@ export function SessionFormPage() {
       featuredEntityIds,
       locationEntityIds,
       plotThreadChanges,
+      tags,
     }
   }
 
@@ -159,6 +165,7 @@ export function SessionFormPage() {
     featuredEntityIds,
     locationEntityIds,
     plotThreadChanges,
+    tags,
   ])
 
   useEffect(() => {
@@ -187,6 +194,7 @@ export function SessionFormPage() {
     if (Array.isArray(data.featuredEntityIds)) setFeaturedEntityIds(data.featuredEntityIds)
     if (Array.isArray(data.locationEntityIds)) setLocationEntityIds(data.locationEntityIds)
     if (Array.isArray(data.plotThreadChanges)) setPlotThreadChanges(data.plotThreadChanges)
+    if (Array.isArray(data.tags)) setTags(data.tags)
     setDraftBanner(null)
   }
 
@@ -345,6 +353,13 @@ export function SessionFormPage() {
           campaignId={campaign.id}
           value={plotThreadChanges}
           onChange={setPlotThreadChanges}
+        />
+
+        <TagInput
+          label="Tags"
+          value={tags}
+          onChange={setTags}
+          suggestions={campaignTagsQuery.data?.map((t) => t.name)}
         />
       </form>
     </section>

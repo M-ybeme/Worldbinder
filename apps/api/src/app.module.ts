@@ -29,6 +29,7 @@ import { RelationshipsModule } from './relationships/relationships.module';
 import { RevisionsModule } from './revisions/revisions.module';
 import { SearchModule } from './search/search.module';
 import { SessionsModule } from './sessions/sessions.module';
+import { TagsModule } from './tags/tags.module';
 import { TimelineModule } from './timeline/timeline.module';
 
 @Module({
@@ -64,6 +65,7 @@ import { TimelineModule } from './timeline/timeline.module';
     MembershipModule,
     CampaignsModule,
     RelationshipsModule,
+    TagsModule,
     PlotThreadsModule,
     SessionsModule,
     EntitiesModule,

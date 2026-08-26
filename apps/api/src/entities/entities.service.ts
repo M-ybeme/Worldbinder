@@ -52,6 +52,7 @@ import {
 } from '../search/search-vector.util';
 import { PlotThreadsService } from '../plot-threads/plot-threads.service';
 import { SessionsService } from '../sessions/sessions.service';
+import { TagsService } from '../tags/tags.service';
 import { WikiLinksService } from './wiki-links.service';
 
 type EntityRow = typeof entities.$inferSelect;
@@ -67,6 +68,7 @@ export class EntitiesService {
     private readonly plotThreads: PlotThreadsService,
     private readonly revisionRecorder: RevisionRecorderService,
     private readonly audit: CampaignAuditService,
+    private readonly tagsService: TagsService,
   ) {}
 
   async create(
@@ -114,7 +116,12 @@ export class EntitiesService {
       if (!row) throw new Error('Failed to create entity');
 
       if (input.tags && input.tags.length > 0) {
-        await syncTags(tx, campaignId, row.id, input.tags);
+        await this.tagsService.syncEntityTags(
+          tx,
+          campaignId,
+          row.id,
+          input.tags,
+        );
       }
 
       if (input.publicContentJson !== undefined) {
@@ -185,7 +192,7 @@ export class EntitiesService {
       );
 
     if (query.tag) {
-      const normalized = normalizeTagName(query.tag);
+      const normalized = this.tagsService.normalizeTagName(query.tag);
       const taggedRows = await this.db
         .select({ entityId: entityTags.entityId })
         .from(entityTags)
@@ -386,7 +393,12 @@ export class EntitiesService {
       if (!row) throw new NotFoundException('Entity not found');
 
       if (input.tags !== undefined) {
-        await syncTags(tx, campaignId, entityId, input.tags);
+        await this.tagsService.syncEntityTags(
+          tx,
+          campaignId,
+          entityId,
+          input.tags,
+        );
       }
 
       if (input.publicContentJson !== undefined) {
@@ -728,54 +740,4 @@ function slugify(input: string): string {
     .trim()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
-}
-
-function normalizeTagName(name: string): string {
-  return name.trim().toLowerCase().replace(/\s+/g, ' ');
-}
-
-/** Full-replace sync: the form always submits the complete current tag
- * list, not a diff, so drop existing links and re-link rather than diffing. */
-async function syncTags(
-  tx: Database,
-  campaignId: string,
-  entityId: string,
-  tagNames: string[],
-): Promise<void> {
-  const uniqueNames = Array.from(
-    new Set(tagNames.map((name) => name.trim()).filter(Boolean)),
-  );
-
-  await tx.delete(entityTags).where(eq(entityTags.entityId, entityId));
-
-  if (uniqueNames.length === 0) return;
-
-  const tagIds: string[] = [];
-  for (const name of uniqueNames) {
-    const normalizedName = normalizeTagName(name);
-    const [existingTag] = await tx
-      .select({ id: tags.id })
-      .from(tags)
-      .where(
-        and(
-          eq(tags.campaignId, campaignId),
-          eq(tags.normalizedName, normalizedName),
-        ),
-      );
-
-    if (existingTag) {
-      tagIds.push(existingTag.id);
-    } else {
-      const [created] = await tx
-        .insert(tags)
-        .values({ campaignId, name, normalizedName })
-        .returning({ id: tags.id });
-      if (!created) throw new Error('Failed to create tag');
-      tagIds.push(created.id);
-    }
-  }
-
-  await tx
-    .insert(entityTags)
-    .values(tagIds.map((tagId) => ({ entityId, tagId })));
 }

@@ -4,6 +4,7 @@
    button chrome. */
 
 .wb-tag-input {
+  position: relative;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -12,6 +13,14 @@
   border: 1px solid var(--wb-border-default);
   border-radius: var(--wb-radius-sm);
   background: var(--wb-field-bg);
+}
+
+/* Reuses Combobox's .wb-combobox__listbox/.wb-combobox__option classes
+   (imported via Combobox.css) for the tag-suggestions dropdown — same
+   visual language, no separate autocomplete styling invented. */
+.wb-tag-input__suggestions {
+  left: -1px;
+  right: -1px;
 }
 
 .wb-tag-input:focus-within {

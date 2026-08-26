@@ -16,12 +16,34 @@
 }
 
 /* WorldListPage only — its filter row, previously unstyled: the filter
-   fields had no gap between them. */
+   fields had no gap between them and had no consistent width, so the row
+   reflowed unpredictably as filter values changed length. */
 .wb-world-filters {
   display: flex;
   flex-wrap: wrap;
+  align-items: flex-end;
   gap: var(--wb-space-4);
   margin: var(--wb-space-4) 0;
+}
+
+.wb-world-filters > * {
+  flex: 1 1 160px;
+  min-width: 160px;
+}
+
+/* The Favorites checkbox and Clear-filters button aren't fields — sizing
+   them like the Selects/TextFields above would stretch a checkbox label
+   or a button across 160px of empty space for no reason. */
+.wb-world-filters > .wb-checkbox,
+.wb-world-filters > .wb-button {
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.wb-world-filters__count {
+  margin: 0 0 var(--wb-space-2);
+  font-size: var(--wb-text-sm);
+  color: var(--wb-text-muted);
 }
 
 /* WorldListPage's entity results, rendered via CardGrid — replaced the

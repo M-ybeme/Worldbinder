@@ -42,6 +42,7 @@ import {
   buildWeightedTsvector,
   extractPlainText,
 } from '../search/search-vector.util';
+import { TagsService } from '../tags/tags.service';
 
 type TimelineEventRow = typeof timelineEvents.$inferSelect;
 type EntityRow = typeof entities.$inferSelect;
@@ -66,6 +67,7 @@ export class TimelineService {
     @Inject(DRIZZLE) private readonly db: Database,
     private readonly policy: CampaignPolicyService,
     private readonly audit: CampaignAuditService,
+    private readonly tagsService: TagsService,
   ) {}
 
   async create(
@@ -114,7 +116,12 @@ export class TimelineService {
         await this.syncSessions(tx, campaignId, row.id, input.sessionIds);
       }
       if (input.tags) {
-        await this.syncTags(tx, campaignId, row.id, input.tags);
+        await this.tagsService.syncTimelineEventTags(
+          tx,
+          campaignId,
+          row.id,
+          input.tags,
+        );
       }
 
       return row.id;
@@ -167,7 +174,10 @@ export class TimelineService {
         .where(
           and(
             eq(tags.campaignId, campaignId),
-            eq(tags.normalizedName, normalizeTagName(query.tag)),
+            eq(
+              tags.normalizedName,
+              this.tagsService.normalizeTagName(query.tag),
+            ),
           ),
         );
       idFilter = intersectFilter(
@@ -270,7 +280,12 @@ export class TimelineService {
         await this.syncSessions(tx, campaignId, eventId, input.sessionIds);
       }
       if (input.tags !== undefined) {
-        await this.syncTags(tx, campaignId, eventId, input.tags);
+        await this.tagsService.syncTimelineEventTags(
+          tx,
+          campaignId,
+          eventId,
+          input.tags,
+        );
       }
     });
 
@@ -425,54 +440,6 @@ export class TimelineService {
       .values(uniqueIds.map((sessionId) => ({ timelineEventId, sessionId })));
   }
 
-  /** Full-replace sync, same shape as `EntitiesService`'s `syncTags` —
-   * duplicated rather than shared, consistent with this codebase's
-   * existing per-module mapping/sync-function precedent. */
-  private async syncTags(
-    tx: Database,
-    campaignId: string,
-    timelineEventId: string,
-    tagNames: string[],
-  ): Promise<void> {
-    const uniqueNames = Array.from(
-      new Set(tagNames.map((name) => name.trim()).filter(Boolean)),
-    );
-
-    await tx
-      .delete(timelineEventTags)
-      .where(eq(timelineEventTags.timelineEventId, timelineEventId));
-    if (uniqueNames.length === 0) return;
-
-    const tagIds: string[] = [];
-    for (const name of uniqueNames) {
-      const normalizedName = normalizeTagName(name);
-      const [existingTag] = await tx
-        .select({ id: tags.id })
-        .from(tags)
-        .where(
-          and(
-            eq(tags.campaignId, campaignId),
-            eq(tags.normalizedName, normalizedName),
-          ),
-        );
-
-      if (existingTag) {
-        tagIds.push(existingTag.id);
-      } else {
-        const [created] = await tx
-          .insert(tags)
-          .values({ campaignId, name, normalizedName })
-          .returning({ id: tags.id });
-        if (!created) throw new Error('Failed to create tag');
-        tagIds.push(created.id);
-      }
-    }
-
-    await tx
-      .insert(timelineEventTags)
-      .values(tagIds.map((tagId) => ({ timelineEventId, tagId })));
-  }
-
   private async requireEvent(
     campaignId: string,
     eventId: string,
@@ -595,10 +562,6 @@ function intersectFilter(
   return new Set([...current].filter((id) => next.has(id)));
 }
 
-function normalizeTagName(name: string): string {
-  return name.trim().toLowerCase().replace(/\s+/g, ' ');
-}
-
 /** Undated events (no `startDateJson`) always sort after every dated
  * event, ordered among themselves by creation order — the "Undated"
  * section. Dated events sort by calendar ordinal (`compareTimelineDates`). */
@@ -684,6 +647,8 @@ function toSessionSummary(session: SessionRow): CampaignSessionSummary {
     worldEndDateJson:
       session.worldEndDateJson as CampaignSessionSummary['worldEndDateJson'],
     visibility: session.visibility,
+    // Same "panel doesn't render them" simplification as toEntitySummary.
+    tags: [],
     createdAt: session.createdAt.toISOString(),
     updatedAt: session.updatedAt.toISOString(),
   };

@@ -170,6 +170,11 @@ export function CampaignSettingsPage() {
         <Link to={`/app/campaign/${campaign.id}/audit`}>View campaign activity</Link>
       </p>
 
+      <h2>Tags</h2>
+      <p>
+        <Link to={`/app/campaign/${campaign.id}/tags`}>Manage tags</Link>
+      </p>
+
       <h2>Import / Export</h2>
       <p>
         <Link to={`/app/campaign/${campaign.id}/import-export`}>Export this campaign</Link>

@@ -23,6 +23,7 @@ export interface CampaignSessionSummary {
   worldStartDateJson: WorldDate | null
   worldEndDateJson: WorldDate | null
   visibility: EntityVisibility
+  tags: string[]
   createdAt: string
   updatedAt: string
 }

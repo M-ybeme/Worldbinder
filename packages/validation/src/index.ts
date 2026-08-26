@@ -1,6 +1,9 @@
 export { cursorPaginationQuerySchema } from './pagination.js'
 export type { CursorPaginationQuery } from './pagination.js'
 
+export { mergeTagSchema, renameTagSchema } from './tags.js'
+export type { MergeTagInput, RenameTagInput } from './tags.js'
+
 export {
   calendarConfigSchema,
   calendarMonthSchema,

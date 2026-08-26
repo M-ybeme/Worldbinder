@@ -6,6 +6,7 @@ import {
   FormMessage,
   LoadingState,
   Select,
+  TagInput,
   TextField,
   Textarea,
 } from '@worldbinder/ui'
@@ -16,6 +17,7 @@ import { clearDraft, loadDraft, type ResourceDraft } from '../../../lib/draftDb'
 import { useAutosave } from '../../../lib/useAutosave'
 import { EntityMultiPicker } from '../../entities/components/EntityMultiPicker'
 import { RichTextEditor } from '../../entities/components/RichTextEditor'
+import { useCampaignTagsQuery } from '../../tags/hooks/useTags'
 import * as plotThreadsApi from '../api/plotThreadsApi'
 import { usePlotThreadQuery } from '../hooks/usePlotThreads'
 
@@ -43,6 +45,7 @@ export function ThreadFormPage() {
   const { campaign } = useCampaignOutletContext()
 
   const threadQuery = usePlotThreadQuery(campaign.id, threadId)
+  const campaignTagsQuery = useCampaignTagsQuery(campaign.id)
 
   const canSetGmContent = campaign.role === 'owner' || campaign.role === 'gm'
 
@@ -53,6 +56,7 @@ export function ThreadFormPage() {
   const [publicContent, setPublicContent] = useState<TiptapDoc | null>(null)
   const [gmContent, setGmContent] = useState<TiptapDoc | null>(null)
   const [entityIds, setEntityIds] = useState<string[]>([])
+  const [tags, setTags] = useState<string[]>([])
   const [updatedAt, setUpdatedAt] = useState<string | null>(null)
   const [draftBanner, setDraftBanner] = useState<ResourceDraft | null>(null)
 
@@ -69,6 +73,7 @@ export function ThreadFormPage() {
     setPublicContent(thread.publicContentJson)
     if ('gmContentJson' in thread) setGmContent(thread.gmContentJson ?? null)
     setEntityIds(thread.entities.map((e) => e.id))
+    setTags(thread.tags)
     setUpdatedAt(thread.updatedAt)
     hydratedRef.current = true
   }, [threadQuery.data])
@@ -93,6 +98,7 @@ export function ThreadFormPage() {
       publicContentJson: publicContent ?? undefined,
       ...(canSetGmContent ? { gmContentJson: gmContent } : {}),
       entityIds,
+      tags,
     }
   }
 
@@ -114,7 +120,7 @@ export function ThreadFormPage() {
     }
     autosave.scheduleSave(buildUpdateInput())
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [updatedAt, title, summary, visibility, importance, publicContent, gmContent, entityIds])
+  }, [updatedAt, title, summary, visibility, importance, publicContent, gmContent, entityIds, tags])
 
   useEffect(() => {
     const needsWarning =
@@ -137,6 +143,7 @@ export function ThreadFormPage() {
     if (data.publicContentJson) setPublicContent(data.publicContentJson as TiptapDoc)
     if ('gmContentJson' in data) setGmContent((data.gmContentJson as TiptapDoc) ?? null)
     if (Array.isArray(data.entityIds)) setEntityIds(data.entityIds)
+    if (Array.isArray(data.tags)) setTags(data.tags)
     setDraftBanner(null)
   }
 
@@ -257,6 +264,13 @@ export function ThreadFormPage() {
           label="Related entities"
           value={entityIds}
           onChange={setEntityIds}
+        />
+
+        <TagInput
+          label="Tags"
+          value={tags}
+          onChange={setTags}
+          suggestions={campaignTagsQuery.data?.map((t) => t.name)}
         />
       </form>
     </section>

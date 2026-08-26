@@ -37,6 +37,39 @@ Every push to `main` should add an entry here. This is meant to be an honest rec
 
 `pnpm typecheck` / `pnpm lint` / `pnpm build` clean; full web vitest (11/11) green. Real browser: created a timeline event via quick-create from both the Timeline list and the `/new` deep link, confirmed navigation to the new event's detail page and that Escape on the deep-link route returns to the list; edited a session and a plot thread and confirmed autosave fires (the "Saved" banner appears, no explicit save button remains) for both.
 
+## [0.32.0] - 2026-08-25
+
+**UX-audit remediation, Phase 3: World list filter bar polish.** See `docs/product/WORLDBINDER_DESIGN_SYSTEM.md` §47.
+
+### Added
+
+- `WorldListPage`'s filter bar now shows a result count ("3 entities"/"1 entity") and a "Clear filters" button (shown only when a filter is non-default), both in the filter bar itself and inline in the empty state when a filter combination matches nothing.
+- The empty state now distinguishes "No entities match your filters." (a filter is active and excludes everything) from the pre-existing "No entities yet." (a genuinely empty campaign, still with its "New entity" CTA).
+
+### Changed
+
+- Filter controls (`Search`/`Type`/`Tag`/`Visibility`/`Sort`) now share a consistent minimum width via `.wb-world-filters > *` instead of reflowing unpredictably as values changed length; the Favorites checkbox and Clear-filters button are excluded from that sizing since stretching a checkbox label or a button to a field's width made no sense.
+
+### Verification
+
+`pnpm typecheck` / `pnpm lint` / `pnpm build` clean; full web vitest (11/11) green. Real browser: confirmed the count updates as filters change, a filter combination matching zero entities shows the new message plus a working inline Clear-filters button (round-tripped back to "1 entity" after clearing), and the filter row's widths stay consistent.
+
+## [0.33.0] - 2026-08-26
+
+**UX-audit remediation, Phase 4: tags as a real system.** The largest phase — a schema migration plus a consolidation refactor. See `docs/product/WORLDBINDER_DESIGN_SYSTEM.md` §47.
+
+### Added
+
+- **New `apps/api/src/tags/` module** (`TagsService` + thin `TagsController`), consolidating the `normalizeTagName`/`syncTags` logic that used to be independently copy-pasted in `entities.service.ts` and `timeline.service.ts` into one shared service both now inject. The 4 resource-specific `sync*Tags` methods (entity/timeline-event/session/plot-thread) delegate to one generic private helper parameterized by the junction table and its columns, rather than 4 fully duplicated copies.
+- **Sessions and plot threads can now be tagged**, matching entities and timeline events. New `session_tags`/`plot_thread_tags` junction tables (structural mirror of `entity_tags`/`timeline_event_tags` — composite unique + reverse index), `tags: string[]` added to `CampaignSessionSummary`/`PlotThreadSummary` contracts, and a `TagInput` field wired into `SessionFormPage`/`ThreadFormPage`, participating in the same autosave those forms already got in Phase 2.
+- **`TagInput` (`packages/ui`) gained an optional `suggestions` prop** — a filtered autocomplete dropdown (reusing `Combobox`'s listbox styling) that shows existing campaign tags as you type, so tagging converges on a shared vocabulary instead of near-duplicate tags (`"npc"` vs `"NPC"` vs `"npcs"`).
+- **New `GET /campaigns/:id/tags`** (list, with usage counts merged in JS across all 4 taggable resource types — matching `search.service.ts`'s own "merge in JS, not a cross-table UNION" idiom), **`PATCH /campaigns/:id/tags/:tagId`** (rename, rejecting a name collision with a 409), and **`POST /campaigns/:id/tags/:tagId/merge`** (merge one tag into another, re-pointing every junction-table row and dropping the source tag; a resource that already carries both tags keeps just the target, no unique-constraint violation). Listing is open to every campaign member; rename/merge require the same management roles that can edit tagged resources.
+- **New `apps/web/src/features/tags/` feature** — a `TagManagementPage` (list with usage counts, inline rename, merge with a `ConfirmDialog` confirmation) reachable via a link from campaign Settings, not a new top-level nav item.
+
+### Verification
+
+Migration reviewed before applying (exactly 2 new tables, no drops/renames) via the `db-migration` skill. `pnpm typecheck` / `pnpm lint` / `pnpm build` clean across the whole workspace. Backend: new `tags.service.spec.ts` (pure `normalizeTagName` cases) plus a new `tags.e2e-spec.ts` (8 integration tests: merged usage counts across all 4 resource types, player read access, rename with collision rejection, merge including the already-both-tagged-resource edge case, and permission checks) — all passing, alongside the full existing `entities`/`timeline`/`sessions`/`plot-threads`/`campaigns` integration suites re-run clean (confirming the tag-sync consolidation didn't change existing entity/timeline-event tagging behavior). Full API jest suite 99/99, full integration suite 198/203 (the 5 failures are pre-existing, non-deterministic flakiness in `attachments`/`maps`/`exports`/`imports` — modules this phase never touched; confirmed by re-running them in isolation and seeing different failure counts each time). Web vitest 11/11. Real browser: tagged a session, confirmed autosave; tagged a plot thread and confirmed the autocomplete dropdown suggested the session's tag; visited the tag management page and confirmed the tag showed "2 uses," then renamed and merged tags and confirmed both propagated correctly.
+
 ## hotfix - 2026-08-26
 
 **Production outage: every entity detail page 500'd after the Phase 7/favorites deploy.** Railway auto-deploys API code on push to `master`, but does not auto-run Drizzle migrations against production — the `entity_favorites` migration (part of 0.29.0) had only ever been applied locally. `EntitiesService.getById()`'s new favorite-status lookup then failed on every request with `relation "entity_favorites" does not exist`, breaking every entity detail page (including selecting any map pin, which navigates there) — reported live by the user via a production screenshot.

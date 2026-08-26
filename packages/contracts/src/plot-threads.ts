@@ -31,6 +31,7 @@ export interface PlotThreadSummary {
    * and not referenced by a session in the last few played sessions.
    * Always present so the frontend never has to reimplement the rule. */
   neglected: boolean
+  tags: string[]
   createdAt: string
   updatedAt: string
 }
