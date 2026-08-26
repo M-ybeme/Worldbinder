@@ -4,6 +4,12 @@ All notable changes to this project are documented here. Format follows [Keep a 
 
 Every push to `main` should add an entry here. This is meant to be an honest record of what actually shipped, not a restatement of the roadmap's aspirations — if something was attempted and reverted, or shipped partially, say so.
 
+## hotfix - 2026-08-26
+
+**Production outage: every entity detail page 500'd after the Phase 7/favorites deploy.** Railway auto-deploys API code on push to `master`, but does not auto-run Drizzle migrations against production — the `entity_favorites` migration (part of 0.29.0) had only ever been applied locally. `EntitiesService.getById()`'s new favorite-status lookup then failed on every request with `relation "entity_favorites" does not exist`, breaking every entity detail page (including selecting any map pin, which navigates there) — reported live by the user via a production screenshot.
+
+No code change: applied the already-committed migration to production Postgres via `railway connect Postgres --tunnel-only` + `pnpm exec tsx src/database/migrate.ts` with `DATABASE_URL` pointed at the tunnel. Verified fixed by reproducing the exact failing flow against the live site (3 different entities, 0 `5xx` responses), not just by trusting "Migrations complete."
+
 ## [0.29.0] - 2026-08-24
 
 **UI/UX rework, Phases 4-7: World list card grid, entity-detail/dashboard rail rework, quick-create flow, favorites — final phases, rollout complete.** Continues from Phases 1-3 (0.26.0–0.28.0). See `docs/product/WORLDBINDER_DESIGN_SYSTEM.md` §46.
