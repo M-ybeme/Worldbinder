@@ -1,5 +1,9 @@
 import type { EntityVisibility, TiptapDoc } from '@worldbinder/contracts'
-import { DEFAULT_CALENDAR_CONFIG, type PlotThreadChangeInput } from '@worldbinder/validation'
+import {
+  DEFAULT_CALENDAR_CONFIG,
+  type PlotThreadChangeInput,
+  type UpdateSessionInput,
+} from '@worldbinder/validation'
 import {
   Button,
   Checkbox,
@@ -9,9 +13,11 @@ import {
   Select,
   TextField,
 } from '@worldbinder/ui'
-import { useEffect, useState, type FormEvent } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useEffect, useRef, useState } from 'react'
+import { useParams } from 'react-router-dom'
 import { useCampaignOutletContext } from '../../campaigns/hooks/useCampaignContext'
+import { clearDraft, loadDraft, type ResourceDraft } from '../../../lib/draftDb'
+import { useAutosave } from '../../../lib/useAutosave'
 import { useMembersQuery } from '../../membership/hooks/useCampaignMembers'
 import { EntityMultiPicker } from '../../entities/components/EntityMultiPicker'
 import { RichTextEditor } from '../../entities/components/RichTextEditor'
@@ -22,27 +28,27 @@ import {
   structuredToWorldDate,
   worldDateToStructured,
 } from '../../calendar/lib/structuredDate'
-import {
-  useCreateSessionMutation,
-  useSessionQuery,
-  useUpdateSessionMutation,
-} from '../hooks/useSessions'
+import * as sessionsApi from '../api/sessionsApi'
+import { useSessionQuery } from '../hooks/useSessions'
 
 const VISIBILITY_OPTIONS = [
   { value: 'public', label: 'Public — visible to all campaign members' },
   { value: 'gm_only', label: 'GM only — hidden from players' },
 ]
 
+const SAVE_STATUS_TEXT: Record<string, string> = {
+  saving: 'Saving…',
+  saved: 'Saved',
+  offline: 'Offline — changes saved locally',
+  error: 'Save failed — changes saved locally',
+}
+
 export function SessionFormPage() {
   const { sessionId } = useParams<{ sessionId: string }>()
-  const isEditMode = !!sessionId
   const { campaign } = useCampaignOutletContext()
-  const navigate = useNavigate()
 
   const sessionQuery = useSessionQuery(campaign.id, sessionId)
   const membersQuery = useMembersQuery(campaign.id)
-  const createSession = useCreateSessionMutation(campaign.id)
-  const updateSession = useUpdateSessionMutation(campaign.id, sessionId ?? '')
 
   const canSetGmContent = campaign.role === 'owner' || campaign.role === 'gm'
   const calendarConfig = campaign.calendarConfigJson ?? DEFAULT_CALENDAR_CONFIG
@@ -59,9 +65,13 @@ export function SessionFormPage() {
   const [locationEntityIds, setLocationEntityIds] = useState<string[]>([])
   const [plotThreadChanges, setPlotThreadChanges] = useState<PlotThreadChangeInput[]>([])
   const [updatedAt, setUpdatedAt] = useState<string | null>(null)
+  const [draftBanner, setDraftBanner] = useState<ResourceDraft | null>(null)
+
+  const hydratedRef = useRef(false)
+  const skipNextAutosaveRef = useRef(true)
 
   useEffect(() => {
-    if (!isEditMode || !sessionQuery.data) return
+    if (!sessionQuery.data || hydratedRef.current) return
     const session = sessionQuery.data
     setTitle(session.title)
     setVisibility(session.visibility)
@@ -80,7 +90,18 @@ export function SessionFormPage() {
       })),
     )
     setUpdatedAt(session.updatedAt)
-  }, [isEditMode, sessionQuery.data])
+    hydratedRef.current = true
+  }, [sessionQuery.data])
+
+  useEffect(() => {
+    let cancelled = false
+    void loadDraft('session', campaign.id, sessionId ?? null).then((draft) => {
+      if (!cancelled && draft) setDraftBanner(draft)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [campaign.id, sessionId])
 
   function toggleParticipant(campaignMemberId: string) {
     setParticipantIds((ids) =>
@@ -90,49 +111,87 @@ export function SessionFormPage() {
     )
   }
 
-  async function onSubmit(event: FormEvent) {
-    event.preventDefault()
-    if (!title.trim()) return
-
+  function buildUpdateInput(updatedAtOverride?: string): UpdateSessionInput {
     const worldStartDateJson = structuredToWorldDate(worldStartDate)
-
-    if (isEditMode) {
-      if (!updatedAt) return
-      const result = await updateSession.mutateAsync({
-        updatedAt,
-        title,
-        visibility,
-        scheduledAt: scheduledAt ? new Date(scheduledAt).toISOString() : null,
-        worldStartDateJson: worldStartDateJson ?? null,
-        recapContentJson: recapContent ?? undefined,
-        ...(canSetGmContent
-          ? { plannedContentJson: plannedContent, gmContentJson: gmContent }
-          : {}),
-        participantIds,
-        featuredEntityIds,
-        locationEntityIds,
-        plotThreadChanges,
-      })
-      navigate(`/app/campaign/${campaign.id}/sessions/${result.id}`)
-      return
-    }
-
-    const result = await createSession.mutateAsync({
+    return {
+      updatedAt: updatedAtOverride ?? updatedAt ?? '',
       title,
       visibility,
-      scheduledAt: scheduledAt ? new Date(scheduledAt).toISOString() : undefined,
-      worldStartDateJson,
-      ...(canSetGmContent ? { plannedContentJson: plannedContent ?? undefined } : {}),
+      scheduledAt: scheduledAt ? new Date(scheduledAt).toISOString() : null,
+      worldStartDateJson: worldStartDateJson ?? null,
+      recapContentJson: recapContent ?? undefined,
+      ...(canSetGmContent ? { plannedContentJson: plannedContent, gmContentJson: gmContent } : {}),
       participantIds,
       featuredEntityIds,
       locationEntityIds,
       plotThreadChanges,
-    })
-    navigate(`/app/campaign/${campaign.id}/sessions/${result.id}`)
+    }
   }
 
-  if (isEditMode && sessionQuery.isLoading) return <LoadingState label="Loading session…" />
-  if (isEditMode && sessionQuery.isError) {
+  const autosave = useAutosave({
+    resourceType: 'session',
+    campaignId: campaign.id,
+    resourceId: sessionId ?? '',
+    enabled: hydratedRef.current,
+    save: (input: UpdateSessionInput) =>
+      sessionsApi.updateSession(campaign.id, sessionId ?? '', input),
+    onSaved: (session) => setUpdatedAt(session.updatedAt),
+  })
+
+  useEffect(() => {
+    if (!hydratedRef.current || !updatedAt) return
+    if (skipNextAutosaveRef.current) {
+      skipNextAutosaveRef.current = false
+      return
+    }
+    autosave.scheduleSave(buildUpdateInput())
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    updatedAt,
+    title,
+    visibility,
+    scheduledAt,
+    worldStartDate,
+    plannedContent,
+    recapContent,
+    gmContent,
+    participantIds,
+    featuredEntityIds,
+    locationEntityIds,
+    plotThreadChanges,
+  ])
+
+  useEffect(() => {
+    const needsWarning =
+      autosave.status === 'offline' || autosave.status === 'error' || autosave.status === 'conflict'
+    if (!needsWarning) return
+    const handler = (event: BeforeUnloadEvent) => {
+      event.preventDefault()
+      event.returnValue = ''
+    }
+    window.addEventListener('beforeunload', handler)
+    return () => window.removeEventListener('beforeunload', handler)
+  }, [autosave.status])
+
+  function applyDraft(draft: ResourceDraft) {
+    const data = draft.data as Partial<UpdateSessionInput>
+    if (typeof data.title === 'string') setTitle(data.title)
+    if (data.visibility) setVisibility(data.visibility)
+    if (data.scheduledAt) setScheduledAt(data.scheduledAt.slice(0, 16))
+    if (data.worldStartDateJson) setWorldStartDate(worldDateToStructured(data.worldStartDateJson))
+    if (data.recapContentJson) setRecapContent(data.recapContentJson as TiptapDoc)
+    if ('plannedContentJson' in data)
+      setPlannedContent((data.plannedContentJson as TiptapDoc) ?? null)
+    if ('gmContentJson' in data) setGmContent((data.gmContentJson as TiptapDoc) ?? null)
+    if (Array.isArray(data.participantIds)) setParticipantIds(data.participantIds)
+    if (Array.isArray(data.featuredEntityIds)) setFeaturedEntityIds(data.featuredEntityIds)
+    if (Array.isArray(data.locationEntityIds)) setLocationEntityIds(data.locationEntityIds)
+    if (Array.isArray(data.plotThreadChanges)) setPlotThreadChanges(data.plotThreadChanges)
+    setDraftBanner(null)
+  }
+
+  if (sessionQuery.isLoading) return <LoadingState label="Loading session…" />
+  if (sessionQuery.isError) {
     return (
       <ErrorState
         message="This session could not be loaded."
@@ -141,13 +200,64 @@ export function SessionFormPage() {
     )
   }
 
-  const mutation = isEditMode ? updateSession : createSession
-
   return (
     <section>
-      <h1>{isEditMode ? 'Edit session' : 'New session'}</h1>
+      <h1>Edit session</h1>
 
-      <form className="wb-form" onSubmit={(e) => void onSubmit(e)} noValidate>
+      {draftBanner && (
+        <div className="wb-banner">
+          <p>
+            You have unsaved local changes from {new Date(draftBanner.savedAt).toLocaleString()}.
+          </p>
+          <Button onClick={() => applyDraft(draftBanner)}>Restore</Button>
+          <Button
+            variant="secondary"
+            onClick={() => {
+              void clearDraft('session', campaign.id, sessionId ?? null)
+              setDraftBanner(null)
+            }}
+          >
+            Discard
+          </Button>
+        </div>
+      )}
+
+      {autosave.status !== 'idle' && autosave.status !== 'conflict' && (
+        <FormMessage
+          tone={autosave.status === 'saved' ? 'success' : 'error'}
+          message={SAVE_STATUS_TEXT[autosave.status] ?? null}
+        />
+      )}
+
+      {autosave.status === 'conflict' && (
+        <div className="wb-banner wb-banner--warning">
+          <p>This session was changed elsewhere.</p>
+          <Button
+            onClick={() => {
+              hydratedRef.current = false
+              autosave.resolveConflict()
+              void sessionQuery.refetch()
+            }}
+          >
+            Reload
+          </Button>
+          <Button
+            variant="secondary"
+            onClick={() => {
+              const fresh = autosave.conflictUpdatedAt
+              if (fresh) {
+                setUpdatedAt(fresh)
+                autosave.scheduleSave(buildUpdateInput(fresh))
+              }
+              autosave.resolveConflict()
+            }}
+          >
+            Keep my changes
+          </Button>
+        </div>
+      )}
+
+      <form className="wb-form" onSubmit={(e) => e.preventDefault()} noValidate>
         <TextField
           id="title"
           label="Title"
@@ -236,11 +346,6 @@ export function SessionFormPage() {
           value={plotThreadChanges}
           onChange={setPlotThreadChanges}
         />
-
-        <FormMessage message={mutation.error?.message} />
-        <Button type="submit" disabled={mutation.isPending}>
-          {mutation.isPending ? 'Saving…' : isEditMode ? 'Save changes' : 'Create session'}
-        </Button>
       </form>
     </section>
   )

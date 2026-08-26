@@ -10,14 +10,15 @@ import {
   TextField,
   Textarea,
 } from '@worldbinder/ui'
-import { useEffect, useRef, useState, type FormEvent } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useEffect, useRef, useState } from 'react'
+import { useParams } from 'react-router-dom'
 import { useCampaignOutletContext } from '../../campaigns/hooks/useCampaignContext'
+import { clearDraft, loadDraft, type ResourceDraft } from '../../../lib/draftDb'
+import { useAutosave } from '../../../lib/useAutosave'
+import * as entitiesApi from '../api/entitiesApi'
 import { EntityMetadataFields } from '../components/EntityMetadataFields'
 import { RichTextEditor } from '../components/RichTextEditor'
-import { useCreateEntityMutation, useEntityQuery } from '../hooks/useEntities'
-import { useEntityAutosave } from '../hooks/useEntityAutosave'
-import { clearDraft, loadDraft, saveDraft, type EntityDraft } from '../lib/draftDb'
+import { useEntityQuery } from '../hooks/useEntities'
 
 const ENTITY_TYPE_OPTIONS: { value: EntityType; label: string }[] = [
   { value: 'character', label: 'Character' },
@@ -53,12 +54,9 @@ const SAVE_STATUS_TEXT: Record<string, string> = {
 
 export function EntityFormPage() {
   const { entityId } = useParams<{ entityId: string }>()
-  const isEditMode = !!entityId
   const { campaign } = useCampaignOutletContext()
-  const navigate = useNavigate()
 
   const entityQuery = useEntityQuery(campaign.id, entityId)
-  const createEntity = useCreateEntityMutation(campaign.id)
 
   const [entityType, setEntityType] = useState<EntityType>('character')
   const [name, setName] = useState('')
@@ -73,15 +71,13 @@ export function EntityFormPage() {
   const [updatedAt, setUpdatedAt] = useState<string | null>(null)
   const [hasGmAccess, setHasGmAccess] = useState(false)
   const [formKey, setFormKey] = useState(0)
-  const [draftBanner, setDraftBanner] = useState<EntityDraft | null>(null)
+  const [draftBanner, setDraftBanner] = useState<ResourceDraft | null>(null)
 
   const hydratedRef = useRef(false)
   const skipNextAutosaveRef = useRef(true)
 
-  const canSetGmContentOnCreate = campaign.role === 'owner' || campaign.role === 'gm'
-
   useEffect(() => {
-    if (!isEditMode || !entityQuery.data || hydratedRef.current) return
+    if (!entityQuery.data || hydratedRef.current) return
     const entity = entityQuery.data
     setEntityType(entity.entityType)
     setName(entity.name)
@@ -99,11 +95,11 @@ export function EntityFormPage() {
     }
     hydratedRef.current = true
     setFormKey((key) => key + 1)
-  }, [isEditMode, entityQuery.data])
+  }, [entityQuery.data])
 
   useEffect(() => {
     let cancelled = false
-    void loadDraft(campaign.id, entityId ?? null).then((draft) => {
+    void loadDraft('entity', campaign.id, entityId ?? null).then((draft) => {
       if (!cancelled && draft) setDraftBanner(draft)
     })
     return () => {
@@ -127,15 +123,18 @@ export function EntityFormPage() {
     } as UpdateEntityInput
   }
 
-  const autosave = useEntityAutosave({
+  const autosave = useAutosave({
+    resourceType: 'entity',
     campaignId: campaign.id,
-    entityId: entityId ?? '',
-    enabled: isEditMode && hydratedRef.current,
+    resourceId: entityId ?? '',
+    enabled: hydratedRef.current,
+    save: (input: UpdateEntityInput) =>
+      entitiesApi.updateEntity(campaign.id, entityId ?? '', input),
     onSaved: (entity) => setUpdatedAt(entity.updatedAt),
   })
 
   useEffect(() => {
-    if (!isEditMode || !hydratedRef.current || !updatedAt) return
+    if (!hydratedRef.current || !updatedAt) return
     if (skipNextAutosaveRef.current) {
       skipNextAutosaveRef.current = false
       return
@@ -143,40 +142,7 @@ export function EntityFormPage() {
     autosave.scheduleSave(buildUpdateInput())
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    isEditMode,
     updatedAt,
-    entityType,
-    name,
-    summary,
-    tags,
-    aliases,
-    visibility,
-    status,
-    metadata,
-    publicContent,
-    gmContent,
-  ])
-
-  useEffect(() => {
-    if (isEditMode) return
-    const timer = setTimeout(() => {
-      void saveDraft(campaign.id, null, {
-        entityType,
-        name,
-        summary,
-        tags,
-        aliases,
-        visibility,
-        status,
-        metadata,
-        publicContentJson: publicContent,
-        gmContentJson: gmContent,
-      })
-    }, 2000)
-    return () => clearTimeout(timer)
-  }, [
-    isEditMode,
-    campaign.id,
     entityType,
     name,
     summary,
@@ -201,7 +167,7 @@ export function EntityFormPage() {
     return () => window.removeEventListener('beforeunload', handler)
   }, [autosave.status])
 
-  function applyDraft(draft: EntityDraft) {
+  function applyDraft(draft: ResourceDraft) {
     const data = draft.data as Partial<UpdateEntityInput> & {
       metadata?: Record<string, unknown>
     }
@@ -218,39 +184,16 @@ export function EntityFormPage() {
     setDraftBanner(null)
   }
 
-  async function onCreateSubmit(event: FormEvent) {
-    event.preventDefault()
-    if (!name.trim()) return
-
-    const result = await createEntity.mutateAsync({
-      entityType,
-      name,
-      summary: summary || undefined,
-      tags,
-      aliases,
-      visibility,
-      status,
-      metadata,
-      publicContentJson: publicContent ?? undefined,
-      ...(canSetGmContentOnCreate ? { gmContentJson: gmContent } : {}),
-    } as never)
-
-    await clearDraft(campaign.id, null)
-    navigate(`/app/campaign/${campaign.id}/world/${result.id}`)
-  }
-
-  if (isEditMode && entityQuery.isLoading) return <LoadingState label="Loading entity…" />
-  if (isEditMode && entityQuery.isError) {
+  if (entityQuery.isLoading) return <LoadingState label="Loading entity…" />
+  if (entityQuery.isError) {
     return (
       <ErrorState message="This entry could not be loaded." onRetry={() => entityQuery.refetch()} />
     )
   }
 
-  const showGmContent = isEditMode ? hasGmAccess : canSetGmContentOnCreate
-
   return (
     <section>
-      <h1>{isEditMode ? 'Edit entity' : 'New entity'}</h1>
+      <h1>Edit entity</h1>
 
       {draftBanner && (
         <div className="wb-banner">
@@ -261,7 +204,7 @@ export function EntityFormPage() {
           <Button
             variant="secondary"
             onClick={() => {
-              void clearDraft(campaign.id, entityId ?? null)
+              void clearDraft('entity', campaign.id, entityId ?? null)
               setDraftBanner(null)
             }}
           >
@@ -270,14 +213,14 @@ export function EntityFormPage() {
         </div>
       )}
 
-      {isEditMode && autosave.status !== 'idle' && autosave.status !== 'conflict' && (
+      {autosave.status !== 'idle' && autosave.status !== 'conflict' && (
         <FormMessage
           tone={autosave.status === 'saved' ? 'success' : 'error'}
           message={SAVE_STATUS_TEXT[autosave.status] ?? null}
         />
       )}
 
-      {isEditMode && autosave.status === 'conflict' && (
+      {autosave.status === 'conflict' && (
         <div className="wb-banner wb-banner--warning">
           <p>This entry was changed elsewhere.</p>
           <Button
@@ -305,17 +248,13 @@ export function EntityFormPage() {
         </div>
       )}
 
-      <form
-        className="wb-form"
-        onSubmit={isEditMode ? (e) => e.preventDefault() : onCreateSubmit}
-        noValidate
-      >
+      <form className="wb-form" onSubmit={(e) => e.preventDefault()} noValidate>
         <Select
           id="entityType"
           label="Type"
           options={ENTITY_TYPE_OPTIONS}
           value={entityType}
-          disabled={isEditMode}
+          disabled
           onChange={(e) => setEntityType(e.target.value as EntityType)}
         />
         <TextField
@@ -363,7 +302,7 @@ export function EntityFormPage() {
           campaignId={campaign.id}
         />
 
-        {showGmContent && (
+        {hasGmAccess && (
           <RichTextEditor
             key={`gm-${formKey}`}
             label="GM-only content"
@@ -371,15 +310,6 @@ export function EntityFormPage() {
             onChange={setGmContent}
             campaignId={campaign.id}
           />
-        )}
-
-        {!isEditMode && (
-          <>
-            <FormMessage message={createEntity.error?.message} />
-            <Button type="submit" disabled={createEntity.isPending}>
-              {createEntity.isPending ? 'Creating…' : 'Create entity'}
-            </Button>
-          </>
         )}
       </form>
     </section>

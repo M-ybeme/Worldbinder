@@ -60,6 +60,13 @@
   gap: var(--wb-space-2);
 }
 
+.wb-search-result__icon {
+  display: inline-flex;
+  align-items: center;
+  color: var(--wb-text-muted);
+  flex-shrink: 0;
+}
+
 .wb-search-result__title {
   font-weight: 500;
 }

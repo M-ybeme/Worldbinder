@@ -1,10 +1,11 @@
 import type { TimelineEventSummary } from '@worldbinder/contracts'
 import { DEFAULT_CALENDAR_CONFIG } from '@worldbinder/validation'
-import { Badge, EmptyState, ErrorState, LoadingState, TextField } from '@worldbinder/ui'
+import { Badge, Button, EmptyState, ErrorState, LoadingState, TextField } from '@worldbinder/ui'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useCampaignOutletContext } from '../../campaigns/hooks/useCampaignContext'
 import { EntityPicker } from '../../entities/components/EntityPicker'
+import { QuickCreateTimelineEventDialog } from '../components/QuickCreateTimelineEventDialog'
 import { formatTimelineDate } from '../lib/formatTimelineDate'
 import { useTimelineEventsQuery } from '../hooks/useTimeline'
 
@@ -32,8 +33,10 @@ function EventRow({ campaignId, event }: { campaignId: string; event: TimelineEv
 export function TimelineListPage() {
   const { campaign } = useCampaignOutletContext()
   const canCreate = MANAGEMENT_ROLES.has(campaign.role)
+  const calendarConfig = campaign.calendarConfigJson ?? DEFAULT_CALENDAR_CONFIG
   const [entityId, setEntityId] = useState<string | undefined>()
   const [tag, setTag] = useState('')
+  const [quickCreateOpen, setQuickCreateOpen] = useState(false)
 
   const eventsQuery = useTimelineEventsQuery(campaign.id, {
     entityId,
@@ -47,15 +50,15 @@ export function TimelineListPage() {
     <section>
       <header className="wb-world-header">
         <h1>Timeline</h1>
-        {canCreate && (
-          <Link
-            className="wb-button wb-button--primary"
-            to={`/app/campaign/${campaign.id}/world/timeline/new`}
-          >
-            New timeline event
-          </Link>
-        )}
+        {canCreate && <Button onClick={() => setQuickCreateOpen(true)}>New timeline event</Button>}
       </header>
+
+      <QuickCreateTimelineEventDialog
+        campaignId={campaign.id}
+        calendarConfig={calendarConfig}
+        open={quickCreateOpen}
+        onClose={() => setQuickCreateOpen(false)}
+      />
 
       <div className="wb-form" style={{ marginBottom: '1rem' }}>
         <EntityPicker

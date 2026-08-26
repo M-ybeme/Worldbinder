@@ -25,7 +25,7 @@ import {
   useEntitySessionsQuery,
   useToggleFavoriteMutation,
 } from '../hooks/useEntities'
-import { clearDraft } from '../lib/draftDb'
+import { clearDraft } from '../../../lib/draftDb'
 import { EntityTypeIcon } from '../lib/entityTypeIcons'
 import '../entities.css'
 
@@ -124,7 +124,7 @@ export function EntityDetailPage() {
           setConfirmDeleteOpen(false)
           deleteEntity.mutate(entity.id, {
             onSuccess: () => {
-              void clearDraft(campaign.id, entity.id)
+              void clearDraft('entity', campaign.id, entity.id)
               navigate(`/app/campaign/${campaign.id}/world`)
             },
           })
@@ -144,12 +144,14 @@ export function EntityDetailPage() {
           />
 
           {'gmContentJson' in entity && (
-            <RichTextEditor
-              label="GM-only content"
-              content={entity.gmContentJson ?? null}
-              editable={false}
-              campaignId={campaign.id}
-            />
+            <div className="wb-gm-content">
+              <RichTextEditor
+                label="GM-only content"
+                content={entity.gmContentJson ?? null}
+                editable={false}
+                campaignId={campaign.id}
+              />
+            </div>
           )}
         </div>
 

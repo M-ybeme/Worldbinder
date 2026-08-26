@@ -134,7 +134,7 @@ export function RelatedContentPanel({
                 onClick={() => void handleCreate()}
                 disabled={!relationshipTypeId || !targetEntityId || createRelationship.isPending}
               >
-                Save
+                {createRelationship.isPending ? 'Saving…' : 'Save'}
               </Button>
               <Button variant="secondary" onClick={() => setShowForm(false)}>
                 Cancel

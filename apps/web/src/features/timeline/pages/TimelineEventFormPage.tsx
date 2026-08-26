@@ -22,11 +22,7 @@ import {
   timelineDateToStructured,
 } from '../../calendar/lib/structuredDate'
 import { SessionMultiPicker } from '../components/SessionMultiPicker'
-import {
-  useCreateTimelineEventMutation,
-  useTimelineEventQuery,
-  useUpdateTimelineEventMutation,
-} from '../hooks/useTimeline'
+import { useTimelineEventQuery, useUpdateTimelineEventMutation } from '../hooks/useTimeline'
 
 const VISIBILITY_OPTIONS = [
   { value: 'public', label: 'Public — visible to all campaign members' },
@@ -35,13 +31,11 @@ const VISIBILITY_OPTIONS = [
 
 export function TimelineEventFormPage() {
   const { eventId } = useParams<{ eventId: string }>()
-  const isEditMode = !!eventId
   const { campaign } = useCampaignOutletContext()
   const navigate = useNavigate()
   const calendarConfig = campaign.calendarConfigJson ?? DEFAULT_CALENDAR_CONFIG
 
   const eventQuery = useTimelineEventQuery(campaign.id, eventId)
-  const createEvent = useCreateTimelineEventMutation(campaign.id)
   const updateEvent = useUpdateTimelineEventMutation(campaign.id, eventId ?? '')
 
   const [title, setTitle] = useState('')
@@ -55,7 +49,7 @@ export function TimelineEventFormPage() {
   const [tags, setTags] = useState<string[]>([])
 
   useEffect(() => {
-    if (!isEditMode || !eventQuery.data) return
+    if (!eventQuery.data) return
     const event = eventQuery.data
     setTitle(event.title)
     setSummary(event.summary ?? '')
@@ -66,7 +60,7 @@ export function TimelineEventFormPage() {
     setEntityIds(event.entities.map((e) => e.id))
     setSessionIds(event.sessions.map((s) => s.id))
     setTags(event.tags)
-  }, [isEditMode, eventQuery.data])
+  }, [eventQuery.data])
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault()
@@ -88,18 +82,12 @@ export function TimelineEventFormPage() {
       tags,
     }
 
-    if (isEditMode) {
-      const result = await updateEvent.mutateAsync(payload)
-      navigate(`/app/campaign/${campaign.id}/world/timeline/${result.id}`)
-      return
-    }
-
-    const result = await createEvent.mutateAsync(payload)
+    const result = await updateEvent.mutateAsync(payload)
     navigate(`/app/campaign/${campaign.id}/world/timeline/${result.id}`)
   }
 
-  if (isEditMode && eventQuery.isLoading) return <LoadingState label="Loading timeline event…" />
-  if (isEditMode && eventQuery.isError) {
+  if (eventQuery.isLoading) return <LoadingState label="Loading timeline event…" />
+  if (eventQuery.isError) {
     return (
       <ErrorState
         message="This timeline event could not be loaded."
@@ -108,11 +96,9 @@ export function TimelineEventFormPage() {
     )
   }
 
-  const mutation = isEditMode ? updateEvent : createEvent
-
   return (
     <section>
-      <h1>{isEditMode ? 'Edit timeline event' : 'New timeline event'}</h1>
+      <h1>Edit timeline event</h1>
 
       <form className="wb-form" onSubmit={(e) => void onSubmit(e)} noValidate>
         <TextField
@@ -170,9 +156,9 @@ export function TimelineEventFormPage() {
         />
         <TagInput label="Tags" value={tags} onChange={setTags} />
 
-        <FormMessage message={mutation.error?.message} />
-        <Button type="submit" disabled={mutation.isPending}>
-          {mutation.isPending ? 'Saving…' : isEditMode ? 'Save changes' : 'Create event'}
+        <FormMessage message={updateEvent.error?.message} />
+        <Button type="submit" disabled={updateEvent.isPending}>
+          {updateEvent.isPending ? 'Saving…' : 'Save changes'}
         </Button>
       </form>
     </section>

@@ -2302,7 +2302,7 @@ no schema, no API, no UI.
   a reverse index on `entityId`). Migration reviewed before applying —
   exactly one new table, no drops/renames — via the `db-migration` skill.
 - `EntitiesService.favorite()`/`unfavorite()` (new `POST`/`DELETE
-  :entityId/favorite`), each guarded by the same `requireVisibleEntity`
+:entityId/favorite`), each guarded by the same `requireVisibleEntity`
   check the other entity-scoped endpoints use. Favoriting is
   idempotent (`onConflictDoNothing`), and so is unfavoriting (a plain
   delete matching zero rows isn't an error) — confirmed with a real
@@ -2340,3 +2340,167 @@ the new filter/star UI elements.
 the root-cause width fix, the motion pass, entity type icons, the World
 list card grid, the entity-detail/dashboard rail rework, the quick-create
 flow, and favorites.
+
+## 47. UX-Audit Remediation
+
+With §46's rework shipped, a 3-agent UX audit was run across Creation,
+Study, Search, Organization, and Review flows — not a feature checklist,
+but a judgment pass on how each flow actually feels to use end to end.
+It surfaced ~30 concrete findings; the user agreed with all of them and
+this is the resulting fix effort, tracked here as its own section. Four
+scope decisions were made up front: autosave for sessions/plot threads
+brought in line with entities; favorites get both a dashboard widget and
+a search-ranking boost; tags extend to sessions and plot threads; the
+timeline gets a date-grouped list (using the campaign's own custom
+calendar), not a full visual timeline. Three more were resolved before
+implementation started: "Neglected"/"Dormant" naming unifies to
+"Neglected"; timeline filter-by-plot-thread is deferred (no schema
+relation exists between timeline events and plot threads today — real
+scope growth, not a confirmed finding); session completion gets a
+read-only recap of already-logged thread changes, not an editable one.
+
+### Phase 1 — Quick, contained fixes (shipped)
+
+Seven independent, low-risk findings, fixed together as one phase.
+
+- **GM-only content had no visual distinction from public content** —
+  confirmed both `EntityDetailPage` and `SessionDetailPage` rendered
+  GM-only `RichTextEditor` blocks with identical styling to public ones,
+  distinguished only by a small field label. Fixed with a new
+  `.wb-gm-content` wrapper class (`apps/web/src/styles/global.css`,
+  alongside the other cross-feature shared utility classes already
+  documented there) — a warning-tinted background + left border,
+  reusing the same `--wb-warning` token the "GM only" `Badge` already
+  uses, rather than inventing a new color. Color-only treatment,
+  deliberately not adding an icon — the existing warning color already
+  reads clearly against the surrounding content in a live check.
+- **Search results had no type icons at all** — `SearchResult`
+  (`packages/contracts/src/search.ts`) gained an optional `entityType`
+  field, following the exact precedent `CampaignActivityItem.entityType`
+  already set; `SearchService.searchEntities()` threads it through
+  (it already selected `entities.entityType` for the subtitle label, so
+  this was a one-line addition, not a new query). `SearchResultRow` now
+  renders `EntityTypeIcon` for entity results and the same
+  `CalendarDays`/`GitBranch` icons `CampaignOverviewPage`'s
+  `ActivityIcon` uses for session/plot-thread results, plus new icons
+  (`CalendarClock`, `Link2`) for timeline events and relationships —
+  the two resource types search returns that the dashboard activity
+  feed doesn't.
+- **The Audit log was unreachable from any nav** — both
+  `CampaignLayout.tsx` and `AuditPage.tsx` used to document, in their
+  own comments, a deliberate decision to keep it Settings-link-only.
+  That decision is reversed: `CampaignLayout`'s secondary nav gained an
+  "Audit Log" link, gated by the same `canManage` check as Settings.
+  Both comments were updated so they stop asserting a decision that's
+  no longer true — the alternative (a nav change with a stale comment
+  next to it explaining why the nav should stay as it wasn't) would
+  have been worse than either the old or new behavior.
+- **Attachment uploads had no loading feedback**, unlike the identical
+  presign→PUT→complete→poll→link pipeline on `MapFormPage`, which
+  already showed `<LoadingState label="Uploading and processing…" />`.
+  `AttachmentsPanel` gained the same line.
+- **Relationship creation's Save button never showed a pending state**,
+  unlike every other submit button in the app. Fixed with the same
+  `{mutation.isPending ? 'Saving…' : 'Save'}` convention used
+  everywhere else.
+- **"Neglected" vs. "Dormant Threads Requiring Attention"** — the same
+  `thread.neglected`/`dashboard.neglectedThreads` boolean, two different
+  headings in two different places. Unified to "Neglected" /
+  "Neglected Threads" everywhere, matching the field's own name in code.
+- **Dead create-mode code in three form pages** — `EntityFormPage`,
+  `SessionFormPage`, `ThreadFormPage` all still had a full working
+  `!isEditMode` create branch (create mutation, disabled-on-create
+  ternaries, a conditional submit button), but §46 Phase 6 already
+  repointed every `*/new` route to a quick-create dialog, so these three
+  pages are only ever reached via `:id/edit` in practice. Removed the
+  dead branches from all three; `EntityFormPage` (the most entangled,
+  since its edit-mode logic shares state — `hydratedRef`,
+  `skipNextAutosaveRef`, the conflict-resolution banner — with what used
+  to be the create path) was done last and re-verified live afterward,
+  not just by typecheck. The entity form's create-mode-only 2-second
+  IndexedDB draft-save effect was removed entirely — edit mode's draft
+  persistence is already handled inside `useEntityAutosave` itself (it
+  writes to `draftDb` on any save failure), so this wasn't dual-purpose
+  code, it was two unrelated mechanisms that happened to share a file.
+
+**Verification:** `pnpm typecheck` / `pnpm lint` / `pnpm build` clean
+across the whole workspace; full web vitest (11/11) and the API's
+search-service jest suite (17/17) green. Real Playwright checks against
+a live dev stack (Postgres/Redis/MinIO/Mailpit via `pnpm infra:up`,
+seeded demo data): confirmed both GM-only content blocks render with the
+warning-tinted wrapper on an entity and a session; confirmed a search
+result for a character-type entity renders its `EntityTypeIcon`
+(matching "Character" subtitle); confirmed the Audit Log link renders in
+the sidebar for a GM; confirmed the entity edit page's autosave still
+round-trips correctly post-cleanup (edited the name field, confirmed the
+"Saved" banner and the change persisting after reload, then reverted and
+confirmed that persisted too); confirmed the plot thread edit page
+renders "Edit plot thread" (not the old conditional heading) and its
+"Save changes" button still successfully saves and navigates back to the
+thread detail page.
+
+### Phase 2 — Quick-create parity + generic autosave (shipped)
+
+- **Timeline events had no quick-create flow** — `world/timeline/new`
+  still routed straight to the full `TimelineEventFormPage`, unlike
+  entities/sessions/threads, which all got a quick-create dialog in
+  §46 Phase 6. Fixed with a new `QuickCreateTimelineEventDialog`
+  (`apps/web/src/features/timeline/components/`), mirroring
+  `QuickCreateEntityDialog`'s structure exactly, plus a new
+  `TimelineEventQuickCreateRoute` for the deep-linkable `/new` URL. The
+  dialog asks for title + an optional date (unlike sessions/threads'
+  title-only quick create) — a timeline event's whole point is usually
+  _when_ it happened, but undated is a first-class case (the "Undated"
+  section on `TimelineListPage`), so the date stays genuinely optional,
+  using the existing calendar-aware `StructuredDateEditor` rather than a
+  new lighter date input. `TimelineEventFormPage` is now edit-mode only,
+  same dead-branch cleanup already applied to the other three form pages
+  in Phase 1.
+- **Sessions and plot threads had no real autosave** — decision #1 from
+  the audit's follow-up questions was that they should match entities,
+  not just gain an unsaved-changes warning. The entity-only
+  `useEntityAutosave` hook (`apps/web/src/features/entities/hooks/`) and
+  its IndexedDB draft store (`entities/lib/draftDb.ts`) hardcoded
+  `entitiesApi.updateEntity`/`UpdateEntityInput`/`EntityDetail` and an
+  entity-only draft key — not directly reusable as-is. Generalized both:
+  - `apps/web/src/lib/useAutosave.ts` — the same debounce/save/
+    conflict-detection state machine, now parameterized by a `save`
+    function, a `resourceType`, and a `resourceId` instead of calling
+    the entities API directly. Confirmed safe to genericize the
+    409-conflict branch without per-resource special-casing:
+    `sessions.service.ts` and `plot-threads.service.ts` both already
+    implement the identical `assertNotStale()` →
+    `ConflictException({ currentUpdatedAt })` pattern entities use.
+  - `apps/web/src/lib/draftDb.ts` — the IndexedDB store, generalized
+    the same way: `EntityDraft` → `ResourceDraft` with a
+    `resourceType: 'entity' | 'session' | 'plot_thread'` field, the
+    draft key extended to `${resourceType}:${campaignId}:${resourceId
+?? 'new'}`. Store name and `idb` `openDB` version both kept
+    stable-but-bumped (1 → 2, `upgrade()` a no-op for existing rows) —
+    no destructive migration needed since IndexedDB is schemaless per
+    row; old entity-only-format keys are simply never looked up again
+    rather than migrated, a deliberate choice since they're pure local
+    cache with no server-side source of truth to reconcile against.
+  - **Why both halves, not just the debounce-and-PATCH half**: a
+    half-generalized autosave that dropped the offline-resilience half
+    (drafts surviving a failed save, restorable on next visit) wouldn't
+    have actually satisfied "real autosave, matching entities" — it
+    would have looked the same until the first offline edit or 409,
+    then silently behaved worse than entities. Generalizing the draft
+    store alongside the hook was what made the _decision_ true, not
+    just the common-case UI.
+  - `EntityFormPage` now consumes the promoted, generic hook/store
+    (thin call-site change, same behavior); `SessionFormPage`/
+    `ThreadFormPage` replaced their explicit "Save changes" button with
+    the same status/conflict/draft-restore banners `EntityFormPage`
+    already had. The old entity-specific hook and draft store were
+    deleted once nothing imported them.
+
+**Verification:** `pnpm typecheck` / `pnpm lint` / `pnpm build` clean;
+full web vitest (11/11) green. Real browser: created a timeline event
+via quick-create from both the Timeline list button and the `/new` deep
+link, confirmed both navigate to the new event's detail page and that
+Escape on the deep-link route returns to the Timeline list; edited a
+session and a plot thread, confirmed the debounced autosave fires (the
+"Saved" banner appears within ~2s of the last edit) with no explicit
+save button remaining on either form.

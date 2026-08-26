@@ -9,6 +9,7 @@ import {
   HelpCircle,
   LayoutDashboard,
   Map,
+  ScrollText,
   Search,
   Settings,
   User,
@@ -34,10 +35,6 @@ function navLinkClass({ isActive }: { isActive: boolean }): string {
  * for `/app/campaign/:id/*` routes, since sidebar content is inherently
  * campaign-scoped — the outer `App.tsx` shell (auth/account/status/help)
  * keeps its own lighter header, there being no campaign nav to show there.
- *
- * AuditPage is deliberately not in this nav — it's explicitly documented
- * (see AuditPage.tsx) as reached via a link from Settings, not the fixed
- * primary/secondary nav, matching the roadmap's own scope for it.
  */
 export function CampaignLayout() {
   const { campaign } = useCampaignOutletContext()
@@ -105,6 +102,12 @@ export function CampaignLayout() {
             <NavLink to={`/app/campaign/${campaign.id}/settings`} className={navLinkClass}>
               <Settings size={16} aria-hidden="true" />
               Settings
+            </NavLink>
+          )}
+          {canManage && (
+            <NavLink to={`/app/campaign/${campaign.id}/audit`} className={navLinkClass}>
+              <ScrollText size={16} aria-hidden="true" />
+              Audit Log
             </NavLink>
           )}
           <NavLink to={`/app/campaign/${campaign.id}/import-export`} className={navLinkClass}>

@@ -191,9 +191,11 @@ export const router = createBrowserRouter([
                   {
                     path: 'world/timeline/new',
                     lazy: () =>
-                      import('../features/timeline/pages/TimelineEventFormPage').then((m) => ({
-                        Component: m.TimelineEventFormPage,
-                      })),
+                      import('../features/timeline/pages/TimelineEventQuickCreateRoute').then(
+                        (m) => ({
+                          Component: m.TimelineEventQuickCreateRoute,
+                        }),
+                      ),
                   },
                   {
                     path: 'world/timeline/:eventId',

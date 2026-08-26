@@ -4,6 +4,39 @@ All notable changes to this project are documented here. Format follows [Keep a 
 
 Every push to `main` should add an entry here. This is meant to be an honest record of what actually shipped, not a restatement of the roadmap's aspirations — if something was attempted and reverted, or shipped partially, say so.
 
+## [0.30.0] - 2026-08-25
+
+**UX-audit remediation, Phase 1: quick contained fixes.** Follows a 5-category UX audit (Creation/Study/Search/Organization/Review) run against the just-shipped rework; this phase covers the 7 lowest-risk, most self-contained findings. See `docs/product/WORLDBINDER_DESIGN_SYSTEM.md` §47.
+
+### Added
+
+- **GM-only content is now visually distinct from public content**, not just labeled. A new `.wb-gm-content` wrapper (warning-tinted background + left border, reusing the same warning color the "GM only" `Badge` already uses) wraps every GM-only `RichTextEditor` block on `EntityDetailPage` and `SessionDetailPage`.
+- **Search results now show a type icon.** `SearchResult` gained an optional `entityType` field (mirroring `CampaignActivityItem.entityType`), populated by `SearchService.searchEntities()`. `SearchResultRow` renders `EntityTypeIcon` for entity results and the same session/plot-thread icons the dashboard activity feed already uses, plus new icons for timeline events and relationships.
+- **Audit Log is now reachable from the sidebar** (`CampaignLayout`'s secondary nav, gated by the same `canManage` check as Settings) instead of only via a link from Settings — reverses a decision both `CampaignLayout.tsx` and `AuditPage.tsx` used to document explicitly; both comments updated.
+- **Attachment uploads now show a loading state** (`AttachmentsPanel`) during the presign→PUT→complete→poll→link pipeline, matching `MapFormPage`'s existing identical-pipeline treatment.
+- **Relationship creation's Save button now shows a pending state** ("Saving…"), matching every other submit button's convention.
+
+### Changed
+
+- The "thread has gone quiet" naming split — "Neglected" on the Threads list, "Dormant Threads Requiring Attention" on the dashboard — is now "Neglected" everywhere.
+- **Dead create-mode code removed** from `EntityFormPage`, `SessionFormPage`, `ThreadFormPage`: all three are only ever reached via `:id/edit` since the prior rework's quick-create dialogs took over the `/new` routes. Each page is now edit-mode only — no behavior change for real usage, just removal of unreachable branches (unused create mutations, disabled-on-create ternaries, the entity form's create-mode 2s draft-save effect).
+
+## [0.31.0] - 2026-08-25
+
+**UX-audit remediation, Phase 2: quick-create parity + generic autosave.** See `docs/product/WORLDBINDER_DESIGN_SYSTEM.md` §47.
+
+### Added
+
+- **Timeline events get the same quick-create flow entities/sessions/threads already have.** New `QuickCreateTimelineEventDialog` (title + an optional calendar-aware date via the existing `StructuredDateEditor`) and `TimelineEventQuickCreateRoute`, mirroring `QuickCreateEntityDialog`/`EntityQuickCreateRoute`'s pattern exactly. `world/timeline/new` now opens the dialog instead of the full form; `TimelineListPage`'s "New timeline event" link is now a button. `TimelineEventFormPage` is edit-mode only from here on, same as the other three resource form pages.
+
+### Changed
+
+- **Sessions and plot threads now autosave, matching entities**, instead of an explicit "Save changes" button with no offline/conflict handling. The entity-only `useEntityAutosave` hook and its IndexedDB draft store (`entities/lib/draftDb.ts`) are promoted and generalized into `apps/web/src/lib/useAutosave.ts` and `apps/web/src/lib/draftDb.ts` — parameterized by a `save` function and a `resourceType` instead of hardcoding entity types. Both the debounced-PATCH half and the offline-resilience half (drafts persisted to IndexedDB on a failed save, restorable on next visit) now apply to sessions and plot threads identically to entities, not just the save-triggering behavior — confirmed safe because `sessions.service.ts` and `plot-threads.service.ts` already implement the identical `assertNotStale()` → `ConflictException({ currentUpdatedAt })` optimistic-concurrency pattern entities use, so the hook's 409-conflict branch needed no per-resource special-casing. `SessionFormPage`/`ThreadFormPage` gained the same status/conflict/draft-restore banners `EntityFormPage` already had.
+
+### Verification
+
+`pnpm typecheck` / `pnpm lint` / `pnpm build` clean; full web vitest (11/11) green. Real browser: created a timeline event via quick-create from both the Timeline list and the `/new` deep link, confirmed navigation to the new event's detail page and that Escape on the deep-link route returns to the list; edited a session and a plot thread and confirmed autosave fires (the "Saved" banner appears, no explicit save button remains) for both.
+
 ## hotfix - 2026-08-26
 
 **Production outage: every entity detail page 500'd after the Phase 7/favorites deploy.** Railway auto-deploys API code on push to `master`, but does not auto-run Drizzle migrations against production — the `entity_favorites` migration (part of 0.29.0) had only ever been applied locally. `EntitiesService.getById()`'s new favorite-status lookup then failed on every request with `relation "entity_favorites" does not exist`, breaking every entity detail page (including selecting any map pin, which navigates there) — reported live by the user via a production screenshot.

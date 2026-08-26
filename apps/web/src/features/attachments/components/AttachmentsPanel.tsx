@@ -143,6 +143,7 @@ export function AttachmentsPanel({
                 if (file) uploadAndLink.mutate(file)
               }}
             />
+            {uploadAndLink.isPending && <LoadingState label="Uploading and processing…" />}
 
             <Button variant="secondary" onClick={() => setShowPicker((v) => !v)}>
               {showPicker ? 'Hide existing attachments' : 'Attach an existing upload'}

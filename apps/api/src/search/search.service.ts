@@ -185,6 +185,7 @@ export class SearchService {
         id: row.id,
         title: row.name,
         subtitle: entityTypeLabel(row.entityType),
+        entityType: row.entityType,
         snippet: buildSnippetForTier(row.tier, q, [
           row.summary ?? '',
           bodyText,

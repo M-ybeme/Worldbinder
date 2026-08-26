@@ -1,3 +1,5 @@
+import type { EntityType } from './entities'
+
 export type SearchResourceType =
   'entity' | 'session' | 'plot_thread' | 'relationship' | 'timeline_event'
 
@@ -17,6 +19,10 @@ export interface SearchResult {
    * `entityType` ("Faction"), a session's number ("Session 4"), "Plot
    * Thread", or a relationship's forward label. */
   subtitle: string | null
+  /** Only set when resourceType is 'entity' — lets the frontend render a
+   * per-entity-type icon instead of a generic one, same as
+   * CampaignActivityItem.entityType. */
+  entityType?: EntityType
   snippet: SearchSnippet | null
   /** Ranking tier per roadmap §14.3 (1 = exact name … 7 = relationship
    * description match) — lower is better. Exposed mainly for debugging/

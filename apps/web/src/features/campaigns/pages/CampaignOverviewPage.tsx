@@ -149,7 +149,7 @@ export function CampaignOverviewPage() {
 
           {dashboard && dashboard.neglectedThreads.length > 0 && (
             <div className="wb-dashboard-widget">
-              <h2>Dormant Threads Requiring Attention</h2>
+              <h2>Neglected Threads</h2>
               <ul className="wb-relationship-list">
                 {dashboard.neglectedThreads.map((thread) => (
                   <li key={thread.id}>

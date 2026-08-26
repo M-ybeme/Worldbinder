@@ -196,20 +196,24 @@ export function SessionDetailPage() {
       />
 
       {'plannedContentJson' in session && (
-        <RichTextEditor
-          label="Planned content (GM only)"
-          content={session.plannedContentJson ?? null}
-          editable={false}
-          campaignId={campaign.id}
-        />
+        <div className="wb-gm-content">
+          <RichTextEditor
+            label="Planned content (GM only)"
+            content={session.plannedContentJson ?? null}
+            editable={false}
+            campaignId={campaign.id}
+          />
+        </div>
       )}
       {'gmContentJson' in session && (
-        <RichTextEditor
-          label="GM-only notes"
-          content={session.gmContentJson ?? null}
-          editable={false}
-          campaignId={campaign.id}
-        />
+        <div className="wb-gm-content">
+          <RichTextEditor
+            label="GM-only notes"
+            content={session.gmContentJson ?? null}
+            editable={false}
+            campaignId={campaign.id}
+          />
+        </div>
       )}
 
       <div className="wb-related-content">

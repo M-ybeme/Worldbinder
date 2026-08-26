@@ -19,8 +19,8 @@ const EVENT_LABELS: Record<CampaignAuditEventType, string> = {
 }
 
 /** Owner/gm-only campaign activity feed (backend enforces this too — see
- * `campaign-audit.controller.ts`). Not in the roadmap's fixed primary nav;
- * reached via a link from campaign Settings. */
+ * `campaign-audit.controller.ts`). Reachable from `CampaignLayout`'s
+ * secondary nav (gated by the same `canManage` check as Settings). */
 export function AuditPage() {
   const { campaign } = useCampaignOutletContext()
   const [page, setPage] = useState(1)
