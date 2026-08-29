@@ -1,5 +1,5 @@
 import type { CalendarConfig, WorldDate } from './calendar.js'
-import type { EntityType } from './entities.js'
+import type { EntitySummary, EntityType } from './entities.js'
 import type { PlotThreadSummary } from './plot-threads.js'
 import type { CampaignSessionSummary } from './sessions.js'
 
@@ -60,4 +60,9 @@ export interface CampaignDashboard {
   activeThreads: PlotThreadSummary[]
   neglectedThreads: PlotThreadSummary[]
   recentActivity: CampaignActivityItem[]
+  /** Most-recently-favorited first — the current member's own favorites,
+   * not shared across members. Empty array, not omitted, when the member
+   * has no favorites (same "always present" convention as the other
+   * dashboard arrays). */
+  favoriteEntities: EntitySummary[]
 }

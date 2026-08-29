@@ -189,6 +189,53 @@ describe('Search (e2e)', () => {
       );
     });
 
+    it('breaks a same-tier tie in favor of the favorited entity', async () => {
+      const { token, campaign } = await createOwnerAndCampaign(
+        'Favorite Tiebreak Campaign',
+      );
+      const notFavorited = await createEntity(token, campaign.id, {
+        name: 'Ashenfall',
+      });
+      const favorited = await createEntity(token, campaign.id, {
+        name: 'Ashenfall',
+      });
+
+      await request(app.getHttpServer())
+        .post(`/campaigns/${campaign.id}/entities/${favorited.id}/favorite`)
+        .set('Authorization', `Bearer ${token}`);
+
+      const result = await search(token, campaign.id, 'q=Ashenfall');
+      const ids = result.results.map((r) => r.id);
+      expect(ids.indexOf(favorited.id)).toBeLessThan(
+        ids.indexOf(notFavorited.id),
+      );
+    });
+
+    it('never lets a favorite outrank a strictly more relevant non-favorite match', async () => {
+      const { token, campaign } = await createOwnerAndCampaign(
+        'Favorite No Override Campaign',
+      );
+      const exactMatch = await createEntity(token, campaign.id, {
+        name: 'Ashen',
+      });
+      const weakerFavoritedMatch = await createEntity(token, campaign.id, {
+        name: 'Something Else',
+        summary: 'Mentions Ashen only in passing.',
+      });
+
+      await request(app.getHttpServer())
+        .post(
+          `/campaigns/${campaign.id}/entities/${weakerFavoritedMatch.id}/favorite`,
+        )
+        .set('Authorization', `Bearer ${token}`);
+
+      const result = await search(token, campaign.id, 'q=Ashen');
+      const ids = result.results.map((r) => r.id);
+      expect(ids.indexOf(exactMatch.id)).toBeLessThan(
+        ids.indexOf(weakerFavoritedMatch.id),
+      );
+    });
+
     it('matches an alias at the exact-alias tier', async () => {
       const { token, campaign } =
         await createOwnerAndCampaign('Alias Campaign');

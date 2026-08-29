@@ -12,6 +12,7 @@ import { alias } from 'drizzle-orm/pg-core';
 import { DRIZZLE, type Database } from '../database/database.module';
 import {
   entities,
+  entityFavorites,
   entityRelationships,
   plotThreads,
   relationshipTypes,
@@ -96,18 +97,41 @@ export class SearchService {
         : Promise.resolve([]),
     ]);
 
+    const favoriteEntityIds = await this.getFavoriteEntityIds(
+      membership.userId,
+    );
+    const isFavorite = (result: SearchResult): boolean =>
+      result.resourceType === 'entity' && favoriteEntityIds.has(result.id);
+
+    // Favorites break ties within a tier — never override it. This lets a
+    // favorite win against an equally-relevant result without ever
+    // burying a strictly more relevant non-favorite match, which would
+    // otherwise make search feel unpredictable.
     const merged = [
       ...entityResults,
       ...sessionResults,
       ...threadResults,
       ...relationshipResults,
       ...timelineEventResults,
-    ].sort((a, b) => a.tier - b.tier || b.score - a.score);
+    ].sort(
+      (a, b) =>
+        a.tier - b.tier ||
+        Number(isFavorite(b)) - Number(isFavorite(a)) ||
+        b.score - a.score,
+    );
 
     return {
       results: merged.slice(query.offset, query.offset + query.limit),
       total: merged.length,
     };
+  }
+
+  private async getFavoriteEntityIds(userId: string): Promise<Set<string>> {
+    const rows = await this.db
+      .select({ entityId: entityFavorites.entityId })
+      .from(entityFavorites)
+      .where(eq(entityFavorites.userId, userId));
+    return new Set(rows.map((row) => row.entityId));
   }
 
   private async searchEntities(

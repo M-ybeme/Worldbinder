@@ -2742,3 +2742,52 @@ opened "Complete session" and confirmed the recap read "Plot threads: 1
 introduced." directly above the date fields, and confirmed the
 consolidated "Plot Thread Changes" section renders the thread with its
 "Introduced" badge instead of the old 3-section layout.
+
+### Phase 8 — Favorites follow-through (shipped)
+
+Favorites (shipped in §46 Phase 7) only ever existed as a star toggle on
+the entity detail page and a "Favorites only" `WorldListPage` filter —
+this phase gives them the two remaining reaches the audit called for:
+dashboard visibility and a search boost.
+
+- **Dashboard widget**: `campaigns.service.ts`'s `getDashboard()`
+  already had `membership.userId` in scope (used elsewhere in the same
+  file), so the new favorited-entities query — joining `entityFavorites`
+  to `entities`, campaign- and visibility-scoped, ordered by
+  `entityFavorites.createdAt desc` (most-recently-_favorited_, a
+  deliberately different ordering than every other widget's own
+  `updatedAt` sort — "what did I care about lately" is a different
+  question than "what changed lately") — slots in alongside the existing
+  `recentEntities`/`recentSessions` queries with no new module. A new
+  `toEntitySummary()` mapper was added (same shape as the identical
+  functions already independently duplicated in
+  `plot-threads.service.ts`/`timeline.service.ts`, including their
+  `tags: []` cheap-embed simplification — this is a dashboard widget,
+  not a page that renders tags). `CampaignOverviewPage` renders the new
+  "Favorites" widget through the existing `CardGrid`, reusing
+  `.wb-dashboard-activity__item`'s icon+link row (already generic, not
+  activity-specific, confirmed by reading its CSS before reusing it).
+- **Search ranking boost**: `SearchService.search()` now looks up the
+  current user's favorited entity IDs (`getFavoriteEntityIds()`, same
+  query shape `entities.service.ts`'s own favorite filter already uses)
+  and folds them into the final merge-sort as a tie-breaker _within_ a
+  tier, never across tiers: `a.tier - b.tier || Number(isFavorite(b)) -
+Number(isFavorite(a)) || b.score - a.score`. This was the one real
+  design decision in this phase — a cross-tier boost would let a
+  favorite occasionally outrank a technically-more-relevant result,
+  which would make search feel unpredictable; the within-tier version
+  can only ever win a genuine tie.
+
+**Verification:** `pnpm typecheck` / `pnpm lint` / `pnpm build` clean.
+Two new `search.e2e-spec.ts` integration tests: two entities sharing an
+identical exact-name match (the search SQL assigns both the same tier
+_and_ the same score for this case, confirmed by reading `tierSql`/
+`scoreSql`'s SQL before relying on it — not assumed) resolve in favor of
+whichever is favorited; a favorited-but-weaker match is confirmed to
+never outrank a strictly-better non-favorite match, proving the
+tie-break doesn't cross tiers. Full API jest 99/99; full integration
+suite 199/205 (same pre-existing `attachments`/`maps`/`exports`/
+`imports` flakiness as §47 Phase 4, unrelated to this work). Web vitest
+11/11. Real browser: favorited an entity from its detail page, reloaded
+the dashboard, and confirmed it appeared in the new Favorites widget in
+place of "No favorites yet."

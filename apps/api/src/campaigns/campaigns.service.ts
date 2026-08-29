@@ -12,6 +12,7 @@ import type {
   CampaignDetail,
   CampaignSessionSummary,
   CampaignSummary,
+  EntitySummary,
   PlotThreadSummary,
   TimelineDate,
   WorldDate,
@@ -32,6 +33,7 @@ import {
   campaignMembers,
   campaigns,
   entities,
+  entityFavorites,
   plotThreads,
   sessions,
   timelineEvents,
@@ -46,6 +48,7 @@ import { StorageService } from '../storage/storage.service';
 
 type PlotThreadRow = typeof plotThreads.$inferSelect;
 type SessionRow = typeof sessions.$inferSelect;
+type EntityRow = typeof entities.$inferSelect;
 
 @Injectable()
 export class CampaignsService {
@@ -402,6 +405,27 @@ export class CampaignsService {
       .orderBy(desc(sessions.updatedAt))
       .limit(5);
 
+    // Most-recently-favorited first, not most-recently-updated — this is
+    // "what did I care about lately," a different ordering than every
+    // other dashboard widget's own updatedAt sort.
+    const favoriteRows = await this.db
+      .select({ entity: entities, favoritedAt: entityFavorites.createdAt })
+      .from(entityFavorites)
+      .innerJoin(entities, eq(entities.id, entityFavorites.entityId))
+      .where(
+        and(
+          eq(entityFavorites.userId, membership.userId),
+          eq(entities.campaignId, campaignId),
+          isNull(entities.deletedAt),
+          ...entityVisibility,
+        ),
+      )
+      .orderBy(desc(entityFavorites.createdAt))
+      .limit(10);
+    const favoriteEntities: EntitySummary[] = favoriteRows.map((row) =>
+      toEntitySummary(row.entity),
+    );
+
     // Roadmap's ui-ux.md sketch shows "Recently Edited" and "Recent
     // Activity" as two separate widgets; there's no activity-log table in
     // the data model (only `security_events`, which is auth-only), so one
@@ -441,6 +465,7 @@ export class CampaignsService {
       activeThreads,
       neglectedThreads,
       recentActivity,
+      favoriteEntities,
     };
   }
 
@@ -737,5 +762,23 @@ function toSessionSummary(session: SessionRow): CampaignSessionSummary {
     tags: [],
     createdAt: session.createdAt.toISOString(),
     updatedAt: session.updatedAt.toISOString(),
+  };
+}
+
+function toEntitySummary(entity: EntityRow): EntitySummary {
+  return {
+    id: entity.id,
+    campaignId: entity.campaignId,
+    entityType: entity.entityType,
+    name: entity.name,
+    slug: entity.slug,
+    summary: entity.summary,
+    aliases: (entity.aliasesJson as string[] | null) ?? [],
+    // Same dashboard-widget simplification as toThreadSummary/toSessionSummary's tags above.
+    tags: [],
+    status: entity.status,
+    visibility: entity.visibility,
+    createdAt: entity.createdAt.toISOString(),
+    updatedAt: entity.updatedAt.toISOString(),
   };
 }

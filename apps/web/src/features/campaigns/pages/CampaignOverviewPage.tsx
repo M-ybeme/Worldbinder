@@ -147,6 +147,19 @@ export function CampaignOverviewPage() {
             </ul>
           </div>
 
+          <div className="wb-dashboard-widget">
+            <h2>Favorites</h2>
+            {dashboard && dashboard.favoriteEntities.length === 0 && <p>No favorites yet.</p>}
+            <ul className="wb-relationship-list">
+              {dashboard?.favoriteEntities.map((entity) => (
+                <li key={entity.id} className="wb-dashboard-activity__item">
+                  <EntityTypeIcon type={entity.entityType} />
+                  <Link to={`/app/campaign/${campaign.id}/world/${entity.id}`}>{entity.name}</Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+
           {dashboard && dashboard.neglectedThreads.length > 0 && (
             <div className="wb-dashboard-widget">
               <h2>Neglected Threads</h2>

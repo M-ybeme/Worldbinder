@@ -113,6 +113,19 @@ Migration reviewed before applying (exactly 2 new tables, no drops/renames) via 
 
 `pnpm typecheck` / `pnpm lint` / `pnpm build` clean; full web vitest (11/11) green. Real browser: created a session, logged a plot-thread change against it, opened "Complete session" and confirmed the recap line read "Plot threads: 1 introduced." directly above the date fields, and confirmed the consolidated "Plot Thread Changes" section shows the thread with its "Introduced" badge.
 
+## [0.37.0] - 2026-08-26
+
+**UX-audit remediation, Phase 8: favorites follow-through.** See `docs/product/WORLDBINDER_DESIGN_SYSTEM.md` §47.
+
+### Added
+
+- **A "Favorites" dashboard widget** — `CampaignDashboard` gained `favoriteEntities: EntitySummary[]` (most-recently-favorited first), backed by a new query in `getDashboard()` joining `entityFavorites`, alongside the existing `recentEntities`/`recentSessions` queries. `CampaignOverviewPage` renders it in the existing `CardGrid`, same row markup every other widget already uses.
+- **Favorited entities now win ties in search.** `SearchService.search()` looks up the current user's favorited entity IDs and uses them as a tie-breaker _within_ each existing ranking tier — a favorite can win a tie against an equally-relevant result, but can never bury a strictly more relevant non-favorite match. Keeps search predictable while still giving favorites a real, verifiable boost.
+
+### Verification
+
+`pnpm typecheck` / `pnpm lint` / `pnpm build` clean across the whole workspace. Two new integration tests in `search.e2e-spec.ts`: two entities with an identical exact-name match (guaranteed same tier and score) resolve in favor of the favorited one; a favorited-but-weaker match never outranks a strictly better non-favorite match. Full API jest 99/99; full integration suite 199/205 (the same pre-existing, unrelated `attachments`/`maps`/`exports`/`imports` flakiness noted in Phase 4, confirmed again not touched by this phase). Web vitest 11/11. Real browser: favorited an entity and confirmed it appeared in the new dashboard widget (replacing "No favorites yet.").
+
 ## hotfix - 2026-08-26
 
 **Production outage: every entity detail page 500'd after the Phase 7/favorites deploy.** Railway auto-deploys API code on push to `master`, but does not auto-run Drizzle migrations against production — the `entity_favorites` migration (part of 0.29.0) had only ever been applied locally. `EntitiesService.getById()`'s new favorite-status lookup then failed on every request with `relation "entity_favorites" does not exist`, breaking every entity detail page (including selecting any map pin, which navigates there) — reported live by the user via a production screenshot.
