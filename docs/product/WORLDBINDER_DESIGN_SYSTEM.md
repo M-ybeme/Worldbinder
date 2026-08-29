@@ -2791,3 +2791,60 @@ suite 199/205 (same pre-existing `attachments`/`maps`/`exports`/
 11/11. Real browser: favorited an entity from its detail page, reloaded
 the dashboard, and confirmed it appeared in the new Favorites widget in
 place of "No favorites yet."
+
+### Phase 9 — Wiki-link hover preview (shipped, rollout complete)
+
+`entityMentionExtension.ts`'s `[[` mentions supported click-to-navigate
+only (read-only mode) — no way to see what a mention pointed to without
+leaving the page. Confirmed before starting: zero tooltip/hover-card
+precedent anywhere in `packages/ui` (grep, not assumed).
+
+- **Deliberate deviation from the original plan**: the plan called for a
+  new `packages/ui/src/Tooltip.tsx` primitive. Reading
+  `entityMentionExtension.ts` in full first surfaced a real constraint
+  the plan hadn't accounted for — this file is pure DOM manipulation
+  inside a TipTap NodeView (`addNodeView()` builds a raw `<span>` via
+  `document.createElement`, no React tree exists here at all), the same
+  way its own `[[` autocomplete popup a few lines below is also raw DOM,
+  not a `Combobox` instance. A React component has no tree to mount into
+  at this call site. Building `Tooltip.tsx` anyway would have meant a
+  `packages/ui` primitive with zero real consumers — directly against
+  this package's own documented principle ("built up only as real
+  screens need them, not upfront"). The hover preview is implemented
+  directly in `entityMentionExtension.ts` instead, as a module-level
+  singleton tooltip element (one shared floating node, positioned
+  per-trigger via `getBoundingClientRect()`) — structurally identical to
+  the file's own existing `[[` popup, just for a different trigger
+  (hover/focus instead of typing `[[`).
+- **No new backend endpoint.** The existing `GET
+/campaigns/:id/entities/:id` (`entitiesApi.getEntity`) already runs
+  through `EntitiesService.getById()`'s `requireVisibleEntity` policy
+  check and 404s for an entity the caller can't see — reused as-is for
+  the preview fetch. A failed fetch (404 or otherwise) suppresses the
+  preview entirely rather than rendering a partial card; this is enforced
+  by the query itself, not a client-side visibility check layered on top
+  — same "filter in the query, don't render-then-hide" posture
+  `search.service.ts` already established for relationship visibility.
+- 300ms debounce on hover so a mouse pass-through over a mention doesn't
+  fire a fetch; a monotonically-incrementing shared request counter
+  invalidates a stale in-flight fetch if the hover moves to a different
+  mention (or ends) before it resolves. Triggers on `focus`/`blur` as
+  well as `mouseenter`/`mouseleave` — the mention span already had
+  `tabIndex=0` and `role="link"` from the existing click-to-navigate
+  behavior, so keyboard reachability was free; the preview just needed
+  to listen for the same event pair a screen-reader/keyboard user
+  actually produces. The tooltip element itself carries `role="tooltip"`
+  and is wired to the mention via `aria-describedby`.
+
+**Verification:** `pnpm typecheck` / `pnpm lint` / `pnpm build` clean;
+full web vitest (11/11) green. Real browser: created a `[[` mention via
+the existing autocomplete, confirmed hovering the rendered mention on
+its detail page shows a preview card with the correct name/type/summary,
+confirmed the card disappears on mouse-leave, and confirmed tab-focusing
+the mention (no mouse involved) triggers the identical preview.
+
+**Rollout status**: all 9 phases of the UX-audit remediation are now
+shipped — quick contained fixes, quick-create parity + generic autosave,
+World list filter polish, tags as a real system, organization & timeline
+clarity, maps discoverability, session completion recap, favorites
+follow-through, and the wiki-link hover preview.

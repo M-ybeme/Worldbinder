@@ -15,6 +15,38 @@
   text-decoration: line-through;
 }
 
+/* Hover/focus preview card for a mention — a fixed-position floating
+   element (same "one shared node, positioned per-trigger" shape as this
+   file's own [[ autocomplete popup below), not a packages/ui component:
+   entityMentionExtension.ts is plain DOM manipulation inside a TipTap
+   NodeView, with no React tree to host a component in. */
+.wb-entity-mention-tooltip {
+  position: fixed;
+  z-index: var(--wb-z-dropdown);
+  max-width: 280px;
+  padding: var(--wb-space-2) var(--wb-space-3);
+  border: 1px solid var(--wb-border-default);
+  border-radius: var(--wb-radius-sm);
+  background: var(--wb-field-bg);
+  box-shadow: var(--wb-shadow-md);
+  font-size: var(--wb-text-sm);
+}
+
+.wb-entity-mention-tooltip__name {
+  font-weight: 500;
+  color: var(--wb-text-primary);
+}
+
+.wb-entity-mention-tooltip__type {
+  margin-bottom: var(--wb-space-1);
+  font-size: var(--wb-text-xs);
+  color: var(--wb-text-muted);
+}
+
+.wb-entity-mention-tooltip__summary {
+  color: var(--wb-text-secondary);
+}
+
 /* WorldListPage only — its filter row, previously unstyled: the filter
    fields had no gap between them and had no consistent width, so the row
    reflowed unpredictably as filter values changed length. */

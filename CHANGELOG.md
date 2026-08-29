@@ -126,6 +126,23 @@ Migration reviewed before applying (exactly 2 new tables, no drops/renames) via 
 
 `pnpm typecheck` / `pnpm lint` / `pnpm build` clean across the whole workspace. Two new integration tests in `search.e2e-spec.ts`: two entities with an identical exact-name match (guaranteed same tier and score) resolve in favor of the favorited one; a favorited-but-weaker match never outranks a strictly better non-favorite match. Full API jest 99/99; full integration suite 199/205 (the same pre-existing, unrelated `attachments`/`maps`/`exports`/`imports` flakiness noted in Phase 4, confirmed again not touched by this phase). Web vitest 11/11. Real browser: favorited an entity and confirmed it appeared in the new dashboard widget (replacing "No favorites yet.").
 
+## [0.38.0] - 2026-08-26
+
+**UX-audit remediation, Phase 9: wiki-link hover preview — rollout complete.** The final phase of the 9-phase UX-audit remediation effort. See `docs/product/WORLDBINDER_DESIGN_SYSTEM.md` §47.
+
+### Added
+
+- **Hovering (or keyboard-focusing) a `[[wiki-link]]` mention now shows a lightweight preview** (name, type, summary) of the linked entity, debounced 300ms so a mouse pass-through doesn't trigger a fetch. Reuses the existing `GET /campaigns/:id/entities/:id` endpoint (already policy-gated via `requireVisibleEntity`) — no new backend endpoint needed. If the mentioned entity isn't visible to the current viewer, the request 404s and the preview is silently suppressed rather than showing a partial card; this is enforced by the existing query, not a client-side visibility check added on top.
+- Implemented directly in `entityMentionExtension.ts` as plain DOM (a module-level singleton tooltip element, mirroring this same file's existing `[[` autocomplete popup) rather than a new `packages/ui` component — this file is a TipTap NodeView with no React tree to host one in, and `packages/ui`'s own stated principle is components get built only when a real consumer needs them.
+
+### Verification
+
+`pnpm typecheck` / `pnpm lint` / `pnpm build` clean; full web vitest (11/11) green. Real browser: created a mention via `[[` autocomplete, confirmed hovering it shows the preview with the correct name/type/summary, confirmed it disappears on mouse-leave, and confirmed keyboard focus (tab) triggers the same preview — not mouse-only.
+
+### Rollout complete
+
+All 9 phases of the UX-audit remediation are now shipped: quick contained fixes, quick-create parity + generic autosave, World list filter polish, tags as a real system, organization & timeline clarity, maps discoverability, session completion recap, favorites follow-through, and the wiki-link hover preview.
+
 ## hotfix - 2026-08-26
 
 **Production outage: every entity detail page 500'd after the Phase 7/favorites deploy.** Railway auto-deploys API code on push to `master`, but does not auto-run Drizzle migrations against production — the `entity_favorites` migration (part of 0.29.0) had only ever been applied locally. `EntitiesService.getById()`'s new favorite-status lookup then failed on every request with `relation "entity_favorites" does not exist`, breaking every entity detail page (including selecting any map pin, which navigates there) — reported live by the user via a production screenshot.

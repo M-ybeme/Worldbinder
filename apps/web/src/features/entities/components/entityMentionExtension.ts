@@ -1,6 +1,8 @@
+import type { EntityType } from '@worldbinder/contracts'
 import { mergeAttributes, Node } from '@tiptap/core'
 import Suggestion, { type SuggestionKeyDownProps, type SuggestionProps } from '@tiptap/suggestion'
-import { listEntities } from '../api/entitiesApi'
+import { getEntity, listEntities } from '../api/entitiesApi'
+import { ENTITY_TYPE_LABELS } from '../lib/entityTypeIcons'
 import '../entities.css'
 
 export interface EntityMentionOptions {
@@ -10,6 +12,60 @@ export interface EntityMentionOptions {
 }
 
 const SEARCH_DEBOUNCE_MS = 200
+const HOVER_PREVIEW_DEBOUNCE_MS = 300
+const HOVER_TOOLTIP_ID = 'wb-entity-mention-tooltip'
+
+/** Module-level singleton, shared by every mention NodeView in the
+ * document — only one hover preview is ever shown at a time, so one
+ * lazily-created DOM node (and one in-flight-request counter) avoids
+ * allocating tooltip machinery per mention, of which a document can have
+ * many. Mirrors this file's own `[[` autocomplete popup, which is the
+ * same "one shared floating element, positioned per-trigger" shape. */
+let tooltipEl: HTMLDivElement | null = null
+let hoverDebounceHandle: ReturnType<typeof setTimeout> | undefined
+let hoverRequestId = 0
+
+function hideEntityPreview(): void {
+  if (hoverDebounceHandle) clearTimeout(hoverDebounceHandle)
+  hoverRequestId += 1
+  tooltipEl?.remove()
+  tooltipEl = null
+}
+
+function showEntityPreview(
+  anchor: HTMLElement,
+  entity: { name: string; entityType: EntityType; summary: string | null },
+): void {
+  tooltipEl?.remove()
+  const el = document.createElement('div')
+  el.id = HOVER_TOOLTIP_ID
+  el.className = 'wb-entity-mention-tooltip'
+  el.setAttribute('role', 'tooltip')
+
+  const name = document.createElement('div')
+  name.className = 'wb-entity-mention-tooltip__name'
+  name.textContent = entity.name
+  el.appendChild(name)
+
+  const type = document.createElement('div')
+  type.className = 'wb-entity-mention-tooltip__type'
+  type.textContent = ENTITY_TYPE_LABELS[entity.entityType]
+  el.appendChild(type)
+
+  if (entity.summary) {
+    const summary = document.createElement('div')
+    summary.className = 'wb-entity-mention-tooltip__summary'
+    summary.textContent = entity.summary
+    el.appendChild(summary)
+  }
+
+  document.body.appendChild(el)
+  const rect = anchor.getBoundingClientRect()
+  el.style.left = `${rect.left}px`
+  el.style.top = `${rect.bottom + 4}px`
+  tooltipEl = el
+  anchor.setAttribute('aria-describedby', HOVER_TOOLTIP_ID)
+}
 
 /**
  * `[[` wiki-link autocomplete: typing `[[` opens an entity search popup;
@@ -68,9 +124,52 @@ export const EntityMention = Node.create<EntityMentionOptions>({
           event.preventDefault()
           this.options.onNavigate?.(node.attrs.entityId as string)
         })
+
+        const entityId = node.attrs.entityId as string
+        const campaignId = this.options.campaignId
+
+        const scheduleShow = () => {
+          if (hoverDebounceHandle) clearTimeout(hoverDebounceHandle)
+          const thisRequest = ++hoverRequestId
+          hoverDebounceHandle = setTimeout(() => {
+            void getEntity(campaignId, entityId)
+              .then((entity) => {
+                // Hover moved on, or the tooltip was already dismissed,
+                // before this request resolved.
+                if (thisRequest !== hoverRequestId) return
+                showEntityPreview(span, {
+                  name: entity.name,
+                  entityType: entity.entityType,
+                  summary: entity.summary,
+                })
+              })
+              .catch(() => {
+                // 404 (not visible to this viewer, same policy check
+                // `getById` already enforces) or a transient error —
+                // suppress the preview entirely rather than showing a
+                // partial/misleading card. Filtered by the query, not
+                // rendered then hidden.
+              })
+          }, HOVER_PREVIEW_DEBOUNCE_MS)
+        }
+
+        const cancelShow = () => {
+          hideEntityPreview()
+          span.removeAttribute('aria-describedby')
+        }
+
+        span.addEventListener('mouseenter', scheduleShow)
+        span.addEventListener('mouseleave', cancelShow)
+        span.addEventListener('focus', scheduleShow)
+        span.addEventListener('blur', cancelShow)
       }
 
-      return { dom: span }
+      return {
+        dom: span,
+        destroy: () => {
+          if (span.getAttribute('aria-describedby') === HOVER_TOOLTIP_ID) hideEntityPreview()
+        },
+      }
     }
   },
 
