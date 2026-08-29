@@ -1,4 +1,4 @@
-import type { TimelineEventSummary } from '@worldbinder/contracts'
+import type { CalendarConfig, TimelineEventSummary } from '@worldbinder/contracts'
 import { DEFAULT_CALENDAR_CONFIG } from '@worldbinder/validation'
 import { Badge, Button, EmptyState, ErrorState, LoadingState, TextField } from '@worldbinder/ui'
 import { useState } from 'react'
@@ -10,6 +10,48 @@ import { formatTimelineDate } from '../lib/formatTimelineDate'
 import { useTimelineEventsQuery } from '../hooks/useTimeline'
 
 const MANAGEMENT_ROLES = new Set(['owner', 'gm', 'editor'])
+
+interface DateGroup {
+  key: string
+  header: string
+  events: TimelineEventSummary[]
+}
+
+/** Dated events arrive from the API already sorted ascending by calendar
+ * ordinal (`TimelineService`'s `compareEventRows`), so grouping is a
+ * single pass — a new group starts whenever the (year, month) key changes
+ * (year-precision events group by year alone). Reuses `formatTimelineDate`
+ * itself for the header text (already handles year/month precision using
+ * the campaign's own calendar month names), rather than a second
+ * formatting function. */
+function groupDatedEvents(
+  events: TimelineEventSummary[],
+  calendarConfig: CalendarConfig,
+): DateGroup[] {
+  const groups: DateGroup[] = []
+  for (const event of events) {
+    const { startDateJson: date, datePrecision: precision } = event
+    if (!date || !precision) continue
+
+    const key = precision === 'year' ? `${date.year}` : `${date.year}-${date.month}`
+    const last = groups[groups.length - 1]
+    if (last?.key === key) {
+      last.events.push(event)
+      continue
+    }
+
+    const header =
+      precision === 'year'
+        ? formatTimelineDate({ schemaVersion: 1, year: date.year }, 'year', calendarConfig)
+        : formatTimelineDate(
+            { schemaVersion: 1, year: date.year, month: date.month },
+            'month',
+            calendarConfig,
+          )
+    groups.push({ key, header, events: [event] })
+  }
+  return groups
+}
 
 function EventRow({ campaignId, event }: { campaignId: string; event: TimelineEventSummary }) {
   const calendarConfig =
@@ -45,6 +87,7 @@ export function TimelineListPage() {
   const events = eventsQuery.data ?? []
   const dated = events.filter((e) => e.startDateJson !== null)
   const undated = events.filter((e) => e.startDateJson === null)
+  const dateGroups = groupDatedEvents(dated, calendarConfig)
 
   return (
     <section>
@@ -83,13 +126,18 @@ export function TimelineListPage() {
         <EmptyState message="No dated events yet." />
       )}
 
-      {!eventsQuery.isLoading && !eventsQuery.isError && dated.length > 0 && (
-        <ul className="wb-session-list">
-          {dated.map((event) => (
-            <EventRow key={event.id} campaignId={campaign.id} event={event} />
-          ))}
-        </ul>
-      )}
+      {!eventsQuery.isLoading &&
+        !eventsQuery.isError &&
+        dateGroups.map((group) => (
+          <div key={group.key}>
+            <h2>{group.header}</h2>
+            <ul className="wb-session-list">
+              {group.events.map((event) => (
+                <EventRow key={event.id} campaignId={campaign.id} event={event} />
+              ))}
+            </ul>
+          </div>
+        ))}
 
       {undated.length > 0 && (
         <>

@@ -1,0 +1,8 @@
+/* ThreadListPage's status filter — a single Select, so it just needs a
+   sane max-width instead of stretching to the page's full block width
+   (Field.css's .wb-field has no width of its own; it fills whatever
+   block-level container wraps it). */
+.wb-thread-filters {
+  max-width: 260px;
+  margin: var(--wb-space-4) 0;
+}

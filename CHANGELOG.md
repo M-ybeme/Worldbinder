@@ -70,6 +70,23 @@ Every push to `main` should add an entry here. This is meant to be an honest rec
 
 Migration reviewed before applying (exactly 2 new tables, no drops/renames) via the `db-migration` skill. `pnpm typecheck` / `pnpm lint` / `pnpm build` clean across the whole workspace. Backend: new `tags.service.spec.ts` (pure `normalizeTagName` cases) plus a new `tags.e2e-spec.ts` (8 integration tests: merged usage counts across all 4 resource types, player read access, rename with collision rejection, merge including the already-both-tagged-resource edge case, and permission checks) — all passing, alongside the full existing `entities`/`timeline`/`sessions`/`plot-threads`/`campaigns` integration suites re-run clean (confirming the tag-sync consolidation didn't change existing entity/timeline-event tagging behavior). Full API jest suite 99/99, full integration suite 198/203 (the 5 failures are pre-existing, non-deterministic flakiness in `attachments`/`maps`/`exports`/`imports` — modules this phase never touched; confirmed by re-running them in isolation and seeing different failure counts each time). Web vitest 11/11. Real browser: tagged a session, confirmed autosave; tagged a plot thread and confirmed the autocomplete dropdown suggested the session's tag; visited the tag management page and confirmed the tag showed "2 uses," then renamed and merged tags and confirmed both propagated correctly.
 
+## [0.34.0] - 2026-08-26
+
+**UX-audit remediation, Phase 5: organization & timeline clarity.** See `docs/product/WORLDBINDER_DESIGN_SYSTEM.md` §47.
+
+### Changed
+
+- **`ThreadListPage`'s 3 stacked lists (Neglected/Unresolved/All) are now one list with a status filter** (All/Unresolved/Neglected, defaulting to Unresolved — the most useful default), following the same filter-bar pattern `WorldListPage` established in Phase 3. Neglected threads get an inline `Badge tone="warning"` reading "Neglected" on their row instead of living in a separate section — confirmed a neglected thread is always a subset of "unresolved" (the plot-thread service's own `isNeglected()` already excludes `resolved`/`abandoned` statuses) before consolidating, not assumed.
+- **The Timeline now groups dated events by month/year** (or year alone for year-precision events) using the campaign's own custom calendar month names, rendering a heading per group — reuses `formatTimelineDate` itself for the heading text rather than a second date-formatting function, since dated events already arrive from the API pre-sorted ascending by calendar ordinal, so grouping is a single linear pass. The "Undated" section is unchanged, still a flat list after the dated groups.
+
+### Fixed
+
+- `ThreadListPage`'s new status-filter control accidentally reused a CSS class name (`wb-world-filters`) from a different feature's stylesheet it never imported, so none of that styling actually applied and the dropdown stretched to the full page width. Given its own scoped `plot-threads.css` and a real class name instead.
+
+### Verification
+
+`pnpm typecheck` / `pnpm lint` / `pnpm build` clean; full web vitest (11/11) green. Real browser: confirmed the Threads page renders as one list with working status-filter transitions (Unresolved/Neglected/All) and neglected threads flagged inline; seeded 4 real timeline events across 2 months and 2 different-precision dates and confirmed the grouped headings render in the correct chronological order ("March 100", "July 100", "101") using the campaign's calendar, with the undated event still separate below.
+
 ## hotfix - 2026-08-26
 
 **Production outage: every entity detail page 500'd after the Phase 7/favorites deploy.** Railway auto-deploys API code on push to `master`, but does not auto-run Drizzle migrations against production — the `entity_favorites` migration (part of 0.29.0) had only ever been applied locally. `EntitiesService.getById()`'s new favorite-status lookup then failed on every request with `relation "entity_favorites" does not exist`, breaking every entity detail page (including selecting any map pin, which navigates there) — reported live by the user via a production screenshot.

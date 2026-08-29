@@ -2629,3 +2629,51 @@ autocomplete dropdown suggested the session's tag; opened the tag
 management page and confirmed the tag showed "2 uses," then renamed and
 merged tags and confirmed both changes propagated to the tagged
 resources.
+
+### Phase 5 — Organization & timeline clarity (shipped)
+
+- **`ThreadListPage` used to render 3 fully-duplicated stacked lists** —
+  Neglected, Unresolved, All — with Neglected always a subset of
+  Unresolved (confirmed via `isNeglected()`'s own guard clause, which
+  already excludes `resolved`/`abandoned` statuses, before consolidating
+  rather than assuming the subset relationship held). Replaced with one
+  list plus a status filter (`All`/`Unresolved`/`Neglected`, defaulting
+  to `Unresolved`), following the same filter-bar pattern §47 Phase 3
+  established for `WorldListPage`. Neglected threads get an inline
+  `Badge tone="warning"` on their row instead of a separate section —
+  reuses the exact `Badge` component/tone the same row already uses for
+  "GM only", so no new visual language was introduced.
+  - **A real bug caught during this consolidation**: the new filter
+    control's wrapping `<div>` reused the class name `wb-world-filters`
+    from `entities.css` — a stylesheet this page never imports — so none
+    of that flex/gap/width styling actually applied and the single
+    Select stretched to the page's full block width. Fixed with a
+    proper scoped `plot-threads.css` (this feature's first CSS file) and
+    a real class name (`wb-thread-filters`), caught by an actual
+    screenshot during verification, not just by reading the diff.
+- **The Timeline's dated events now render as date-grouped sections**
+  (month/year headers, or year alone for year-precision events) using
+  the campaign's own custom calendar month names, per decision #4 from
+  the audit follow-up (a date-grouped list, not a full visual timeline
+  axis). `TimelineService.list()` already returns dated events
+  pre-sorted ascending by calendar ordinal (`compareEventRows`,
+  confirmed by reading the service rather than assumed), so grouping in
+  `TimelineListPage` is a single linear pass — a new group starts
+  whenever the (year, month) key changes. The group heading text reuses
+  `formatTimelineDate` itself (already handles year/month-precision
+  formatting with the campaign's calendar) rather than a second
+  formatting function — passing it a synthetic `{ year, month }` value
+  at `'year'`/`'month'` precision produces exactly the right heading
+  string. The "Undated" section is untouched, still a flat list
+  rendered after every dated group.
+
+**Verification:** `pnpm typecheck` / `pnpm lint` / `pnpm build` clean;
+full web vitest (11/11) green. Real browser: confirmed `ThreadListPage`
+renders as one list with all 3 filter states working and neglected
+threads flagged inline (and confirmed the filter control's width bug
+both before and after the CSS fix); seeded 4 real timeline events (two
+in the same month, one in a different month, one year-precision-only)
+and confirmed the rendered group headings — "March 100", "July 100",
+"101" — appeared in correct chronological order using the campaign's
+actual month names, with the pre-existing undated event still rendered
+separately below all dated groups.
