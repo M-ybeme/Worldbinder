@@ -120,7 +120,7 @@ export function MapDetailPage() {
                 setPlacingPosition(null)
               }}
             >
-              {manageMode ? 'Done editing' : 'Edit map'}
+              {manageMode ? 'Done editing' : 'Edit pins & layers'}
             </Button>
             <Link
               className="wb-button wb-button--secondary"
@@ -148,6 +148,23 @@ export function MapDetailPage() {
           >
             + New pin
           </Button>
+        </p>
+      )}
+      {canManage && !manageMode && (
+        <p className="wb-map-discoverability-hint">
+          <Button
+            variant="secondary"
+            onClick={() => {
+              setManageMode(true)
+              setEditingPin(null)
+              setPlacingPosition({ x: 0.5, y: 0.5 })
+            }}
+          >
+            + Add pin
+          </Button>{' '}
+          {map.layers.length > 0
+            ? `${map.layers.length} ${map.layers.length === 1 ? 'layer' : 'layers'} — Edit pins & layers to manage them.`
+            : 'Edit pins & layers to organize pins into layers.'}
         </p>
       )}
 

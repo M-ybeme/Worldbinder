@@ -2677,3 +2677,31 @@ and confirmed the rendered group headings — "March 100", "July 100",
 "101" — appeared in correct chronological order using the campaign's
 actual month names, with the pre-existing undated event still rendered
 separately below all dated groups.
+
+### Phase 6 — Maps discoverability (shipped)
+
+`MapDetailPage`'s pin/layer creation was only ever discoverable by
+already knowing `manageMode` existed — nothing on the default view hinted
+it was possible, and the toggle that enabled it ("Edit map") read as a
+near-synonym of the separate "Map settings" link right next to it
+(name/description/visibility/image, a different destination entirely).
+
+- Renamed the toggle **"Edit pins & layers"** — still the same
+  `manageMode` boolean, same gate on actually creating/moving pins and
+  layers (kept deliberately: real protection against accidental drags,
+  not a discoverability problem). "Done editing" while active is
+  unchanged.
+- Added a view-mode-only hint between the description and the layer
+  toggles — a dashed-border strip (reads as a real affordance, not
+  incidental text) with a **"+ Add pin"** button that enters manage mode
+  _and_ opens pin placement in one click, plus a one-line layer count
+  ("1 layer — Edit pins & layers to manage them."). This is purely
+  additive: the existing manage-mode-only "+ New pin" prompt is
+  unchanged, this is the equivalent for someone who hasn't found manage
+  mode yet.
+
+**Verification:** `pnpm typecheck` / `pnpm lint` / `pnpm build` clean;
+full web vitest (11/11) green. Real browser: confirmed both the renamed
+button and the new hint render on a real map in view mode, and that
+clicking "+ Add pin" flips into manage mode with the pin-placement form
+already open — not just a mode toggle with an extra click still required.

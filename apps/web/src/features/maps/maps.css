@@ -171,3 +171,20 @@
   gap: var(--wb-space-2) 0.75rem;
   font-size: var(--wb-text-md);
 }
+
+/* View-mode discoverability hint (MapDetailPage) — outside manage mode,
+   nothing on the page hinted that pins/layers could be added at all
+   unless a GM already knew the "Edit pins & layers" toggle existed. A
+   subtle bordered strip (not just a bare paragraph) so it reads as a
+   real affordance, not incidental text. */
+.wb-map-discoverability-hint {
+  display: flex;
+  align-items: center;
+  gap: var(--wb-space-2);
+  margin: var(--wb-space-4) 0 0;
+  padding: var(--wb-space-2) var(--wb-space-3);
+  border: 1px dashed var(--wb-border-default);
+  border-radius: var(--wb-radius-md);
+  color: var(--wb-text-secondary);
+  font-size: var(--wb-text-sm);
+}

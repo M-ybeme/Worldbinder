@@ -87,6 +87,19 @@ Migration reviewed before applying (exactly 2 new tables, no drops/renames) via 
 
 `pnpm typecheck` / `pnpm lint` / `pnpm build` clean; full web vitest (11/11) green. Real browser: confirmed the Threads page renders as one list with working status-filter transitions (Unresolved/Neglected/All) and neglected threads flagged inline; seeded 4 real timeline events across 2 months and 2 different-precision dates and confirmed the grouped headings render in the correct chronological order ("March 100", "July 100", "101") using the campaign's calendar, with the undated event still separate below.
 
+## [0.35.0] - 2026-08-26
+
+**UX-audit remediation, Phase 6: maps discoverability.** See `docs/product/WORLDBINDER_DESIGN_SYSTEM.md` §47.
+
+### Changed
+
+- **`MapDetailPage`'s "Edit map" toggle is renamed "Edit pins & layers"** so it no longer reads as a near-synonym of the adjacent "Map settings" link (name/description/visibility/image) sitting right next to it.
+- **A view-mode-only discoverability hint** now sits between the map description and the layer toggles — a dashed-border strip with a "+ Add pin" button (enters manage mode and opens pin placement in one click) plus a one-line layer count ("1 layer — Edit pins & layers to manage them."). Outside manage mode, nothing on the page previously hinted that pins or layers could be added at all. The manage-mode gate itself is unchanged — this only fixes discoverability of the fact that creation is possible, not the protection against accidental edits.
+
+### Verification
+
+`pnpm typecheck` / `pnpm lint` / `pnpm build` clean; full web vitest (11/11) green. Real browser: confirmed the renamed button and the hint both render for a GM viewing a map outside manage mode, and that clicking "+ Add pin" correctly flips into manage mode with the pin-placement form already open.
+
 ## hotfix - 2026-08-26
 
 **Production outage: every entity detail page 500'd after the Phase 7/favorites deploy.** Railway auto-deploys API code on push to `master`, but does not auto-run Drizzle migrations against production — the `entity_favorites` migration (part of 0.29.0) had only ever been applied locally. `EntitiesService.getById()`'s new favorite-status lookup then failed on every request with `relation "entity_favorites" does not exist`, breaking every entity detail page (including selecting any map pin, which navigates there) — reported live by the user via a production screenshot.
