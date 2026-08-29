@@ -34,6 +34,36 @@ function formatWorldDate(date: WorldDate | null): string | null {
   )
 }
 
+/** Summarizes the plot-thread changes already logged for this session, so
+ * completing it feels connected to what's on the page instead of being 3
+ * disconnected date-number inputs. Omits a category with zero changes
+ * rather than reading "0 introduced, 0 advanced, 0 resolved." */
+function summarizeThreadChanges(counts: {
+  introduced: number
+  advanced: number
+  resolved: number
+}) {
+  const parts = [
+    counts.introduced > 0 && `${counts.introduced} introduced`,
+    counts.advanced > 0 && `${counts.advanced} advanced`,
+    counts.resolved > 0 && `${counts.resolved} resolved`,
+  ].filter(Boolean)
+  if (parts.length === 0) return 'No plot thread changes logged for this session yet.'
+  return `Plot threads: ${parts.join(', ')}.`
+}
+
+const THREAD_CHANGE_LABELS: Record<string, string> = {
+  introduced: 'Introduced',
+  advanced: 'Advanced',
+  resolved: 'Resolved',
+}
+
+const THREAD_CHANGE_TONES: Record<string, 'info' | 'accent' | 'success'> = {
+  introduced: 'info',
+  advanced: 'accent',
+  resolved: 'success',
+}
+
 export function SessionDetailPage() {
   const { sessionId } = useParams<{ sessionId: string }>()
   const { campaign } = useCampaignOutletContext()
@@ -148,6 +178,13 @@ export function SessionDetailPage() {
       {showCompleteForm && (
         <div className="wb-form">
           <h2>Complete session</h2>
+          <p className="wb-session-list__meta">
+            {summarizeThreadChanges({
+              introduced: threadsIntroduced.length,
+              advanced: threadsAdvanced.length,
+              resolved: threadsResolved.length,
+            })}
+          </p>
           <fieldset className="wb-field">
             <legend className="wb-field__label">In-world end date (optional)</legend>
             <TextField
@@ -252,42 +289,17 @@ export function SessionDetailPage() {
         </div>
 
         <div>
-          <h2>Threads Created</h2>
-          {threadsIntroduced.length === 0 && <p>No threads introduced this session.</p>}
+          <h2>Plot Thread Changes</h2>
+          {session.plotThreadChanges.length === 0 && <p>No plot thread changes this session.</p>}
           <ul className="wb-relationship-list">
-            {threadsIntroduced.map((change) => (
-              <li key={change.plotThread.id}>
+            {session.plotThreadChanges.map((change) => (
+              <li key={`${change.plotThread.id}-${change.action}`}>
                 <Link to={`/app/campaign/${campaign.id}/threads/${change.plotThread.id}`}>
                   {change.plotThread.title}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        <div>
-          <h2>Threads Advanced</h2>
-          {threadsAdvanced.length === 0 && <p>No threads advanced this session.</p>}
-          <ul className="wb-relationship-list">
-            {threadsAdvanced.map((change) => (
-              <li key={change.plotThread.id}>
-                <Link to={`/app/campaign/${campaign.id}/threads/${change.plotThread.id}`}>
-                  {change.plotThread.title}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        <div>
-          <h2>Threads Resolved</h2>
-          {threadsResolved.length === 0 && <p>No threads resolved this session.</p>}
-          <ul className="wb-relationship-list">
-            {threadsResolved.map((change) => (
-              <li key={change.plotThread.id}>
-                <Link to={`/app/campaign/${campaign.id}/threads/${change.plotThread.id}`}>
-                  {change.plotThread.title}
-                </Link>
+                </Link>{' '}
+                <Badge tone={THREAD_CHANGE_TONES[change.action]}>
+                  {THREAD_CHANGE_LABELS[change.action]}
+                </Badge>
               </li>
             ))}
           </ul>

@@ -2705,3 +2705,40 @@ full web vitest (11/11) green. Real browser: confirmed both the renamed
 button and the new hint render on a real map in view mode, and that
 clicking "+ Add pin" flips into manage mode with the pin-placement form
 already open — not just a mode toggle with an extra click still required.
+
+### Phase 7 — Session completion recap (shipped)
+
+`SessionDetailPage` already computed `threadsIntroduced`/
+`threadsAdvanced`/`threadsResolved` from `session.plotThreadChanges`
+(used by 3 static sections further down the page), but the "Complete
+session" flow right above them was 3 disconnected date-number inputs
+with no reference to any of it — completing a session didn't feel
+connected to what had actually been logged during it.
+
+- The completion form now opens with a one-line recap
+  (`summarizeThreadChanges()`) reading, e.g., "Plot threads: 2
+  introduced, 1 resolved." directly above the date fields — reusing the
+  same three arrays the page already had in scope, not a new query or
+  prop. A session with no thread changes gets an honest "No plot thread
+  changes logged for this session yet." rather than "0 introduced, 0
+  advanced, 0 resolved."
+- The 3 separate "Threads Created"/"Threads Advanced"/"Threads Resolved"
+  sections (each mostly empty-state boilerplate on a typical session)
+  are now one "Plot Thread Changes" section, iterating
+  `session.plotThreadChanges` directly with an inline `Badge`
+  (`info`/`accent`/`success` per action) marking what happened to each
+  thread — same `Badge` component/row shape every other section on this
+  page already uses, no new list component.
+- Deliberately kept **read-only** — the recap doesn't let a GM add or
+  edit a thread change during completion itself. The confirmed finding
+  was about connecting already-logged data to the completion moment, not
+  about expanding what the completion form can edit; that's flagged as a
+  separate, not-yet-requested feature if wanted later.
+
+**Verification:** `pnpm typecheck` / `pnpm lint` / `pnpm build` clean;
+full web vitest (11/11) green. Real browser: created a session, logged a
+plot-thread change against it via the existing `PlotThreadChangesEditor`,
+opened "Complete session" and confirmed the recap read "Plot threads: 1
+introduced." directly above the date fields, and confirmed the
+consolidated "Plot Thread Changes" section renders the thread with its
+"Introduced" badge instead of the old 3-section layout.

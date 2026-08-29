@@ -100,6 +100,19 @@ Migration reviewed before applying (exactly 2 new tables, no drops/renames) via 
 
 `pnpm typecheck` / `pnpm lint` / `pnpm build` clean; full web vitest (11/11) green. Real browser: confirmed the renamed button and the hint both render for a GM viewing a map outside manage mode, and that clicking "+ Add pin" correctly flips into manage mode with the pin-placement form already open.
 
+## [0.36.0] - 2026-08-26
+
+**UX-audit remediation, Phase 7: session completion recap.** See `docs/product/WORLDBINDER_DESIGN_SYSTEM.md` §47.
+
+### Changed
+
+- **Completing a session now shows a recap of what's already logged** ("Plot threads: 2 introduced, 1 resolved.") directly above the in-world end-date fields, using the `threadsIntroduced`/`threadsAdvanced`/`threadsResolved` arrays `SessionDetailPage` already computed but previously only rendered disconnected from the completion flow. Pure frontend change — `session.plotThreadChanges` already carried everything needed, no backend change.
+- **The "Threads Created"/"Threads Advanced"/"Threads Resolved" sections are now one "Plot Thread Changes" section**, with each row's action shown as an inline `Badge` (Introduced/Advanced/Resolved) instead of 3 separate mostly-empty-state sections.
+
+### Verification
+
+`pnpm typecheck` / `pnpm lint` / `pnpm build` clean; full web vitest (11/11) green. Real browser: created a session, logged a plot-thread change against it, opened "Complete session" and confirmed the recap line read "Plot threads: 1 introduced." directly above the date fields, and confirmed the consolidated "Plot Thread Changes" section shows the thread with its "Introduced" badge.
+
 ## hotfix - 2026-08-26
 
 **Production outage: every entity detail page 500'd after the Phase 7/favorites deploy.** Railway auto-deploys API code on push to `master`, but does not auto-run Drizzle migrations against production — the `entity_favorites` migration (part of 0.29.0) had only ever been applied locally. `EntitiesService.getById()`'s new favorite-status lookup then failed on every request with `relation "entity_favorites" does not exist`, breaking every entity detail page (including selecting any map pin, which navigates there) — reported live by the user via a production screenshot.
