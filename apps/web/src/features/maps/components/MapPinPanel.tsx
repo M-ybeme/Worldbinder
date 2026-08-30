@@ -1,19 +1,8 @@
-import type { MapLayerSummary, MapPinSummary, TiptapDoc } from '@worldbinder/contracts'
-import type { UpdateEntityInput } from '@worldbinder/validation'
-import {
-  Button,
-  ErrorState,
-  FormMessage,
-  IconButton,
-  LoadingState,
-  TextField,
-} from '@worldbinder/ui'
+import type { MapLayerSummary, MapPinSummary } from '@worldbinder/contracts'
+import { IconButton } from '@worldbinder/ui'
 import { ExternalLink, X } from 'lucide-react'
-import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { EntityTypeIcon } from '../../entities/lib/entityTypeIcons'
-import { RichTextEditor } from '../../entities/components/RichTextEditor'
-import { useEntityQuery, useUpdateEntityMutation } from '../../entities/hooks/useEntities'
 import { MapPinForm, type MapPinFormValues } from './MapPinForm'
 import '../maps.css'
 
@@ -35,7 +24,11 @@ export interface MapPinPanelProps {
 /** Docked side panel opened by selecting a pin — replaces both the old
  * "navigate straight to the entity page" view-mode behavior and the old
  * "inline form below the canvas" manage-mode behavior, so checking or
- * editing a pin's info no longer loses the map's pan/zoom context. */
+ * editing a pin no longer loses the map's pan/zoom context. Holds only the
+ * pin's own fields (label/layer/visibility/position/delete) — the linked
+ * entity's actual title/body renders separately, full-width below the map
+ * (MapPinEntityContent, rendered by MapDetailPage), since that content
+ * wants the map's own width rather than a 320px rail. */
 export function MapPinPanel({
   campaignId,
   layers,
@@ -88,120 +81,7 @@ export function MapPinPanel({
         />
       )}
 
-      {pin?.locationEntityId && (
-        <EntityPinContent
-          campaignId={campaignId}
-          entityId={pin.locationEntityId}
-          canEdit={canManage}
-        />
-      )}
-
       {!canManage && !pin?.locationEntityId && <p>This pin has no additional info.</p>}
     </aside>
-  )
-}
-
-interface EntityPinContentProps {
-  campaignId: string
-  entityId: string
-  canEdit: boolean
-}
-
-/** The linked entity's title/body, previewed (and, for GMs/editors,
- * editable) without leaving the map. GM-only content is deliberately not
- * shown here — this mirrors what's already visible on the map itself; a GM
- * who needs it has "Open full page". */
-function EntityPinContent({ campaignId, entityId, canEdit }: EntityPinContentProps) {
-  const entityQuery = useEntityQuery(campaignId, entityId)
-  const updateEntity = useUpdateEntityMutation(campaignId, entityId)
-
-  const [editing, setEditing] = useState(false)
-  const [name, setName] = useState('')
-  const [content, setContent] = useState<TiptapDoc | null>(null)
-
-  useEffect(() => {
-    if (!entityQuery.data) return
-    setName(entityQuery.data.name)
-    setContent(entityQuery.data.publicContentJson)
-    setEditing(false)
-  }, [entityQuery.data])
-
-  if (entityQuery.isLoading) return <LoadingState label="Loading entity…" />
-  if (entityQuery.isError || !entityQuery.data) {
-    return (
-      <ErrorState
-        message="This entity could not be loaded."
-        onRetry={() => entityQuery.refetch()}
-      />
-    )
-  }
-  const entity = entityQuery.data
-
-  if (!canEdit || !editing) {
-    return (
-      <div className="wb-map-pin-panel__entity-content">
-        <h3>{entity.name}</h3>
-        <RichTextEditor
-          key={entity.id}
-          label="Content"
-          content={entity.publicContentJson}
-          editable={false}
-          campaignId={campaignId}
-        />
-        {canEdit && (
-          <Button variant="secondary" onClick={() => setEditing(true)}>
-            Edit
-          </Button>
-        )}
-      </div>
-    )
-  }
-
-  return (
-    <div className="wb-map-pin-panel__entity-content">
-      <TextField
-        id="pin-entity-name"
-        label="Name"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-      />
-      <RichTextEditor
-        key={entity.id}
-        label="Content"
-        content={entity.publicContentJson}
-        onChange={setContent}
-        campaignId={campaignId}
-      />
-      <FormMessage message={updateEntity.error?.message} tone="error" />
-      <div className="wb-entity-header__actions">
-        <Button
-          disabled={updateEntity.isPending}
-          onClick={() =>
-            updateEntity.mutate(
-              {
-                entityType: entity.entityType,
-                updatedAt: entity.updatedAt,
-                name,
-                publicContentJson: content ?? undefined,
-              } as UpdateEntityInput,
-              { onSuccess: () => setEditing(false) },
-            )
-          }
-        >
-          {updateEntity.isPending ? 'Saving…' : 'Save'}
-        </Button>
-        <Button
-          type="button"
-          variant="secondary"
-          onClick={() => {
-            setName(entity.name)
-            setContent(entity.publicContentJson)
-            setEditing(false)
-          }}
-        >
-          Cancel
-        </Button>
-      </div>
-    </div>
   )
 }

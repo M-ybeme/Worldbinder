@@ -163,6 +163,18 @@ a:focus-visible {
   max-width: 360px;
 }
 
+/* Modifier for the large content-editing forms (entity/session/plot-thread/
+   timeline-event edit pages) — .wb-form's 360px default suits small forms
+   (auth, settings, quick-adds) but left a lot of unused screen space next
+   to these forms' RichTextEditor(s) and dozen-plus fields on wider
+   screens. Matches --wb-container-reading, the same prose-measure cap the
+   equivalent detail page's main content column already uses, so a page
+   doesn't get narrower just because you're editing it instead of reading
+   it. */
+.wb-form--wide {
+  max-width: var(--wb-container-reading);
+}
+
 .wb-banner {
   margin: var(--wb-space-4) 0;
   padding: var(--wb-space-3) var(--wb-space-4);

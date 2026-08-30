@@ -100,7 +100,7 @@ export function TimelineEventFormPage() {
     <section>
       <h1>Edit timeline event</h1>
 
-      <form className="wb-form" onSubmit={(e) => void onSubmit(e)} noValidate>
+      <form className="wb-form wb-form--wide" onSubmit={(e) => void onSubmit(e)} noValidate>
         <TextField
           id="title"
           label="Title"

@@ -187,6 +187,19 @@ No code change: applied the already-committed migration to production Postgres v
 
 `pnpm typecheck` clean across the whole monorepo; `pnpm lint` clean (same 2 pre-existing, unrelated warnings in `entityTypeIcons.tsx`); full web vitest 11/11 green. Real browser (Playwright, local dev stack): confirmed wheel-over-map no longer moves `window.scrollY` while still zooming; confirmed the pointer-capture regression via `elementFromPoint`/event-target logging before and after the fix; confirmed drag-to-pan and plain pin-click-opens-panel both still work after that fix; reproduced the population 400 with the exact API error body, then confirmed a save with a Population value returns no error and the autosave banner reads "Saved"; screenshotted the edit page to confirm the taller content area and the visually distinct GM-only section.
 
+## [0.41.0] - 2026-08-29
+
+**Map pin panel layout + wide edit forms.** Two more direct follow-ups from using 0.39.0/0.40.0's map viewer and the entity editor in the same session.
+
+### Changed
+
+- **The selected pin's linked-entity content (name/body) now renders full-width below the map instead of inside the 320px side panel**, per direct feedback: "leaving the pin info and edit ability on the side makes sense, but putting the entity info underneath the map... will make it easier to interact with." Split the old `MapPinPanel` in two: it now holds only the pin's own fields (label/layer/visibility/position/delete); a new `MapPinEntityContent` renders in the map's own column, right below `MapViewport`, so reading or editing the entity's actual content gets the map's width rather than a sidebar's.
+- **The entity/session/plot-thread/timeline-event edit pages were stuck at `.wb-form`'s 360px width** on every screen size — fine for small forms (auth, settings) but "a lot of unused parts of the screen" on larger ones, per direct feedback. Added a `.wb-form--wide` modifier (720px, matching `--wb-container-reading` — the same prose-measure cap the equivalent read-only detail page's main content column already uses, so editing a page doesn't make it narrower than viewing it) and applied it to those four pages specifically; left `.wb-form` itself and every other form using it (auth, campaign/map settings, quick-adds) untouched.
+
+### Verification
+
+`pnpm typecheck` clean across the whole monorepo; `pnpm lint` clean (same 2 pre-existing, unrelated warnings in `entityTypeIcons.tsx`); full web vitest 11/11 green. Real browser (Playwright, local dev stack): confirmed the entity content block no longer renders inside `.wb-map-pin-panel` and does render in the map's own column at matching width; confirmed the entity edit form measures 720px on a 1920px viewport (up from 360px) and the rich-text toolbar wraps to fit it.
+
 ## [0.29.0] - 2026-08-24
 
 **UI/UX rework, Phases 4-7: World list card grid, entity-detail/dashboard rail rework, quick-create flow, favorites — final phases, rollout complete.** Continues from Phases 1-3 (0.26.0–0.28.0). See `docs/product/WORLDBINDER_DESIGN_SYSTEM.md` §46.

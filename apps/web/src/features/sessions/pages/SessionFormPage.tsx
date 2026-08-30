@@ -265,7 +265,7 @@ export function SessionFormPage() {
         </div>
       )}
 
-      <form className="wb-form" onSubmit={(e) => e.preventDefault()} noValidate>
+      <form className="wb-form wb-form--wide" onSubmit={(e) => e.preventDefault()} noValidate>
         <TextField
           id="title"
           label="Title"

@@ -15,6 +15,7 @@ import { AccessiblePinList } from '../components/AccessiblePinList'
 import '../maps.css'
 import { MapViewport } from '../components/MapViewport'
 import { MapLayerToggles } from '../components/MapLayerToggles'
+import { MapPinEntityContent } from '../components/MapPinEntityContent'
 import { MapPinPanel } from '../components/MapPinPanel'
 import type { MapPinFormValues } from '../components/MapPinForm'
 import {
@@ -223,6 +224,13 @@ export function MapDetailPage() {
                 : undefined
             }
           />
+          {selectedPin?.locationEntityId && (
+            <MapPinEntityContent
+              campaignId={campaign.id}
+              entityId={selectedPin.locationEntityId}
+              canEdit={canManage}
+            />
+          )}
         </div>
 
         {(selectedPin || placingPosition) && (

@@ -248,7 +248,7 @@ export function EntityFormPage() {
         </div>
       )}
 
-      <form className="wb-form" onSubmit={(e) => e.preventDefault()} noValidate>
+      <form className="wb-form wb-form--wide" onSubmit={(e) => e.preventDefault()} noValidate>
         <Select
           id="entityType"
           label="Type"
