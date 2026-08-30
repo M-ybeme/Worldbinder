@@ -13,9 +13,10 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useCampaignOutletContext } from '../../campaigns/hooks/useCampaignContext'
 import { AccessiblePinList } from '../components/AccessiblePinList'
 import '../maps.css'
-import { MapCanvas } from '../components/MapCanvas'
+import { MapViewport } from '../components/MapViewport'
 import { MapLayerToggles } from '../components/MapLayerToggles'
-import { MapPinForm, type MapPinFormValues } from '../components/MapPinForm'
+import { MapPinPanel } from '../components/MapPinPanel'
+import type { MapPinFormValues } from '../components/MapPinForm'
 import {
   useCreateMapLayerMutation,
   useCreateMapPinMutation,
@@ -47,7 +48,7 @@ export function MapDetailPage() {
   const [manageMode, setManageMode] = useState(false)
   const [hiddenLayerIds, setHiddenLayerIds] = useState<Set<string>>(new Set())
   const [showUnlayered, setShowUnlayered] = useState(true)
-  const [editingPin, setEditingPin] = useState<MapPinSummary | null>(null)
+  const [selectedPin, setSelectedPin] = useState<MapPinSummary | null>(null)
   const [placingPosition, setPlacingPosition] = useState<{ x: number; y: number } | null>(null)
   const [newLayerName, setNewLayerName] = useState('')
   const [confirmDeletePin, setConfirmDeletePin] = useState(false)
@@ -64,34 +65,31 @@ export function MapDetailPage() {
     pin.layerId ? !hiddenLayerIds.has(pin.layerId) : showUnlayered,
   )
 
+  // Selecting a pin always opens the side panel — a docked preview/edit
+  // surface, not a full-data popup, so it doesn't lose the map's pan/zoom
+  // context the way navigating straight to the entity page used to
+  // (ui-ux.md's "not a giant popup" concern still holds; "Open full page"
+  // inside the panel is the explicit path to the canonical entity page).
   function handlePinActivate(pin: MapPinSummary) {
-    if (manageMode) {
-      setPlacingPosition(null)
-      setEditingPin(pin)
-      return
-    }
-    // ui-ux.md: selecting a pin opens the linked entity page, not a popup.
-    // A freestanding (unlinked) pin has nothing to navigate to in view mode.
-    if (pin.locationEntityId) {
-      navigate(`/app/campaign/${campaign.id}/world/${pin.locationEntityId}`)
-    }
+    setPlacingPosition(null)
+    setSelectedPin(pin)
   }
 
   function handleCanvasPlace(x: number, y: number) {
-    setEditingPin(null)
+    setSelectedPin(null)
     setPlacingPosition({ x, y })
   }
 
   function handlePinFormSubmit(values: MapPinFormValues) {
     const { xNormalized, yNormalized, ...rest } = values
     const payload = { ...rest, label: values.label || null }
-    if (editingPin) {
+    if (selectedPin) {
       updatePin.mutate(
-        { pinId: editingPin.id, input: payload },
-        { onSuccess: () => setEditingPin(null) },
+        { pinId: selectedPin.id, input: payload },
+        { onSuccess: () => setSelectedPin(null) },
       )
-      if (xNormalized !== editingPin.xNormalized || yNormalized !== editingPin.yNormalized) {
-        repositionPin.mutate({ pinId: editingPin.id, input: { xNormalized, yNormalized } })
+      if (xNormalized !== selectedPin.xNormalized || yNormalized !== selectedPin.yNormalized) {
+        repositionPin.mutate({ pinId: selectedPin.id, input: { xNormalized, yNormalized } })
       }
     } else {
       createPin.mutate(
@@ -102,7 +100,7 @@ export function MapDetailPage() {
   }
 
   function handlePinDelete() {
-    if (!editingPin) return
+    if (!selectedPin) return
     setConfirmDeletePin(true)
   }
 
@@ -116,7 +114,7 @@ export function MapDetailPage() {
               variant="secondary"
               onClick={() => {
                 setManageMode((v) => !v)
-                setEditingPin(null)
+                setSelectedPin(null)
                 setPlacingPosition(null)
               }}
             >
@@ -142,7 +140,7 @@ export function MapDetailPage() {
           <Button
             variant="secondary"
             onClick={() => {
-              setEditingPin(null)
+              setSelectedPin(null)
               setPlacingPosition({ x: 0.5, y: 0.5 })
             }}
           >
@@ -156,7 +154,7 @@ export function MapDetailPage() {
             variant="secondary"
             onClick={() => {
               setManageMode(true)
-              setEditingPin(null)
+              setSelectedPin(null)
               setPlacingPosition({ x: 0.5, y: 0.5 })
             }}
           >
@@ -186,42 +184,51 @@ export function MapDetailPage() {
         onToggleUnlayered={() => setShowUnlayered((v) => !v)}
       />
 
-      <MapCanvas
-        imageUrl={map.imageUrl}
-        imageWidth={map.imageWidth}
-        imageHeight={map.imageHeight}
-        pins={visiblePins}
-        manageMode={manageMode}
-        onPinActivate={handlePinActivate}
-        onCanvasPlace={manageMode ? handleCanvasPlace : undefined}
-        onPinReposition={
-          manageMode
-            ? (pinId, x, y) =>
-                repositionPin.mutate({ pinId, input: { xNormalized: x, yNormalized: y } })
-            : undefined
-        }
-      />
+      <div className="wb-map-detail-layout">
+        <div className="wb-map-detail-layout__main">
+          <MapViewport
+            imageUrl={map.imageUrl}
+            imageWidth={map.imageWidth}
+            imageHeight={map.imageHeight}
+            pins={visiblePins}
+            manageMode={manageMode}
+            onPinActivate={handlePinActivate}
+            onCanvasPlace={manageMode ? handleCanvasPlace : undefined}
+            onPinReposition={
+              manageMode
+                ? (pinId, x, y) =>
+                    repositionPin.mutate({ pinId, input: { xNormalized: x, yNormalized: y } })
+                : undefined
+            }
+          />
+        </div>
 
-      {(editingPin || placingPosition) && (
-        <MapPinForm
-          campaignId={campaign.id}
-          layers={map.layers}
-          pin={editingPin}
-          initialPosition={
-            editingPin
-              ? { x: editingPin.xNormalized, y: editingPin.yNormalized }
-              : (placingPosition ?? { x: 0.5, y: 0.5 })
-          }
-          onSubmit={handlePinFormSubmit}
-          onCancel={() => {
-            setEditingPin(null)
-            setPlacingPosition(null)
-          }}
-          onDelete={editingPin ? handlePinDelete : undefined}
-          isSaving={createPin.isPending || updatePin.isPending || deletePin.isPending}
-          error={createPin.error?.message ?? updatePin.error?.message ?? deletePin.error?.message}
-        />
-      )}
+        {(selectedPin || placingPosition) && (
+          <div className="wb-map-detail-layout__panel">
+            <MapPinPanel
+              campaignId={campaign.id}
+              layers={map.layers}
+              canManage={canManage}
+              pin={selectedPin}
+              initialPosition={
+                selectedPin
+                  ? { x: selectedPin.xNormalized, y: selectedPin.yNormalized }
+                  : (placingPosition ?? { x: 0.5, y: 0.5 })
+              }
+              onSubmit={handlePinFormSubmit}
+              onClose={() => {
+                setSelectedPin(null)
+                setPlacingPosition(null)
+              }}
+              onDelete={selectedPin ? handlePinDelete : undefined}
+              isSaving={createPin.isPending || updatePin.isPending || deletePin.isPending}
+              error={
+                createPin.error?.message ?? updatePin.error?.message ?? deletePin.error?.message
+              }
+            />
+          </div>
+        )}
+      </div>
 
       <AccessiblePinList pins={visiblePins} layers={map.layers} onActivate={handlePinActivate} />
 
@@ -278,7 +285,8 @@ export function MapDetailPage() {
         pending={deletePin.isPending}
         onConfirm={() => {
           setConfirmDeletePin(false)
-          if (editingPin) deletePin.mutate(editingPin.id, { onSuccess: () => setEditingPin(null) })
+          if (selectedPin)
+            deletePin.mutate(selectedPin.id, { onSuccess: () => setSelectedPin(null) })
         }}
         onCancel={() => setConfirmDeletePin(false)}
       />

@@ -52,6 +52,9 @@ export function MapPinMarker({
       onKeyDown={handleKeyDown}
     >
       <span aria-hidden="true">●</span>
+      <span className="wb-map-pin__tooltip" aria-hidden="true">
+        {label}
+      </span>
     </button>
   )
 }

@@ -27,25 +27,143 @@
 
 .wb-map-canvas {
   position: relative;
-  margin-top: var(--wb-space-4);
-  max-width: 900px;
-  border: 1px solid var(--wb-border-default);
-  border-radius: var(--wb-radius-md);
-  overflow: hidden;
-  background: var(--wb-bg-surface-raised);
+  width: 100%;
   /* Coordinates are normalized 0-1 (roadmap §9.12) and the container's
      aspect-ratio is set from the image's stored dimensions, so left/top
      percentages stay aligned to the same visual point regardless of
-     viewport width — no resize-observer or JS recalculation needed. */
+     viewport width — no resize-observer or JS recalculation needed.
+     No border/background/max-width here — MapViewport's surface supplies
+     the visual chrome and the "work area" framing when an image exists;
+     see .wb-map-canvas--empty below for the standalone (no-viewport) case. */
 }
 
 .wb-map-canvas--empty {
   aspect-ratio: 16 / 9;
+  margin-top: var(--wb-space-4);
+  border: 1px solid var(--wb-border-default);
+  border-radius: var(--wb-radius-md);
+  background: var(--wb-bg-surface-raised);
   display: flex;
   align-items: center;
   justify-content: center;
   text-align: center;
   padding: var(--wb-space-4);
+}
+
+/* Layout: the pan/zoom work area (left) plus the pin side panel (right)
+   when a pin is selected — same grid shape as .wb-entity-detail
+   (apps/web/src/features/entities/entities.css), so the two "main content
+   + docked rail" layouts in the app read consistently. */
+.wb-map-detail-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: var(--wb-space-6);
+  align-items: start;
+  margin-top: var(--wb-space-4);
+}
+
+.wb-map-detail-layout__main {
+  min-width: 0;
+}
+
+@media (max-width: 1199px) {
+  .wb-map-detail-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.wb-map-viewport {
+  position: relative;
+}
+
+.wb-map-viewport__surface {
+  position: relative;
+  overflow: hidden;
+  height: min(70vh, 640px);
+  min-height: 360px;
+  border: 1px solid var(--wb-border-default);
+  border-radius: var(--wb-radius-md);
+  background: var(--wb-bg-surface-raised);
+  touch-action: none;
+  user-select: none;
+  cursor: grab;
+}
+
+.wb-map-viewport__surface:active {
+  cursor: grabbing;
+}
+
+.wb-map-viewport__stage {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  transform-origin: 0 0;
+}
+
+.wb-map-toolbar {
+  position: absolute;
+  top: var(--wb-space-2);
+  right: var(--wb-space-2);
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--wb-space-1);
+  padding: var(--wb-space-1);
+  border: 1px solid var(--wb-border-default);
+  border-radius: var(--wb-radius-md);
+  background: var(--wb-bg-surface-raised);
+  box-shadow: var(--wb-shadow-sm, 0 1px 3px rgb(0 0 0 / 0.15));
+}
+
+.wb-map-toolbar__zoom {
+  min-width: 3.5ch;
+  text-align: center;
+  font-size: var(--wb-text-sm);
+  color: var(--wb-text-secondary);
+}
+
+.wb-map-pin-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--wb-space-3);
+  padding: var(--wb-space-3);
+  border: 1px solid var(--wb-border-default);
+  border-radius: var(--wb-radius-md);
+  background: var(--wb-bg-surface-raised);
+}
+
+.wb-map-pin-panel__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--wb-space-2);
+}
+
+.wb-map-pin-panel__title {
+  display: flex;
+  align-items: center;
+  gap: var(--wb-space-1);
+  font-weight: 600;
+}
+
+.wb-map-pin-panel__header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--wb-space-1);
+  flex-shrink: 0;
+}
+
+.wb-map-pin-panel__entity-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--wb-space-2);
+  padding-top: var(--wb-space-3);
+  border-top: 1px solid var(--wb-border-default);
+}
+
+.wb-map-pin-panel__entity-content h3 {
+  margin: 0;
 }
 
 .wb-map-canvas__image {
@@ -67,6 +185,33 @@
   line-height: 1;
   color: var(--wb-accent);
   touch-action: none;
+}
+
+/* Sighted-user affordance layered on top of the native `title` attribute
+   (which already gives assistive tech and slow-hover users a label) —
+   appears immediately on hover/focus instead of the browser's ~1s delay. */
+.wb-map-pin__tooltip {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 2px 6px;
+  border-radius: var(--wb-radius-sm);
+  background: var(--wb-text-primary);
+  color: var(--wb-bg-surface-raised);
+  font-size: var(--wb-text-sm);
+  font-weight: 400;
+  white-space: nowrap;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity var(--wb-motion-duration-fast, 100ms) var(--wb-motion-ease, ease);
+}
+
+.wb-map-pin:hover .wb-map-pin__tooltip,
+.wb-map-pin:focus-visible .wb-map-pin__tooltip {
+  opacity: 1;
+  visibility: visible;
 }
 
 .wb-map-pin[data-visibility='gm_only'] {

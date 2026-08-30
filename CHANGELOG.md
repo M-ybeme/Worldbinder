@@ -149,6 +149,24 @@ All 9 phases of the UX-audit remediation are now shipped: quick contained fixes,
 
 No code change: applied the already-committed migration to production Postgres via `railway connect Postgres --tunnel-only` + `pnpm exec tsx src/database/migrate.ts` with `DATABASE_URL` pointed at the tunnel. Verified fixed by reproducing the exact failing flow against the live site (3 different entities, 0 `5xx` responses), not just by trusting "Migrations complete."
 
+## [0.39.0] - 2026-08-29
+
+**Map viewer: pan/zoom work area + pin side panel.** The map viewer previously rendered the image at a fixed size with no pan/zoom, and selecting a pin either navigated straight away to the linked entity's page (view mode) or opened an inline form below the canvas (manage mode) — losing the map's context every time. Requested directly by the user after trying it.
+
+### Added
+
+- **`MapViewport`** wraps `MapCanvas` in a real pan/zoom work area: mouse-wheel/trackpad-pinch zoom anchored under the cursor, drag-to-pan, two-finger touch pinch, and a `MapToolbar` overlay (zoom in/out/reset + a live zoom % readout) for keyboard/no-scroll-wheel users. Pins keep working unchanged at any zoom/pan level — their own pointer handlers already call `stopPropagation()`, and CSS transforms don't affect `getBoundingClientRect()`, so `MapCanvas`'s existing click/drag position math needed no changes.
+- **`MapPinPanel`**, a docked side panel opened by selecting a pin — for GMs/editors it hosts the existing pin fields (label/layer/visibility/position/delete, relocated from the old below-canvas form) plus, for entity-linked pins, the linked entity's name and body editable inline (saved via the existing entity-update path); players get a read-only preview of the same content. Either way, a header "Open full page" link and "Close" button give an explicit way to focus on the entity alone or return to a full-width map.
+- A custom CSS hover/focus tooltip on map pins (`MapPinMarker`) alongside the existing native `title`, so a label shows immediately instead of after the browser's default tooltip delay.
+
+### Changed
+
+- **Selecting a pin now always opens the side panel**, for both players and GMs, instead of view mode navigating straight to the linked entity's page. `docs/planning/ui-ux.md`'s "selecting a pin opens the entity page, not a giant popup" rule is a refinement, not a reversal, here: the panel is a small docked side section (not a full-data popup) and "Open full page" remains the explicit path to the canonical entity page.
+
+### Verification
+
+`pnpm typecheck` clean across the whole monorepo; `pnpm lint` clean (2 pre-existing, unrelated warnings in `entityTypeIcons.tsx`); full web vitest 11/11 green, including the existing `MapPinMarker` tests. Real browser (Playwright, against the seeded "Ashgate Crossing" demo campaign): zoom in 3x → 195%, reset → exactly 100%; drag-to-pan; hovering a pin shows the tooltip immediately; clicking a pin opens the side panel with the pin form and the linked entity's name/body, editing and saving it, "Open full page" navigating correctly, and "Close" collapsing the panel back to a full-width map.
+
 ## [0.29.0] - 2026-08-24
 
 **UI/UX rework, Phases 4-7: World list card grid, entity-detail/dashboard rail rework, quick-create flow, favorites — final phases, rollout complete.** Continues from Phases 1-3 (0.26.0–0.28.0). See `docs/product/WORLDBINDER_DESIGN_SYSTEM.md` §46.
