@@ -251,12 +251,14 @@ export function ThreadFormPage() {
         />
 
         {canSetGmContent && (
-          <RichTextEditor
-            label="GM-only content"
-            content={gmContent}
-            onChange={setGmContent}
-            campaignId={campaign.id}
-          />
+          <div className="wb-gm-content">
+            <RichTextEditor
+              label="GM-only content"
+              content={gmContent}
+              onChange={setGmContent}
+              campaignId={campaign.id}
+            />
+          </div>
         )}
 
         <EntityMultiPicker

@@ -1,9 +1,9 @@
 import {
+  useEffect,
   useRef,
   useState,
   type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
-  type WheelEvent as ReactWheelEvent,
 } from 'react'
 import '../maps.css'
 import { MapCanvas, type MapCanvasProps } from './MapCanvas'
@@ -72,23 +72,48 @@ export function MapViewport(props: MapViewportProps) {
     return { x: clientX - (rect?.left ?? 0), y: clientY - (rect?.top ?? 0) }
   }
 
-  function applyZoom(nextZoom: number, anchor: { x: number; y: number }) {
-    const clamped = clampZoom(nextZoom)
-    setPan((prevPan) => zoomToPoint(zoom, prevPan, anchor, clamped))
-    setZoom(clamped)
+  // Takes a function of the *previous* zoom rather than a plain number so
+  // every call site (including the native wheel listener below, which
+  // can't rely on a fresh `zoom` closure — see its own comment) composes
+  // correctly against whatever zoom/pan state is current when it actually
+  // runs, not whatever it was when the handler was created.
+  function applyZoom(
+    nextZoomFromPrev: (prevZoom: number) => number,
+    anchor: { x: number; y: number },
+  ) {
+    setZoom((prevZoom) => {
+      const nextZoom = clampZoom(nextZoomFromPrev(prevZoom))
+      setPan((prevPan) => zoomToPoint(prevZoom, prevPan, anchor, nextZoom))
+      return nextZoom
+    })
   }
 
-  function handleWheel(event: ReactWheelEvent<HTMLDivElement>) {
-    if (!props.imageUrl) return
-    event.preventDefault()
-    const factor = Math.exp(-event.deltaY * WHEEL_ZOOM_SENSITIVITY)
-    applyZoom(zoom * factor, viewportPoint(event.clientX, event.clientY))
-  }
+  // Not a React onWheel prop: React attaches its delegated wheel listener
+  // as passive, so event.preventDefault() inside a synthetic onWheel
+  // handler is silently ignored and the page scrolls underneath the map
+  // regardless — a well-known React limitation. A real, non-passive
+  // addEventListener is the only way to actually stop that scroll.
+  useEffect(() => {
+    const surface = viewportRef.current
+    if (!surface || !props.imageUrl) return
+
+    function handleWheel(event: WheelEvent) {
+      event.preventDefault()
+      const factor = Math.exp(-event.deltaY * WHEEL_ZOOM_SENSITIVITY)
+      applyZoom((prevZoom) => prevZoom * factor, viewportPoint(event.clientX, event.clientY))
+    }
+
+    surface.addEventListener('wheel', handleWheel, { passive: false })
+    return () => surface.removeEventListener('wheel', handleWheel)
+  }, [props.imageUrl])
 
   function handleZoomButton(direction: 1 | -1) {
     const rect = viewportRef.current?.getBoundingClientRect()
     const center = rect ? { x: rect.width / 2, y: rect.height / 2 } : { x: 0, y: 0 }
-    applyZoom(direction > 0 ? zoom * BUTTON_ZOOM_STEP : zoom / BUTTON_ZOOM_STEP, center)
+    applyZoom(
+      (prevZoom) => (direction > 0 ? prevZoom * BUTTON_ZOOM_STEP : prevZoom / BUTTON_ZOOM_STEP),
+      center,
+    )
   }
 
   function handleReset() {
@@ -99,7 +124,14 @@ export function MapViewport(props: MapViewportProps) {
   function handlePointerDown(event: ReactPointerEvent<HTMLDivElement>) {
     if (!props.imageUrl) return
     pointers.current.set(event.pointerId, { x: event.clientX, y: event.clientY })
-    event.currentTarget.setPointerCapture(event.pointerId)
+    // Pointer capture is deferred to handlePointerMove, once a drag/pinch is
+    // actually confirmed — NOT here. A captured pointer's eventual native
+    // `click` event gets retargeted by the browser to the *capturing*
+    // element (this surface), not the element under the cursor. Since
+    // MapCanvas's click-to-place-a-pin handler lives on a descendant
+    // (`.wb-map-canvas`, nested inside this surface), React's bubble
+    // simulation — which walks up from the event's target — would never
+    // reach it if every plain click captured the pointer up front.
     if (pointers.current.size === 1) {
       downPosition.current = { x: event.clientX, y: event.clientY }
       didDrag.current = false
@@ -118,8 +150,14 @@ export function MapViewport(props: MapViewportProps) {
       const [a, b] = active
       const currentDistance = distance(a, b)
       const currentMidpoint = viewportPoint(midpoint(a, b).x, midpoint(a, b).y)
-      if (lastPinchDistance.current !== null) {
-        applyZoom(zoom * (currentDistance / lastPinchDistance.current), currentMidpoint)
+      if (lastPinchDistance.current === null) {
+        event.currentTarget.setPointerCapture(event.pointerId)
+      } else {
+        const distanceAtGestureStart = lastPinchDistance.current
+        applyZoom(
+          (prevZoom) => prevZoom * (currentDistance / distanceAtGestureStart),
+          currentMidpoint,
+        )
       }
       lastPinchDistance.current = currentDistance
       return
@@ -130,6 +168,7 @@ export function MapViewport(props: MapViewportProps) {
       const moved = distance(downPosition.current, { x: event.clientX, y: event.clientY })
       if (moved <= PAN_THRESHOLD_PX) return
       didDrag.current = true
+      event.currentTarget.setPointerCapture(event.pointerId)
     }
     setPan((prev) => ({
       x: prev.x + (event.clientX - previous.x),
@@ -159,6 +198,13 @@ export function MapViewport(props: MapViewportProps) {
 
   if (!props.imageUrl) return <MapCanvas {...props} />
 
+  const surfaceClassName = [
+    'wb-map-viewport__surface',
+    props.onCanvasPlace && 'wb-map-viewport__surface--placing',
+  ]
+    .filter(Boolean)
+    .join(' ')
+
   return (
     <div className="wb-map-viewport">
       <MapToolbar
@@ -169,8 +215,7 @@ export function MapViewport(props: MapViewportProps) {
       />
       <div
         ref={viewportRef}
-        className="wb-map-viewport__surface"
-        onWheel={handleWheel}
+        className={surfaceClassName}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}

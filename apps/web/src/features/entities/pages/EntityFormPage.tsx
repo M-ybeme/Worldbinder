@@ -303,13 +303,15 @@ export function EntityFormPage() {
         />
 
         {hasGmAccess && (
-          <RichTextEditor
-            key={`gm-${formKey}`}
-            label="GM-only content"
-            content={gmContent}
-            onChange={setGmContent}
-            campaignId={campaign.id}
-          />
+          <div className="wb-gm-content">
+            <RichTextEditor
+              key={`gm-${formKey}`}
+              label="GM-only content"
+              content={gmContent}
+              onChange={setGmContent}
+              campaignId={campaign.id}
+            />
+          </div>
         )}
       </form>
     </section>

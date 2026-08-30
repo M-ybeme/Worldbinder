@@ -299,12 +299,14 @@ export function SessionFormPage() {
         />
 
         {canSetGmContent && (
-          <RichTextEditor
-            label="Planned content (GM only)"
-            content={plannedContent}
-            onChange={setPlannedContent}
-            campaignId={campaign.id}
-          />
+          <div className="wb-gm-content">
+            <RichTextEditor
+              label="Planned content (GM only)"
+              content={plannedContent}
+              onChange={setPlannedContent}
+              campaignId={campaign.id}
+            />
+          </div>
         )}
 
         <RichTextEditor
@@ -315,12 +317,14 @@ export function SessionFormPage() {
         />
 
         {canSetGmContent && (
-          <RichTextEditor
-            label="GM-only notes"
-            content={gmContent}
-            onChange={setGmContent}
-            campaignId={campaign.id}
-          />
+          <div className="wb-gm-content">
+            <RichTextEditor
+              label="GM-only notes"
+              content={gmContent}
+              onChange={setGmContent}
+              campaignId={campaign.id}
+            />
+          </div>
         )}
 
         <div className="wb-field">

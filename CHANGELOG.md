@@ -167,6 +167,26 @@ No code change: applied the already-committed migration to production Postgres v
 
 `pnpm typecheck` clean across the whole monorepo; `pnpm lint` clean (2 pre-existing, unrelated warnings in `entityTypeIcons.tsx`); full web vitest 11/11 green, including the existing `MapPinMarker` tests. Real browser (Playwright, against the seeded "Ashgate Crossing" demo campaign): zoom in 3x → 195%, reset → exactly 100%; drag-to-pan; hovering a pin shows the tooltip immediately; clicking a pin opens the side panel with the pin form and the linked entity's name/body, editing and saving it, "Open full page" navigating correctly, and "Close" collapsing the panel back to a full-width map.
 
+## [0.40.0] - 2026-08-29
+
+**Map viewer follow-ups + a real location-entity save bug + RichTextEditor styling.** Direct user follow-up after trying 0.39.0's map viewer, plus a separately reported entity-editing failure hit in the same session.
+
+### Fixed
+
+- **Scrolling over the map scrolled the whole page instead of just zooming it.** `MapViewport`'s wheel-zoom was wired through React's `onWheel` prop, which React attaches as a _passive_ DOM listener — `event.preventDefault()` inside it is silently ignored, so the browser's default scroll ran anyway underneath the zoom. Fixed by attaching a real `addEventListener('wheel', handler, { passive: false })` via `useEffect` instead; scrolling over the map now only zooms it.
+- **Click-to-place-a-pin silently stopped working** partway through building the fix below, caused by this session's own pan implementation: every pointer-down called `setPointerCapture()` up front (for panning), but a captured pointer's eventual native `click` event gets retargeted by the browser to the _capturing_ element rather than the element under the cursor — since `MapCanvas`'s click-to-place handler lives on a descendant of the capturing surface, React's bubble simulation (which walks up from the event's target) never reached it. Fixed by deferring `setPointerCapture` to `MapViewport`'s pointer-move handler, called only once a drag/pinch is actually confirmed past the movement threshold — a plain click never captures the pointer, so it reaches `MapCanvas` normally.
+- **Saving a location entity with a Population value always failed with a 400** (`"Expected number, received string"`), on every save, not just the first — reported live: "created an empty location entity... editing it... failed." `EntityMetadataFields`' generic string setter was used for the one metadata field the API validates as a real number (`locationMetadataSchema.population`); a plain `<input type="number">`'s value is always a string in the DOM regardless of the schema. Gave `population` its own numeric-aware read/write path instead. Reproduced the exact failure locally (network response body captured) before fixing, and confirmed clean afterward.
+
+### Changed
+
+- **"+ New pin" now arms a "click the map to place it" mode** instead of dropping a pin at a fixed center position immediately — matches the requested flow of click the button, then click wherever on the map the pin should go, then the side panel opens to fill in its info. A "Place at center instead" fallback and a Cancel action cover keyboard-only/no-pointer use and changing your mind. Only an explicit "+ New pin" arms this now — a stray click on the map background while just looking around no longer creates a pin.
+- **`RichTextEditor` (TipTap) had no CSS at all beyond generic field-label spacing** — the toolbar rendered as a bare row of unstyled buttons and the content area had no minimum height, so it shrank to fit whatever little content already existed. Added real styling in `global.css` (shared by entities/sessions/plot-threads/timeline/maps): a visible toolbar, active-button highlighting, and a 320px minimum content height (140px inside the map pin panel's narrower rail, where a full-page-sized editor doesn't fit).
+- **The GM-only editor on the edit pages looked identical to the public one**, two stacked toolbar+editor blocks distinguished only by a text label — confusing, per direct feedback. Applied the same warning-tinted `.wb-gm-content` wrapper the read-only detail pages already used to the GM-only editor(s) on `EntityFormPage`, `SessionFormPage` (both its GM-only blocks), and `ThreadFormPage`.
+
+### Verification
+
+`pnpm typecheck` clean across the whole monorepo; `pnpm lint` clean (same 2 pre-existing, unrelated warnings in `entityTypeIcons.tsx`); full web vitest 11/11 green. Real browser (Playwright, local dev stack): confirmed wheel-over-map no longer moves `window.scrollY` while still zooming; confirmed the pointer-capture regression via `elementFromPoint`/event-target logging before and after the fix; confirmed drag-to-pan and plain pin-click-opens-panel both still work after that fix; reproduced the population 400 with the exact API error body, then confirmed a save with a Population value returns no error and the autosave banner reads "Saved"; screenshotted the edit page to confirm the taller content area and the visually distinct GM-only section.
+
 ## [0.29.0] - 2026-08-24
 
 **UI/UX rework, Phases 4-7: World list card grid, entity-detail/dashboard rail rework, quick-create flow, favorites — final phases, rollout complete.** Continues from Phases 1-3 (0.26.0–0.28.0). See `docs/product/WORLDBINDER_DESIGN_SYSTEM.md` §46.

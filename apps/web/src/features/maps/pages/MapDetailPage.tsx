@@ -50,6 +50,12 @@ export function MapDetailPage() {
   const [showUnlayered, setShowUnlayered] = useState(true)
   const [selectedPin, setSelectedPin] = useState<MapPinSummary | null>(null)
   const [placingPosition, setPlacingPosition] = useState<{ x: number; y: number } | null>(null)
+  // True between clicking "+ New pin" and the next map click — while armed,
+  // the next click anywhere on the map drops the pin there instead of doing
+  // nothing. Kept separate from `placingPosition` so an accidental
+  // background click can't ever start a new pin: only an explicit "+ New
+  // pin" arms this.
+  const [armedForNewPin, setArmedForNewPin] = useState(false)
   const [newLayerName, setNewLayerName] = useState('')
   const [confirmDeletePin, setConfirmDeletePin] = useState(false)
   const [confirmDeleteMap, setConfirmDeleteMap] = useState(false)
@@ -71,13 +77,24 @@ export function MapDetailPage() {
   // (ui-ux.md's "not a giant popup" concern still holds; "Open full page"
   // inside the panel is the explicit path to the canonical entity page).
   function handlePinActivate(pin: MapPinSummary) {
+    setArmedForNewPin(false)
     setPlacingPosition(null)
     setSelectedPin(pin)
   }
 
+  // Only wired up while armed (see onCanvasPlace below) — the click that
+  // drops the new pin exactly where the user clicked, then opens the panel
+  // to fill in its info.
   function handleCanvasPlace(x: number, y: number) {
+    setArmedForNewPin(false)
     setSelectedPin(null)
     setPlacingPosition({ x, y })
+  }
+
+  function beginPlacingNewPin() {
+    setSelectedPin(null)
+    setPlacingPosition(null)
+    setArmedForNewPin(true)
   }
 
   function handlePinFormSubmit(values: MapPinFormValues) {
@@ -116,6 +133,7 @@ export function MapDetailPage() {
                 setManageMode((v) => !v)
                 setSelectedPin(null)
                 setPlacingPosition(null)
+                setArmedForNewPin(false)
               }}
             >
               {manageMode ? 'Done editing' : 'Edit pins & layers'}
@@ -133,17 +151,22 @@ export function MapDetailPage() {
         )}
       </header>
       {map.description && <p>{map.description}</p>}
-      {manageMode && (
+      {manageMode && armedForNewPin && (
+        <p className="wb-map-discoverability-hint">
+          Click anywhere on the map to place the new pin there.{' '}
+          <Button variant="secondary" onClick={() => handleCanvasPlace(0.5, 0.5)}>
+            Place at center instead
+          </Button>{' '}
+          <Button variant="secondary" onClick={() => setArmedForNewPin(false)}>
+            Cancel
+          </Button>
+        </p>
+      )}
+      {manageMode && !armedForNewPin && (
         <p>
-          Click the map to place a new pin, or drag an existing pin to move it — the pin form's
-          position fields work without a pointer, too.{' '}
-          <Button
-            variant="secondary"
-            onClick={() => {
-              setSelectedPin(null)
-              setPlacingPosition({ x: 0.5, y: 0.5 })
-            }}
-          >
+          Drag an existing pin to move it — the pin form's position fields work without a pointer,
+          too.{' '}
+          <Button variant="secondary" onClick={beginPlacingNewPin}>
             + New pin
           </Button>
         </p>
@@ -154,8 +177,7 @@ export function MapDetailPage() {
             variant="secondary"
             onClick={() => {
               setManageMode(true)
-              setSelectedPin(null)
-              setPlacingPosition({ x: 0.5, y: 0.5 })
+              beginPlacingNewPin()
             }}
           >
             + Add pin
@@ -193,7 +215,7 @@ export function MapDetailPage() {
             pins={visiblePins}
             manageMode={manageMode}
             onPinActivate={handlePinActivate}
-            onCanvasPlace={manageMode ? handleCanvasPlace : undefined}
+            onCanvasPlace={manageMode && armedForNewPin ? handleCanvasPlace : undefined}
             onPinReposition={
               manageMode
                 ? (pinId, x, y) =>

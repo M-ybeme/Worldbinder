@@ -93,6 +93,14 @@
   cursor: grabbing;
 }
 
+/* Armed "click the map to place a new pin" mode — see MapDetailPage's
+   armedForNewPin state. Overrides the pan cursor above since a click here
+   places a pin rather than starting a drag. */
+.wb-map-viewport__surface--placing,
+.wb-map-viewport__surface--placing:active {
+  cursor: crosshair;
+}
+
 .wb-map-viewport__stage {
   position: absolute;
   top: 0;
@@ -164,6 +172,14 @@
 
 .wb-map-pin-panel__entity-content h3 {
   margin: 0;
+}
+
+/* The global RichTextEditor content area defaults to a comfortable
+   full-page min-height (see global.css) — too tall for this narrow docked
+   rail, where panel space is precious and the content is meant to be a
+   quick preview/edit, not the primary writing surface. */
+.wb-map-pin-panel__entity-content .wb-richtext .ProseMirror {
+  min-height: 140px;
 }
 
 .wb-map-canvas__image {

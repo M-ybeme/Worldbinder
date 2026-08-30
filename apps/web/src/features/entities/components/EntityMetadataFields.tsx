@@ -21,6 +21,20 @@ export function EntityMetadataFields({
   const set = (key: string) => (val: string) =>
     onChange({ ...value, [key]: val === '' ? undefined : val })
 
+  // A plain <input type="number">'s value is always a string (HTML, not
+  // the schema) — location's `population` is the one metadata field the
+  // API validates as a real number (locationMetadataSchema), so it needs
+  // its own numeric-aware read/write instead of the generic string `set`
+  // above, which was silently sending `population` as a string and
+  // failing every save with a 400 ("Expected number, received string").
+  const num = (key: string): string =>
+    typeof value[key] === 'number' ? String(value[key]) : ''
+
+  const setNum = (key: string) => (val: string) => {
+    const parsed = Number(val)
+    onChange({ ...value, [key]: val === '' || Number.isNaN(parsed) ? undefined : parsed })
+  }
+
   const entityRef = (key: string, label: string, refType?: EntityType) => (
     <EntityPicker
       key={key}
@@ -83,8 +97,8 @@ export function EntityMetadataFields({
             id="metadata-population"
             label="Population"
             type="number"
-            value={str('population')}
-            onChange={(e) => set('population')(e.target.value)}
+            value={num('population')}
+            onChange={(e) => setNum('population')(e.target.value)}
           />
           <TextField
             id="metadata-government"
