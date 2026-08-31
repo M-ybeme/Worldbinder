@@ -1,14 +1,18 @@
 import { zodResolver } from '@hookform/resolvers/zod'
+import type { DashboardBackdropConfig, DashboardBackdropFit } from '@worldbinder/contracts'
 import {
   Button,
   ConfirmDialog,
   FileDropzone,
   FormMessage,
   LoadingState,
+  Select,
+  Slider,
   TextField,
 } from '@worldbinder/ui'
 import {
   DEFAULT_CALENDAR_CONFIG,
+  DEFAULT_DASHBOARD_BACKDROP_CONFIG,
   updateCampaignSchema,
   type UpdateCampaignInput,
 } from '@worldbinder/validation'
@@ -20,6 +24,7 @@ import {
   useUploadUnlinkedAttachmentMutation,
 } from '../../attachments/hooks/useAttachments'
 import { CalendarMonthsEditor } from '../../calendar/components/CalendarMonthsEditor'
+import { DashboardBackdrop } from '../components/DashboardBackdrop'
 import { useCampaignOutletContext } from '../hooks/useCampaignContext'
 import {
   useArchiveCampaignMutation,
@@ -27,6 +32,12 @@ import {
   useRestoreCampaignMutation,
   useUpdateCampaignMutation,
 } from '../hooks/useCampaigns'
+
+const BACKDROP_FIT_OPTIONS: { value: DashboardBackdropFit; label: string }[] = [
+  { value: 'cover', label: 'Cover (crop to fill, no dead space)' },
+  { value: 'contain', label: 'Contain (show whole image, letterboxed)' },
+  { value: 'stretch', label: 'Stretch (fill by distorting)' },
+]
 
 const MANAGEMENT_ROLES = new Set(['owner', 'gm'])
 
@@ -76,6 +87,11 @@ export function CampaignSettingsPage() {
   const [coverError, setCoverError] = useState<string | null>(null)
   const uploadCover = useUploadUnlinkedAttachmentMutation(campaign.id)
   const unlinkedQuery = useUnlinkedAttachmentsQuery(campaign.id, !!pendingCoverId, true)
+
+  const [backdropConfig, setBackdropConfig] = useState<DashboardBackdropConfig>(
+    campaign.dashboardBackdropJson ?? DEFAULT_DASHBOARD_BACKDROP_CONFIG,
+  )
+  const saveBackdropConfig = useUpdateCampaignMutation(campaign.id)
 
   useEffect(() => {
     if (!pendingCoverId) return
@@ -141,6 +157,95 @@ export function CampaignSettingsPage() {
             <LoadingState label="Uploading and processing…" />
           )}
           <FormMessage message={uploadCover.error?.message ?? coverError} tone="error" />
+        </>
+      )}
+
+      {canManageSettings && campaign.coverImageUrl && (
+        <>
+          <h2>Dashboard backdrop</h2>
+          <p>Show the cover image behind the campaign Dashboard's content.</p>
+          <DashboardBackdrop imageUrl={campaign.coverImageUrl} config={backdropConfig} />
+          <div className="wb-form">
+            <Select
+              label="Fill mode"
+              options={BACKDROP_FIT_OPTIONS}
+              value={backdropConfig.fit}
+              onChange={(event) =>
+                setBackdropConfig((config) => ({
+                  ...config,
+                  fit: event.target.value as DashboardBackdropFit,
+                }))
+              }
+            />
+            <Slider
+              label="Opacity"
+              valueLabel={`${Math.round(backdropConfig.opacity * 100)}%`}
+              min={0}
+              max={0.6}
+              step={0.05}
+              value={backdropConfig.opacity}
+              onChange={(event) =>
+                setBackdropConfig((config) => ({ ...config, opacity: Number(event.target.value) }))
+              }
+            />
+            <Slider
+              label="Zoom"
+              valueLabel={`${Math.round(backdropConfig.zoom * 100)}%`}
+              min={1}
+              max={2.5}
+              step={0.05}
+              value={backdropConfig.zoom}
+              onChange={(event) =>
+                setBackdropConfig((config) => ({ ...config, zoom: Number(event.target.value) }))
+              }
+            />
+            <Slider
+              label="Focal point — horizontal"
+              valueLabel={`${Math.round(backdropConfig.focalX)}%`}
+              min={0}
+              max={100}
+              step={1}
+              value={backdropConfig.focalX}
+              onChange={(event) =>
+                setBackdropConfig((config) => ({ ...config, focalX: Number(event.target.value) }))
+              }
+            />
+            <Slider
+              label="Focal point — vertical"
+              valueLabel={`${Math.round(backdropConfig.focalY)}%`}
+              min={0}
+              max={100}
+              step={1}
+              value={backdropConfig.focalY}
+              onChange={(event) =>
+                setBackdropConfig((config) => ({ ...config, focalY: Number(event.target.value) }))
+              }
+            />
+            <FormMessage message={saveBackdropConfig.error?.message} />
+            {saveBackdropConfig.isSuccess && (
+              <FormMessage tone="success" message="Backdrop saved." />
+            )}
+            <div className="wb-entity-header__actions">
+              <Button
+                type="button"
+                disabled={saveBackdropConfig.isPending}
+                onClick={() => saveBackdropConfig.mutate({ dashboardBackdropJson: backdropConfig })}
+              >
+                {saveBackdropConfig.isPending ? 'Saving…' : 'Save backdrop'}
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={saveBackdropConfig.isPending}
+                onClick={() => {
+                  setBackdropConfig(DEFAULT_DASHBOARD_BACKDROP_CONFIG)
+                  saveBackdropConfig.mutate({ dashboardBackdropJson: null })
+                }}
+              >
+                Reset to default
+              </Button>
+            </div>
+          </div>
         </>
       )}
 

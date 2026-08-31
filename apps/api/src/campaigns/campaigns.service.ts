@@ -12,6 +12,7 @@ import type {
   CampaignDetail,
   CampaignSessionSummary,
   CampaignSummary,
+  DashboardBackdropConfig,
   EntitySummary,
   PlotThreadSummary,
   TimelineDate,
@@ -140,6 +141,7 @@ export class CampaignsService {
       input.settingsJson !== undefined ||
       input.currentWorldDateJson !== undefined ||
       input.calendarConfigJson !== undefined ||
+      input.dashboardBackdropJson !== undefined ||
       input.coverAttachmentId !== undefined;
 
     if (hasNameChange && !this.policy.canRenameCampaign(membership.role)) {
@@ -188,6 +190,9 @@ export class CampaignsService {
           : {}),
         ...(input.calendarConfigJson !== undefined
           ? { calendarConfigJson: input.calendarConfigJson }
+          : {}),
+        ...(input.dashboardBackdropJson !== undefined
+          ? { dashboardBackdropJson: input.dashboardBackdropJson }
           : {}),
         ...(input.coverAttachmentId !== undefined
           ? { coverAttachmentId: input.coverAttachmentId }
@@ -694,6 +699,8 @@ export class CampaignsService {
       settingsJson: campaign.settingsJson as Record<string, unknown> | null,
       currentWorldDateJson: campaign.currentWorldDateJson as WorldDate | null,
       calendarConfigJson: campaign.calendarConfigJson as CalendarConfig | null,
+      dashboardBackdropJson:
+        campaign.dashboardBackdropJson as DashboardBackdropConfig | null,
     };
   }
 }

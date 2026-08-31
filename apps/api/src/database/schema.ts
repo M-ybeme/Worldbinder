@@ -187,6 +187,11 @@ export const campaigns = pgTable('campaigns', {
   // Lives directly on campaigns (one config per campaign), mirroring
   // currentWorldDateJson/coverAttachmentId rather than a separate table.
   calendarConfigJson: jsonb('calendar_config_json'),
+  // Dashboard cover-image backdrop display (opacity/fit/zoom/focal point).
+  // null means DEFAULT_DASHBOARD_BACKDROP_CONFIG (packages/validation)
+  // applies. Own column rather than nested in settingsJson, same
+  // structured-config precedent as calendarConfigJson above.
+  dashboardBackdropJson: jsonb('dashboard_backdrop_json'),
   settingsJson: jsonb('settings_json'),
   createdAt: timestamp('created_at', { withTimezone: true })
     .notNull()

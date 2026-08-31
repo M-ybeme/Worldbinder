@@ -1,0 +1,1 @@
+ALTER TABLE "campaigns" ADD COLUMN "dashboard_backdrop_json" jsonb;

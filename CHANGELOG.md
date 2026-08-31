@@ -200,6 +200,21 @@ No code change: applied the already-committed migration to production Postgres v
 
 `pnpm typecheck` clean across the whole monorepo; `pnpm lint` clean (same 2 pre-existing, unrelated warnings in `entityTypeIcons.tsx`); full web vitest 11/11 green. Real browser (Playwright, local dev stack): confirmed the entity content block no longer renders inside `.wb-map-pin-panel` and does render in the map's own column at matching width; confirmed the entity edit form measures 720px on a 1920px viewport (up from 360px) and the rich-text toolbar wraps to fit it.
 
+## [0.42.0] - 2026-08-30
+
+**Campaign cover image as a configurable Dashboard backdrop.** The cover image already existed (`CampaignSettingsPage`'s upload flow, `coverAttachmentId`) but was only ever shown as a small preview in Settings — never used anywhere the rest of the app.
+
+### Added
+
+- **The Dashboard (`CampaignOverviewPage`) now shows the campaign's cover image as a hero band above its content**, when one is set. Deliberately a fixed-height band (200px, 140px under 768px), not an ambient full-page wallpaper — the design doc is explicit the Dashboard should read as an operational workspace, not a decorative splash screen; the widget cards below it stay fully opaque.
+- **A new "Dashboard backdrop" section in `CampaignSettingsPage`** lets the owner/GM control how it's displayed: fill mode (cover/contain/stretch — `object-fit` under the hood), opacity (capped at 60% so content stays legible regardless of image), zoom, and a horizontal/vertical focal point, with a live preview and a "Reset to default" action. New `DashboardBackdrop` component (`apps/web/src/features/campaigns/components/`) backs both the Settings preview and the real Dashboard render, so they can't drift.
+- `campaigns.dashboard_backdrop_json` — a new column (own column, not folded into the generic `settings_json` bag, same precedent as `calendar_config_json`), with a versioned `DashboardBackdropConfig` schema/default in `packages/validation`/`packages/contracts`, threaded through `CampaignsService.update()`/`toDetail()`.
+- New `Slider` primitive in `packages/ui` (native `<input type="range">` themed via `accent-color`, same "copy universal conventions" precedent as `Checkbox`) — this is its first consumer.
+
+### Verification
+
+`pnpm typecheck` clean across `contracts`/`validation`/`ui`/`api`/`web` (had to rebuild `contracts`/`validation`'s `dist/` output before `web`'s `tsc -b` picked up the new exports — expected, not a bug); `pnpm lint` clean on `web`/`api`. Real browser against the local dev stack: uploaded a cover image, exercised both Cover (crop, pans/zooms with focal point) and Contain (whole image, letterboxed dead space) fit modes, saved and confirmed `dashboard_backdrop_json` persisted correctly in Postgres, confirmed "Reset to default" clears it back to `null`, and confirmed the Dashboard route renders the saved config after a reload. One dev-only snag along the way (stale Vite dependency cache after the package rebuild, fixed by restarting the dev servers) — not a code defect. Separately noticed the cover-image upload flow itself (pre-existing, not part of this change) fired duplicate presign/complete requests in this session and got stuck on its "Uploading and processing…" state; worked around for testing, not investigated further.
+
 ## [0.29.0] - 2026-08-24
 
 **UI/UX rework, Phases 4-7: World list card grid, entity-detail/dashboard rail rework, quick-create flow, favorites — final phases, rollout complete.** Continues from Phases 1-3 (0.26.0–0.28.0). See `docs/product/WORLDBINDER_DESIGN_SYSTEM.md` §46.

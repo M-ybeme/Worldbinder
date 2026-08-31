@@ -1,0 +1,26 @@
+.wb-slider__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--wb-space-2);
+}
+
+.wb-slider__value {
+  font-size: var(--wb-text-sm);
+  color: var(--wb-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Native control themed via accent-color, same "copy universal
+   conventions" precedent as Checkbox.css rather than a hand-rolled track/
+   thumb. */
+.wb-slider {
+  width: 100%;
+  accent-color: var(--wb-accent);
+  cursor: pointer;
+}
+
+.wb-slider:focus-visible {
+  outline: 2px solid var(--wb-accent);
+  outline-offset: 2px;
+}

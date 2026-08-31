@@ -26,12 +26,28 @@ export interface CampaignSummary {
   archivedAt: string | null
 }
 
+export type DashboardBackdropFit = 'cover' | 'contain' | 'stretch'
+
+/** How the campaign's cover image (if any) is displayed behind the
+ * Dashboard's content — see packages/validation/src/campaigns.ts for the
+ * authoritative schema/defaults/bounds. `null` means
+ * `DEFAULT_DASHBOARD_BACKDROP_CONFIG` applies. */
+export interface DashboardBackdropConfig {
+  schemaVersion: 1
+  fit: DashboardBackdropFit
+  opacity: number
+  zoom: number
+  focalX: number
+  focalY: number
+}
+
 export interface CampaignDetail extends CampaignSummary {
   settingsJson: Record<string, unknown> | null
   currentWorldDateJson: WorldDate | null
   /** null means `DEFAULT_CALENDAR_CONFIG` (packages/validation) applies —
    * see Milestone 11 ("Timeline and Calendar"). */
   calendarConfigJson: CalendarConfig | null
+  dashboardBackdropJson: DashboardBackdropConfig | null
 }
 
 export interface CampaignActivityItem {

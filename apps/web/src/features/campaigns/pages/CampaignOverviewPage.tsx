@@ -1,5 +1,6 @@
 import type { CampaignActivityItem, EntityType, WorldDate } from '@worldbinder/contracts'
 import { Button, CardGrid, ErrorState, LoadingState } from '@worldbinder/ui'
+import { DEFAULT_DASHBOARD_BACKDROP_CONFIG } from '@worldbinder/validation'
 import { CalendarDays, GitBranch } from 'lucide-react'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
@@ -7,6 +8,7 @@ import { QuickCreateEntityDialog } from '../../entities/components/QuickCreateEn
 import { EntityTypeIcon } from '../../entities/lib/entityTypeIcons'
 import { QuickCreateThreadDialog } from '../../plot-threads/components/QuickCreateThreadDialog'
 import { QuickCreateSessionDialog } from '../../sessions/components/QuickCreateSessionDialog'
+import { DashboardBackdrop } from '../components/DashboardBackdrop'
 import { useCampaignOutletContext } from '../hooks/useCampaignContext'
 import { useCampaignDashboardQuery } from '../hooks/useCampaigns'
 import '../campaigns.css'
@@ -69,6 +71,12 @@ export function CampaignOverviewPage() {
         open={threadDialogOpen}
         onClose={() => setThreadDialogOpen(false)}
       />
+      {campaign.coverImageUrl && (
+        <DashboardBackdrop
+          imageUrl={campaign.coverImageUrl}
+          config={campaign.dashboardBackdropJson ?? DEFAULT_DASHBOARD_BACKDROP_CONFIG}
+        />
+      )}
       <p>{campaign.description ?? 'No description yet.'}</p>
       {/* Reuses ProfilePage's key-value dl treatment rather than
           introducing a near-duplicate .wb-campaign-overview class — same

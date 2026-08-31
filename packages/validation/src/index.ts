@@ -45,8 +45,19 @@ export type {
   VerifyEmailInput,
 } from './auth.js'
 
-export { createCampaignSchema, updateCampaignSchema } from './campaigns.js'
-export type { CreateCampaignInput, UpdateCampaignInput } from './campaigns.js'
+export {
+  createCampaignSchema,
+  DEFAULT_DASHBOARD_BACKDROP_CONFIG,
+  dashboardBackdropConfigSchema,
+  dashboardBackdropFitSchema,
+  updateCampaignSchema,
+} from './campaigns.js'
+export type {
+  CreateCampaignInput,
+  DashboardBackdropConfig,
+  DashboardBackdropFit,
+  UpdateCampaignInput,
+} from './campaigns.js'
 
 export {
   acceptInvitationSchema,

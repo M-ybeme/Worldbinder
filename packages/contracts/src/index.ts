@@ -7,6 +7,8 @@ export type {
   CampaignRole,
   CampaignStatus,
   CampaignSummary,
+  DashboardBackdropConfig,
+  DashboardBackdropFit,
 } from './campaigns.js'
 export type {
   CampaignInvitationSummary,
