@@ -2848,3 +2848,72 @@ shipped — quick contained fixes, quick-create parity + generic autosave,
 World list filter polish, tags as a real system, organization & timeline
 clarity, maps discoverability, session completion recap, favorites
 follow-through, and the wiki-link hover preview.
+
+## 48. Dogfooding-Driven Quality-of-Life Updates
+
+§47's remediation came from a formal 3-agent audit; this section tracks
+smaller follow-on changes sourced a different way — direct use of the
+app to run a real campaign, noting pain points as they come up rather
+than auditing a flow end to end. Expect this section to grow in small
+increments rather than numbered phases.
+
+### Dashboard backdrop: hero band → ambient background, sidebar collapse (shipped, 1.0.0)
+
+Two independent findings from the same dogfooding pass:
+
+- **The campaign cover image (§ "Campaign cover image as a configurable
+  Dashboard backdrop", `0.42.0`) rendered as a fixed 200px hero band** —
+  a deliberate choice at the time (its own CSS comment cited keeping the
+  Dashboard "an operational workspace... rather than a decorative splash
+  screen"), but real use of it felt like a banner rather than the subtle
+  atmosphere it was meant to evoke. Fixed with a new `--ambient` variant
+  on the existing `DashboardBackdrop` component (a `className` override,
+  not a second component) — the image now sits `position: absolute`
+  behind `CampaignOverviewPage`'s content, full-width, masked with a
+  linear gradient that fades it to transparent well before the page's
+  natural bottom edge ("doesn't need to go all the way from top to
+  bottom" was the exact ask). `CampaignSettingsPage`'s live preview
+  intentionally keeps the original bounded-box rendering — editing
+  fit/zoom/focal-point needs a fixed canvas to preview against, an
+  ambient full-page treatment doesn't make sense in a small settings
+  panel. Existing backdrop config (fit/opacity/zoom/focal point) is
+  unchanged; only the Dashboard's own layout around it changed.
+- **The sidebar had no way to reclaim its ~230px of width** while
+  writing in a page for a while. Added a manual collapse toggle
+  (`PanelLeftClose`/`PanelLeftOpen`, persisted in `localStorage`) that
+  shrinks `.wb-sidebar` to a 64px icon-only rail. Each nav link keeps a
+  real `aria-label` regardless of collapse state (so the accessible name
+  never depends on which visual mode is active) and, only while
+  collapsed, is wrapped in a new `Tooltip` primitive showing the label on
+  hover or keyboard focus.
+- **This is the first real consumer of a `Tooltip` primitive in
+  `packages/ui`.** One was deliberately _not_ built during §47 Phase 9's
+  wiki-link hover-preview work, because that feature's only call site
+  (`entityMentionExtension.ts`) is a TipTap NodeView with no React tree
+  to mount a component into — building a `packages/ui` component with
+  zero real consumers would have contradicted that package's own stated
+  principle. The sidebar is a normal component tree, so this is a
+  genuine second use, not a speculative one: `label` + `placement`
+  ('top' | 'right'), triggered off a wrapping element's hover/focus
+  (not the child directly, so it works with any trigger without that
+  trigger needing to forward a ref), `role="tooltip"` and
+  `aria-describedby` wired to the trigger while open.
+
+**Verification:** `pnpm typecheck` / `pnpm lint` / `pnpm build` clean
+across the whole workspace; full web vitest (11/11) green. Real browser:
+uploaded a real cover image through the existing Settings upload flow
+and confirmed the ambient backdrop renders behind Dashboard content,
+fading out before the bottom, with widget cards (which already have
+their own solid background) staying fully legible on top; collapsed the
+sidebar and confirmed hovering an icon shows its correct tooltip label;
+reloaded the page in both the collapsed and expanded states and
+confirmed the preference persisted correctly both ways.
+
+Also noted while making this change: `CHANGELOG.md`'s `0.30.0`–`0.42.0`
+entries turned out to be in oldest-first order, the reverse of the
+file's own newest-first convention — introduced one entry at a time
+across the UX-audit remediation session and not caught until this
+change's own entry needed a home. Documented in place in `CHANGELOG.md`
+rather than silently rewritten, since fully untangling it would mean
+re-deriving relative order for entries whose recorded dates don't all
+agree with the real session event order either.

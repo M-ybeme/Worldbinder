@@ -54,7 +54,7 @@ export function CampaignOverviewPage() {
   const [threadDialogOpen, setThreadDialogOpen] = useState(false)
 
   return (
-    <section>
+    <section className="wb-campaign-overview">
       <QuickCreateEntityDialog
         campaignId={campaign.id}
         open={entityDialogType !== null}
@@ -75,147 +75,157 @@ export function CampaignOverviewPage() {
         <DashboardBackdrop
           imageUrl={campaign.coverImageUrl}
           config={campaign.dashboardBackdropJson ?? DEFAULT_DASHBOARD_BACKDROP_CONFIG}
+          className="wb-dashboard-backdrop--ambient"
         />
       )}
-      <p>{campaign.description ?? 'No description yet.'}</p>
-      {/* Reuses ProfilePage's key-value dl treatment rather than
+      <div className="wb-dashboard-content">
+        <p>{campaign.description ?? 'No description yet.'}</p>
+        {/* Reuses ProfilePage's key-value dl treatment rather than
           introducing a near-duplicate .wb-campaign-overview class — same
           shape (a handful of label/value pairs), no reason for its own
           styling. */}
-      <dl className="status-panel">
-        <dt>System</dt>
-        {/* || not ?? — the create-campaign form submits an empty string,
+        <dl className="status-panel">
+          <dt>System</dt>
+          {/* || not ?? — the create-campaign form submits an empty string,
             not null/undefined, for a blank optional field (its Zod schema
             has no .nullable() or empty-to-undefined transform), so ??
             alone left this dd silently blank. Found by an entry that
             visibly had no value in a real screenshot, not assumed. */}
-        <dd>{campaign.systemName || '—'}</dd>
-        <dt>Status</dt>
-        <dd>{campaign.status}</dd>
-        <dt>Your role</dt>
-        <dd>{campaign.role}</dd>
-        <dt>Current in-world date</dt>
-        <dd>
-          {dashboardQuery.isLoading
-            ? '…'
-            : (formatWorldDate(dashboard?.currentWorldDateJson) ?? '—')}
-        </dd>
-      </dl>
+          <dd>{campaign.systemName || '—'}</dd>
+          <dt>Status</dt>
+          <dd>{campaign.status}</dd>
+          <dt>Your role</dt>
+          <dd>{campaign.role}</dd>
+          <dt>Current in-world date</dt>
+          <dd>
+            {dashboardQuery.isLoading
+              ? '…'
+              : (formatWorldDate(dashboard?.currentWorldDateJson) ?? '—')}
+          </dd>
+        </dl>
 
-      {dashboardQuery.isLoading && <LoadingState label="Loading dashboard…" />}
-      {dashboardQuery.isError && (
-        <ErrorState
-          message={dashboardQuery.error.message}
-          onRetry={() => dashboardQuery.refetch()}
-        />
-      )}
+        {dashboardQuery.isLoading && <LoadingState label="Loading dashboard…" />}
+        {dashboardQuery.isError && (
+          <ErrorState
+            message={dashboardQuery.error.message}
+            onRetry={() => dashboardQuery.refetch()}
+          />
+        )}
 
-      {!dashboardQuery.isLoading && !dashboardQuery.isError && (
-        <CardGrid minItemWidth={320}>
-          <div className="wb-dashboard-widget">
-            <h2>Sessions</h2>
-            <p>
-              Upcoming:{' '}
-              {dashboard?.upcomingSession ? (
-                <Link to={`/app/campaign/${campaign.id}/sessions/${dashboard.upcomingSession.id}`}>
-                  Session {dashboard.upcomingSession.sessionNumber}:{' '}
-                  {dashboard.upcomingSession.title}
-                </Link>
-              ) : (
-                'None scheduled'
-              )}
-            </p>
-            <p>
-              Last played:{' '}
-              {dashboard?.lastPlayedSession ? (
-                <Link
-                  to={`/app/campaign/${campaign.id}/sessions/${dashboard.lastPlayedSession.id}`}
-                >
-                  Session {dashboard.lastPlayedSession.sessionNumber}:{' '}
-                  {dashboard.lastPlayedSession.title}
-                </Link>
-              ) : (
-                'None yet'
-              )}
-            </p>
-          </div>
-
-          <div className="wb-dashboard-widget">
-            <h2>Active Plot Threads</h2>
-            {dashboard && dashboard.activeThreads.length === 0 && <p>No active plot threads.</p>}
-            <ul className="wb-relationship-list">
-              {dashboard?.activeThreads.map((thread) => (
-                <li key={thread.id}>
-                  <Link to={`/app/campaign/${campaign.id}/threads/${thread.id}`}>
-                    {thread.title}
-                  </Link>
-                  {thread.importance ? ` · ${thread.importance}` : ''}
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          <div className="wb-dashboard-widget">
-            <h2>Favorites</h2>
-            {dashboard && dashboard.favoriteEntities.length === 0 && <p>No favorites yet.</p>}
-            <ul className="wb-relationship-list">
-              {dashboard?.favoriteEntities.map((entity) => (
-                <li key={entity.id} className="wb-dashboard-activity__item">
-                  <EntityTypeIcon type={entity.entityType} />
-                  <Link to={`/app/campaign/${campaign.id}/world/${entity.id}`}>{entity.name}</Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {dashboard && dashboard.neglectedThreads.length > 0 && (
+        {!dashboardQuery.isLoading && !dashboardQuery.isError && (
+          <CardGrid minItemWidth={320}>
             <div className="wb-dashboard-widget">
-              <h2>Neglected Threads</h2>
+              <h2>Sessions</h2>
+              <p>
+                Upcoming:{' '}
+                {dashboard?.upcomingSession ? (
+                  <Link
+                    to={`/app/campaign/${campaign.id}/sessions/${dashboard.upcomingSession.id}`}
+                  >
+                    Session {dashboard.upcomingSession.sessionNumber}:{' '}
+                    {dashboard.upcomingSession.title}
+                  </Link>
+                ) : (
+                  'None scheduled'
+                )}
+              </p>
+              <p>
+                Last played:{' '}
+                {dashboard?.lastPlayedSession ? (
+                  <Link
+                    to={`/app/campaign/${campaign.id}/sessions/${dashboard.lastPlayedSession.id}`}
+                  >
+                    Session {dashboard.lastPlayedSession.sessionNumber}:{' '}
+                    {dashboard.lastPlayedSession.title}
+                  </Link>
+                ) : (
+                  'None yet'
+                )}
+              </p>
+            </div>
+
+            <div className="wb-dashboard-widget">
+              <h2>Active Plot Threads</h2>
+              {dashboard && dashboard.activeThreads.length === 0 && <p>No active plot threads.</p>}
               <ul className="wb-relationship-list">
-                {dashboard.neglectedThreads.map((thread) => (
+                {dashboard?.activeThreads.map((thread) => (
                   <li key={thread.id}>
                     <Link to={`/app/campaign/${campaign.id}/threads/${thread.id}`}>
                       {thread.title}
+                    </Link>
+                    {thread.importance ? ` · ${thread.importance}` : ''}
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="wb-dashboard-widget">
+              <h2>Favorites</h2>
+              {dashboard && dashboard.favoriteEntities.length === 0 && <p>No favorites yet.</p>}
+              <ul className="wb-relationship-list">
+                {dashboard?.favoriteEntities.map((entity) => (
+                  <li key={entity.id} className="wb-dashboard-activity__item">
+                    <EntityTypeIcon type={entity.entityType} />
+                    <Link to={`/app/campaign/${campaign.id}/world/${entity.id}`}>
+                      {entity.name}
                     </Link>
                   </li>
                 ))}
               </ul>
             </div>
-          )}
 
-          <div className="wb-dashboard-widget">
-            <h2>Recent Activity</h2>
-            {dashboard && dashboard.recentActivity.length === 0 && <p>Nothing yet.</p>}
-            <ul className="wb-relationship-list">
-              {dashboard?.recentActivity.map((item) => (
-                <li key={`${item.resourceType}-${item.id}`} className="wb-dashboard-activity__item">
-                  <ActivityIcon item={item} />
-                  <Link to={activityLink(campaign.id, item)}>{item.title}</Link>
-                  {` · ${item.resourceType.replace('_', ' ')}`}
-                </li>
-              ))}
-            </ul>
-          </div>
+            {dashboard && dashboard.neglectedThreads.length > 0 && (
+              <div className="wb-dashboard-widget">
+                <h2>Neglected Threads</h2>
+                <ul className="wb-relationship-list">
+                  {dashboard.neglectedThreads.map((thread) => (
+                    <li key={thread.id}>
+                      <Link to={`/app/campaign/${campaign.id}/threads/${thread.id}`}>
+                        {thread.title}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
-          <div className="wb-dashboard-widget">
-            <h2>Quick Actions</h2>
-            <div className="wb-entity-header__actions">
-              <Button variant="secondary" onClick={() => setEntityDialogType('character')}>
-                New Character
-              </Button>
-              <Button variant="secondary" onClick={() => setEntityDialogType('location')}>
-                New Location
-              </Button>
-              <Button variant="secondary" onClick={() => setSessionDialogOpen(true)}>
-                New Session
-              </Button>
-              <Button variant="secondary" onClick={() => setThreadDialogOpen(true)}>
-                New Plot Thread
-              </Button>
+            <div className="wb-dashboard-widget">
+              <h2>Recent Activity</h2>
+              {dashboard && dashboard.recentActivity.length === 0 && <p>Nothing yet.</p>}
+              <ul className="wb-relationship-list">
+                {dashboard?.recentActivity.map((item) => (
+                  <li
+                    key={`${item.resourceType}-${item.id}`}
+                    className="wb-dashboard-activity__item"
+                  >
+                    <ActivityIcon item={item} />
+                    <Link to={activityLink(campaign.id, item)}>{item.title}</Link>
+                    {` · ${item.resourceType.replace('_', ' ')}`}
+                  </li>
+                ))}
+              </ul>
             </div>
-          </div>
-        </CardGrid>
-      )}
+
+            <div className="wb-dashboard-widget">
+              <h2>Quick Actions</h2>
+              <div className="wb-entity-header__actions">
+                <Button variant="secondary" onClick={() => setEntityDialogType('character')}>
+                  New Character
+                </Button>
+                <Button variant="secondary" onClick={() => setEntityDialogType('location')}>
+                  New Location
+                </Button>
+                <Button variant="secondary" onClick={() => setSessionDialogOpen(true)}>
+                  New Session
+                </Button>
+                <Button variant="secondary" onClick={() => setThreadDialogOpen(true)}>
+                  New Plot Thread
+                </Button>
+              </div>
+            </div>
+          </CardGrid>
+        )}
+      </div>
     </section>
   )
 }

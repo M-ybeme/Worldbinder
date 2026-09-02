@@ -61,3 +61,20 @@
 .wb-dashboard-widget h2 {
   margin-top: 0;
 }
+
+/* CampaignOverviewPage's own root — a positioned ancestor for the ambient
+   backdrop (see DashboardBackdrop.css's `--ambient` variant), so the
+   image can sit absolutely behind .wb-dashboard-content without
+   affecting this section's own place in the page's normal flow. */
+.wb-campaign-overview {
+  position: relative;
+}
+
+/* Sits in its own stacking context above the ambient backdrop — plain
+   text (the description, the status `dl`) reads directly against the
+   low-opacity image, while the widget cards below already have their own
+   solid background and need no extra treatment. */
+.wb-dashboard-content {
+  position: relative;
+  z-index: 1;
+}

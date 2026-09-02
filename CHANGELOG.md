@@ -1,8 +1,37 @@
 # Changelog
 
-All notable changes to this project are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning follows [Semantic Versioning](https://semver.org/) — a pre-1.0 project, so `0.MINOR.PATCH` bumps for any user-visible or structural change, `PATCH` for fixes with no scope change.
+All notable changes to this project are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning follows [Semantic Versioning](https://semver.org/). `1.0.0` (2026-08-31) marks the version scheme's own graduation out of the pre-1.0 `0.MINOR.PATCH`-for-everything convention used up to that point — see that entry for what "1.0" means here. From `1.0.0` on: `MAJOR` for breaking/structural changes, `MINOR` for user-visible features, `PATCH` for fixes with no scope change.
 
 Every push to `main` should add an entry here. This is meant to be an honest record of what actually shipped, not a restatement of the roadmap's aspirations — if something was attempted and reverted, or shipped partially, say so.
+
+## [1.0.0] - 2026-08-31
+
+**Dashboard backdrop reworked to a subtle ambient background; sidebar gains a collapsible icon-only mode.** Both are direct dogfooding findings — using the app to run a real campaign is what's been driving this round of iteration, not a formal audit. This entry also marks the version scheme's move past `0.x`: not a claim of API stability (there's no external API contract to keep stable), just an acknowledgment that the product itself has reached a coherent, usable shape worth calling `1.0`.
+
+### Changed
+
+- **The campaign cover image (added as a configurable Dashboard backdrop in `0.42.0`) no longer renders as a fixed 200px hero band.** On the actual Dashboard, it now sits absolutely behind the page content — full-width, fading to transparent well before the bottom edge via a mask gradient, rather than a bordered box with a hard-edged bottom. `CampaignSettingsPage`'s live preview is unchanged (still the bounded box — a preview needs a concrete, fixed canvas to edit fit/zoom/focal-point against), reached via a new `--ambient` variant class on the existing `DashboardBackdrop` component rather than a second component. Existing fit/opacity/zoom/focal-point settings all still apply unchanged.
+- **The campaign sidebar can now collapse to an icon-only rail.** A manual toggle (not automatic) shrinks it from 232px to 64px; each nav icon shows its label in a tooltip on hover _or_ keyboard focus, and every link keeps a real `aria-label` regardless of collapse state so the accessible name never depends on which visual mode is active. The collapsed/expanded preference persists in `localStorage` across reloads.
+
+### Added
+
+- **New `Tooltip` primitive in `packages/ui`** (`role="tooltip"`, keyboard-focus-triggerable, not mouse-only) — the sidebar's icon labels are its first real consumer. (A `Tooltip` was deliberately _not_ built during the wiki-link hover-preview work — see `0.38.0` — because that feature's only call site had no React tree to mount a component into; the sidebar is a normal component tree, so it's a genuine second use.)
+
+### Verification
+
+`pnpm typecheck` / `pnpm lint` / `pnpm build` clean across the whole workspace; full web vitest (11/11) green. Real browser: uploaded a real cover image and confirmed the ambient backdrop renders behind dashboard content with cards staying legible on top and the image fading out before the page's bottom; confirmed the sidebar collapse toggle, that hovering a collapsed icon shows the correct tooltip label, and that the collapsed/expanded state survives a full page reload in both directions.
+
+<!--
+Note on ordering below: entries from 0.30.0 through 0.42.0 are in
+chronological (oldest-first) order, the reverse of this file's own
+newest-first convention — an ordering mistake introduced one entry at a
+time across a long session and not caught until the 1.0.0 entry above
+was added. Left as-is rather than rewritten, since untangling it fully
+would mean re-deriving exact relative order for entries whose recorded
+dates don't all agree with the session's real event order either;
+correcting the one thing that actually mattered (this file's newest
+entry needing to be at the top of the file) was the fix actually made.
+-->
 
 ## [0.30.0] - 2026-08-25
 

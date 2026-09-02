@@ -25,3 +25,36 @@
     height: 140px;
   }
 }
+
+/* The Dashboard's own treatment (CampaignOverviewPage) — an ambient image
+   sitting behind the page's content rather than a bounded hero band.
+   `CampaignSettingsPage`'s live preview keeps the base `.wb-dashboard-
+   backdrop` box above unchanged, since a preview needs a concrete,
+   bounded canvas to edit fit/zoom/focal-point against; only the actual
+   Dashboard gets the ambient treatment. Requires a positioned ancestor
+   (`.wb-campaign-overview`) and content that renders in its own stacking
+   context above this (`.wb-dashboard-content`) — see campaigns.css. */
+.wb-dashboard-backdrop.wb-dashboard-backdrop--ambient {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 420px;
+  margin-bottom: 0;
+  border: none;
+  border-radius: 0;
+  background: none;
+  z-index: 0;
+  pointer-events: none;
+  /* Fades to transparent well before the bottom edge, so it reads as
+     atmosphere blending into the page rather than a hard-edged panel —
+     "doesn't need to go all the way from top to bottom." */
+  mask-image: linear-gradient(to bottom, black, black 35%, transparent 90%);
+  -webkit-mask-image: linear-gradient(to bottom, black, black 35%, transparent 90%);
+}
+
+@media (max-width: 768px) {
+  .wb-dashboard-backdrop.wb-dashboard-backdrop--ambient {
+    height: 280px;
+  }
+}

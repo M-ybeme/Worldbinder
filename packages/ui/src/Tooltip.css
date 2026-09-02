@@ -1,0 +1,31 @@
+.wb-tooltip-wrapper {
+  position: relative;
+  display: block;
+}
+
+.wb-tooltip {
+  position: absolute;
+  z-index: var(--wb-z-dropdown);
+  padding: var(--wb-space-1) var(--wb-space-2);
+  border-radius: var(--wb-radius-sm);
+  background: var(--wb-text-primary);
+  color: var(--wb-bg-surface);
+  font-size: var(--wb-text-xs);
+  white-space: nowrap;
+  box-shadow: var(--wb-shadow-md);
+  pointer-events: none;
+}
+
+.wb-tooltip--top {
+  bottom: 100%;
+  left: 50%;
+  margin-bottom: var(--wb-space-1);
+  transform: translateX(-50%);
+}
+
+.wb-tooltip--right {
+  top: 50%;
+  left: 100%;
+  margin-left: var(--wb-space-2);
+  transform: translateY(-50%);
+}
