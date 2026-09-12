@@ -4,6 +4,19 @@ All notable changes to this project are documented here. Format follows [Keep a 
 
 Every push to `main` should add an entry here. This is meant to be an honest record of what actually shipped, not a restatement of the roadmap's aspirations — if something was attempted and reverted, or shipped partially, say so.
 
+## [1.1.0] - 2026-09-12
+
+**Custom favicon and login-page branding**, replacing Vite's default lightning-bolt icon and the untitled `<title>web</title>` left over from the initial scaffold — first real use of the commissioned Worldbinder logo artwork (`images/WorldbinderLogo.png`) outside of marketing material.
+
+### Added
+
+- **Favicon set** (`favicon-16x16.png`, `favicon-32x32.png`, `apple-touch-icon.png`, `favicon-512.png`) derived from the logo's network-dome-over-globe emblem, cropped tight and centered on the dome peak. Generated at two different contrast levels: a mild boost for the 512/180px sizes (keeps the source art's dark, moody look intact) and a stronger boost for the 16/32px sizes (a browser tab is too small for the full illustration's fine detail to survive at normal contrast — without the extra boost the icon reads as an indistinct dark smudge). `apps/web/index.html`'s `<title>` also corrected from the scaffold default `web` to `Worldbinder`.
+- **Full logo on the login page**, centered above the "Log in" heading via a new `.wb-login-logo` class in `apps/web/src/features/auth/auth.css` — the first CSS file this feature has needed.
+
+### Verification
+
+`pnpm typecheck` / `pnpm lint` / `pnpm build` / `pnpm --filter @worldbinder/web exec vitest run` (11/11) all clean. Real browser: confirmed the browser tab shows the new icon and "Worldbinder" title, the login page renders the full logo above the heading at a sensible size, and the built `dist/` output includes all five new image files plus the updated `index.html`.
+
 ## [1.0.0] - 2026-08-31
 
 **Dashboard backdrop reworked to a subtle ambient background; sidebar gains a collapsible icon-only mode.** Both are direct dogfooding findings — using the app to run a real campaign is what's been driving this round of iteration, not a formal audit. This entry also marks the version scheme's move past `0.x`: not a claim of API stability (there's no external API contract to keep stable), just an acknowledgment that the product itself has reached a coherent, usable shape worth calling `1.0`.
@@ -21,19 +34,7 @@ Every push to `main` should add an entry here. This is meant to be an honest rec
 
 `pnpm typecheck` / `pnpm lint` / `pnpm build` clean across the whole workspace; full web vitest (11/11) green. Real browser: uploaded a real cover image and confirmed the ambient backdrop renders behind dashboard content with cards staying legible on top and the image fading out before the page's bottom; confirmed the sidebar collapse toggle, that hovering a collapsed icon shows the correct tooltip label, and that the collapsed/expanded state survives a full page reload in both directions.
 
-<!--
-Note on ordering below: entries from 0.30.0 through 0.42.0 are in
-chronological (oldest-first) order, the reverse of this file's own
-newest-first convention — an ordering mistake introduced one entry at a
-time across a long session and not caught until the 1.0.0 entry above
-was added. Left as-is rather than rewritten, since untangling it fully
-would mean re-deriving exact relative order for entries whose recorded
-dates don't all agree with the session's real event order either;
-correcting the one thing that actually mattered (this file's newest
-entry needing to be at the top of the file) was the fix actually made.
--->
-
-## [0.30.0] - 2026-08-25
+## [0.17.23] - 2026-08-25
 
 **UX-audit remediation, Phase 1: quick contained fixes.** Follows a 5-category UX audit (Creation/Study/Search/Organization/Review) run against the just-shipped rework; this phase covers the 7 lowest-risk, most self-contained findings. See `docs/product/WORLDBINDER_DESIGN_SYSTEM.md` §47.
 
@@ -50,7 +51,7 @@ entry needing to be at the top of the file) was the fix actually made.
 - The "thread has gone quiet" naming split — "Neglected" on the Threads list, "Dormant Threads Requiring Attention" on the dashboard — is now "Neglected" everywhere.
 - **Dead create-mode code removed** from `EntityFormPage`, `SessionFormPage`, `ThreadFormPage`: all three are only ever reached via `:id/edit` since the prior rework's quick-create dialogs took over the `/new` routes. Each page is now edit-mode only — no behavior change for real usage, just removal of unreachable branches (unused create mutations, disabled-on-create ternaries, the entity form's create-mode 2s draft-save effect).
 
-## [0.31.0] - 2026-08-25
+## [0.17.22] - 2026-08-25
 
 **UX-audit remediation, Phase 2: quick-create parity + generic autosave.** See `docs/product/WORLDBINDER_DESIGN_SYSTEM.md` §47.
 
@@ -66,7 +67,7 @@ entry needing to be at the top of the file) was the fix actually made.
 
 `pnpm typecheck` / `pnpm lint` / `pnpm build` clean; full web vitest (11/11) green. Real browser: created a timeline event via quick-create from both the Timeline list and the `/new` deep link, confirmed navigation to the new event's detail page and that Escape on the deep-link route returns to the list; edited a session and a plot thread and confirmed autosave fires (the "Saved" banner appears, no explicit save button remains) for both.
 
-## [0.32.0] - 2026-08-25
+## [0.17.21] - 2026-08-25
 
 **UX-audit remediation, Phase 3: World list filter bar polish.** See `docs/product/WORLDBINDER_DESIGN_SYSTEM.md` §47.
 
@@ -83,7 +84,7 @@ entry needing to be at the top of the file) was the fix actually made.
 
 `pnpm typecheck` / `pnpm lint` / `pnpm build` clean; full web vitest (11/11) green. Real browser: confirmed the count updates as filters change, a filter combination matching zero entities shows the new message plus a working inline Clear-filters button (round-tripped back to "1 entity" after clearing), and the filter row's widths stay consistent.
 
-## [0.33.0] - 2026-08-26
+## [0.17.20] - 2026-08-26
 
 **UX-audit remediation, Phase 4: tags as a real system.** The largest phase — a schema migration plus a consolidation refactor. See `docs/product/WORLDBINDER_DESIGN_SYSTEM.md` §47.
 
@@ -99,7 +100,7 @@ entry needing to be at the top of the file) was the fix actually made.
 
 Migration reviewed before applying (exactly 2 new tables, no drops/renames) via the `db-migration` skill. `pnpm typecheck` / `pnpm lint` / `pnpm build` clean across the whole workspace. Backend: new `tags.service.spec.ts` (pure `normalizeTagName` cases) plus a new `tags.e2e-spec.ts` (8 integration tests: merged usage counts across all 4 resource types, player read access, rename with collision rejection, merge including the already-both-tagged-resource edge case, and permission checks) — all passing, alongside the full existing `entities`/`timeline`/`sessions`/`plot-threads`/`campaigns` integration suites re-run clean (confirming the tag-sync consolidation didn't change existing entity/timeline-event tagging behavior). Full API jest suite 99/99, full integration suite 198/203 (the 5 failures are pre-existing, non-deterministic flakiness in `attachments`/`maps`/`exports`/`imports` — modules this phase never touched; confirmed by re-running them in isolation and seeing different failure counts each time). Web vitest 11/11. Real browser: tagged a session, confirmed autosave; tagged a plot thread and confirmed the autocomplete dropdown suggested the session's tag; visited the tag management page and confirmed the tag showed "2 uses," then renamed and merged tags and confirmed both propagated correctly.
 
-## [0.34.0] - 2026-08-26
+## [0.17.19] - 2026-08-26
 
 **UX-audit remediation, Phase 5: organization & timeline clarity.** See `docs/product/WORLDBINDER_DESIGN_SYSTEM.md` §47.
 
@@ -116,7 +117,7 @@ Migration reviewed before applying (exactly 2 new tables, no drops/renames) via 
 
 `pnpm typecheck` / `pnpm lint` / `pnpm build` clean; full web vitest (11/11) green. Real browser: confirmed the Threads page renders as one list with working status-filter transitions (Unresolved/Neglected/All) and neglected threads flagged inline; seeded 4 real timeline events across 2 months and 2 different-precision dates and confirmed the grouped headings render in the correct chronological order ("March 100", "July 100", "101") using the campaign's calendar, with the undated event still separate below.
 
-## [0.35.0] - 2026-08-26
+## [0.17.18] - 2026-08-26
 
 **UX-audit remediation, Phase 6: maps discoverability.** See `docs/product/WORLDBINDER_DESIGN_SYSTEM.md` §47.
 
@@ -129,7 +130,7 @@ Migration reviewed before applying (exactly 2 new tables, no drops/renames) via 
 
 `pnpm typecheck` / `pnpm lint` / `pnpm build` clean; full web vitest (11/11) green. Real browser: confirmed the renamed button and the hint both render for a GM viewing a map outside manage mode, and that clicking "+ Add pin" correctly flips into manage mode with the pin-placement form already open.
 
-## [0.36.0] - 2026-08-26
+## [0.17.17] - 2026-08-26
 
 **UX-audit remediation, Phase 7: session completion recap.** See `docs/product/WORLDBINDER_DESIGN_SYSTEM.md` §47.
 
@@ -142,7 +143,7 @@ Migration reviewed before applying (exactly 2 new tables, no drops/renames) via 
 
 `pnpm typecheck` / `pnpm lint` / `pnpm build` clean; full web vitest (11/11) green. Real browser: created a session, logged a plot-thread change against it, opened "Complete session" and confirmed the recap line read "Plot threads: 1 introduced." directly above the date fields, and confirmed the consolidated "Plot Thread Changes" section shows the thread with its "Introduced" badge.
 
-## [0.37.0] - 2026-08-26
+## [0.17.16] - 2026-08-26
 
 **UX-audit remediation, Phase 8: favorites follow-through.** See `docs/product/WORLDBINDER_DESIGN_SYSTEM.md` §47.
 
@@ -155,7 +156,7 @@ Migration reviewed before applying (exactly 2 new tables, no drops/renames) via 
 
 `pnpm typecheck` / `pnpm lint` / `pnpm build` clean across the whole workspace. Two new integration tests in `search.e2e-spec.ts`: two entities with an identical exact-name match (guaranteed same tier and score) resolve in favor of the favorited one; a favorited-but-weaker match never outranks a strictly better non-favorite match. Full API jest 99/99; full integration suite 199/205 (the same pre-existing, unrelated `attachments`/`maps`/`exports`/`imports` flakiness noted in Phase 4, confirmed again not touched by this phase). Web vitest 11/11. Real browser: favorited an entity and confirmed it appeared in the new dashboard widget (replacing "No favorites yet.").
 
-## [0.38.0] - 2026-08-26
+## [0.17.15] - 2026-08-26
 
 **UX-audit remediation, Phase 9: wiki-link hover preview — rollout complete.** The final phase of the 9-phase UX-audit remediation effort. See `docs/product/WORLDBINDER_DESIGN_SYSTEM.md` §47.
 
@@ -178,7 +179,7 @@ All 9 phases of the UX-audit remediation are now shipped: quick contained fixes,
 
 No code change: applied the already-committed migration to production Postgres via `railway connect Postgres --tunnel-only` + `pnpm exec tsx src/database/migrate.ts` with `DATABASE_URL` pointed at the tunnel. Verified fixed by reproducing the exact failing flow against the live site (3 different entities, 0 `5xx` responses), not just by trusting "Migrations complete."
 
-## [0.39.0] - 2026-08-29
+## [0.17.14] - 2026-08-29
 
 **Map viewer: pan/zoom work area + pin side panel.** The map viewer previously rendered the image at a fixed size with no pan/zoom, and selecting a pin either navigated straight away to the linked entity's page (view mode) or opened an inline form below the canvas (manage mode) — losing the map's context every time. Requested directly by the user after trying it.
 
@@ -196,7 +197,7 @@ No code change: applied the already-committed migration to production Postgres v
 
 `pnpm typecheck` clean across the whole monorepo; `pnpm lint` clean (2 pre-existing, unrelated warnings in `entityTypeIcons.tsx`); full web vitest 11/11 green, including the existing `MapPinMarker` tests. Real browser (Playwright, against the seeded "Ashgate Crossing" demo campaign): zoom in 3x → 195%, reset → exactly 100%; drag-to-pan; hovering a pin shows the tooltip immediately; clicking a pin opens the side panel with the pin form and the linked entity's name/body, editing and saving it, "Open full page" navigating correctly, and "Close" collapsing the panel back to a full-width map.
 
-## [0.40.0] - 2026-08-29
+## [0.17.13] - 2026-08-29
 
 **Map viewer follow-ups + a real location-entity save bug + RichTextEditor styling.** Direct user follow-up after trying 0.39.0's map viewer, plus a separately reported entity-editing failure hit in the same session.
 
@@ -216,7 +217,7 @@ No code change: applied the already-committed migration to production Postgres v
 
 `pnpm typecheck` clean across the whole monorepo; `pnpm lint` clean (same 2 pre-existing, unrelated warnings in `entityTypeIcons.tsx`); full web vitest 11/11 green. Real browser (Playwright, local dev stack): confirmed wheel-over-map no longer moves `window.scrollY` while still zooming; confirmed the pointer-capture regression via `elementFromPoint`/event-target logging before and after the fix; confirmed drag-to-pan and plain pin-click-opens-panel both still work after that fix; reproduced the population 400 with the exact API error body, then confirmed a save with a Population value returns no error and the autosave banner reads "Saved"; screenshotted the edit page to confirm the taller content area and the visually distinct GM-only section.
 
-## [0.41.0] - 2026-08-29
+## [0.17.12] - 2026-08-29
 
 **Map pin panel layout + wide edit forms.** Two more direct follow-ups from using 0.39.0/0.40.0's map viewer and the entity editor in the same session.
 
@@ -229,7 +230,7 @@ No code change: applied the already-committed migration to production Postgres v
 
 `pnpm typecheck` clean across the whole monorepo; `pnpm lint` clean (same 2 pre-existing, unrelated warnings in `entityTypeIcons.tsx`); full web vitest 11/11 green. Real browser (Playwright, local dev stack): confirmed the entity content block no longer renders inside `.wb-map-pin-panel` and does render in the map's own column at matching width; confirmed the entity edit form measures 720px on a 1920px viewport (up from 360px) and the rich-text toolbar wraps to fit it.
 
-## [0.42.0] - 2026-08-30
+## [0.17.11] - 2026-08-30
 
 **Campaign cover image as a configurable Dashboard backdrop.** The cover image already existed (`CampaignSettingsPage`'s upload flow, `coverAttachmentId`) but was only ever shown as a small preview in Settings — never used anywhere the rest of the app.
 
@@ -244,7 +245,7 @@ No code change: applied the already-committed migration to production Postgres v
 
 `pnpm typecheck` clean across `contracts`/`validation`/`ui`/`api`/`web` (had to rebuild `contracts`/`validation`'s `dist/` output before `web`'s `tsc -b` picked up the new exports — expected, not a bug); `pnpm lint` clean on `web`/`api`. Real browser against the local dev stack: uploaded a cover image, exercised both Cover (crop, pans/zooms with focal point) and Contain (whole image, letterboxed dead space) fit modes, saved and confirmed `dashboard_backdrop_json` persisted correctly in Postgres, confirmed "Reset to default" clears it back to `null`, and confirmed the Dashboard route renders the saved config after a reload. One dev-only snag along the way (stale Vite dependency cache after the package rebuild, fixed by restarting the dev servers) — not a code defect. Separately noticed the cover-image upload flow itself (pre-existing, not part of this change) fired duplicate presign/complete requests in this session and got stuck on its "Uploading and processing…" state; worked around for testing, not investigated further.
 
-## [0.29.0] - 2026-08-24
+## [0.17.10] - 2026-08-24
 
 **UI/UX rework, Phases 4-7: World list card grid, entity-detail/dashboard rail rework, quick-create flow, favorites — final phases, rollout complete.** Continues from Phases 1-3 (0.26.0–0.28.0). See `docs/product/WORLDBINDER_DESIGN_SYSTEM.md` §46.
 
@@ -264,7 +265,7 @@ No code change: applied the already-committed migration to production Postgres v
 
 All 7 phases of the UI/UX rework have now shipped: the root-cause width fix, the motion pass, entity type icons, the World list card grid, the entity-detail/dashboard rail rework, the quick-create flow, and favorites.
 
-## [0.26.0] - 2026-08-24
+## [0.17.9] - 2026-08-24
 
 **UI/UX rework, Phases 1-3: foundation, motion pass, entity type icons.** The just-completed design-system rollout (0.18.0–0.25.0) gave the app consistent tokens, but direct user feedback on the live result was that it's "too narrow on a large screen" and "isn't dynamic" — both traced to concrete, fixable root causes rather than diffuse polish gaps. Further structural rework (World list card grid, entity-detail/dashboard rail layout, quick-create, favorites) continues in later phases. See `docs/product/WORLDBINDER_DESIGN_SYSTEM.md` §46.
 
@@ -279,7 +280,7 @@ All 7 phases of the UI/UX rework have now shipped: the root-cause width fix, the
 - **Phase 2 (motion pass)**: of 26 CSS files in the app, exactly one (the loading spinner) had any `transition`/`animation` before this — every hover/focus/dialog-open state snapped instantly. Implements `docs/product/WORLDBINDER_DESIGN_SYSTEM.md` §35's motion guidance (100–200ms, restrained, `prefers-reduced-motion`-respecting), specified in the doc but never built during the earlier design-system rollout: hover/focus transitions on `Button`, `IconButton`, sidebar nav links, and the `.wb-entity-list`/`.wb-session-list`/`.wb-campaign-list` card rows (none had a `:hover` state at all before this); a dialog open animation (backdrop fade + panel fade/scale-in), gated behind `prefers-reduced-motion` per-component plus a new blanket fallback in `global.css` as defense-in-depth; a sidebar width transition so the existing 768px collapse reflow now animates smoothly on a live resize instead of snapping.
 - **Phase 3 (entity type icons)**: implements §17.1's icon mapping — specified in the doc but unimplemented until now. New `ENTITY_TYPE_ICONS` mapping (`apps/web/src/features/entities/lib/entityTypeIcons.tsx`) covering all 11 entity types, using `lucide-react` (previously used only in the sidebar nav); renders in the entity detail page header and the dashboard's Recent Activity rows (session/plot-thread rows reuse the same icons the sidebar nav already uses, for consistency). `CampaignActivityItem` (`packages/contracts`) gained an optional `entityType` field, populated by a one-line addition to the existing dashboard-aggregation query — no new query needed.
 
-## [0.25.0] - 2026-08-13
+## [0.17.8] - 2026-08-13
 
 **Design system rollout, Phase 7 (polish) — final phase, rollout complete.** Loading/empty/error consistency was already closed out as a side effect of Phases 1–6's find-as-you-go fixes, so this phase covered the three items that needed a dedicated pass: a hover/focus-visible audit, an automated WCAG accessibility scan (axe-core via Playwright, injecting the already-present transitive dependency rather than adding a new package), and a 768px responsive review. See `docs/product/WORLDBINDER_DESIGN_SYSTEM.md` §45.
 
@@ -297,7 +298,7 @@ All 7 phases of the UI/UX rework have now shipped: the root-cause width fix, the
 - Responsive review at 768px: no horizontal overflow found across 8 primary pages plus the search overlay and a `ConfirmDialog`; the existing sidebar collapse breakpoint (built in Phase 3) held up with no changes needed.
 - typecheck/lint/build clean; full unit suite green (146 tests across api/web/worker/config).
 
-## [0.24.0] - 2026-08-13
+## [0.17.7] - 2026-08-13
 
 **Design system rollout, Phase 6 (remaining feature screens).** Session/Thread/Map/Timeline list+detail+form, SearchResultsPage, MembersPage, CampaignSettingsPage, ImportCampaignPage, ExportsPage, HelpPage, plus a decision on StatusPage/AuditPage (no special treatment — they already reuse the same tokenized primitives everything else does). See `docs/product/WORLDBINDER_DESIGN_SYSTEM.md` §45.
 
@@ -310,7 +311,7 @@ All 7 phases of the UI/UX rework have now shipped: the root-cause width fix, the
 - `ImportCampaignPage`'s confirm-import button, plus `SearchResultsPage`'s and `AuditPage`'s pagination controls, were raw `<button className="wb-button ...">` instead of the `Button` component — normalized to match the rest of the app.
 - Assorted raw transient-status text (`Uploading…`, `Validating archive…`, `Importing…`, `Searching…`) upgraded to `LoadingState`.
 
-## [0.23.0] - 2026-08-13
+## [0.17.6] - 2026-08-13
 
 **Design system rollout, Phase 5 (high-value campaign screens).** `CampaignsListPage`, `CampaignOverviewPage`, `WorldListPage`, `EntityFormPage` (`EntityDetailPage` was already done in Phase 2). Three of these five pages were completely unstyled — `.wb-campaign-list`, `.wb-world-filters`/`.wb-entity-list`, and `.wb-world-header` (used by 10 pages across 8 features) all had zero CSS anywhere, the same shape of gap every phase this rollout has found, just bigger this time. See `docs/product/WORLDBINDER_DESIGN_SYSTEM.md` §45.
 
@@ -326,7 +327,7 @@ All 7 phases of the UI/UX rework have now shipped: the root-cause width fix, the
 - `CampaignOverviewPage`'s `<dl className="wb-campaign-overview">` was a near-duplicate of `ProfilePage`'s already-styled `.status-panel` layout; switched to reuse it instead of writing a third copy of the same CSS.
 - **A real bug found live-testing, unrelated to CSS**: `campaign.systemName ?? '—'` doesn't catch the empty string the create-campaign form actually submits for a blank optional field, so the "System" row rendered with no visible value — looked like a layout bug until traced back. Fixed the display-layer symptom (`||` instead of `??`); whether an empty string should be storable at all is a separate question for the schema layer, out of this phase's scope.
 
-## [0.22.0] - 2026-08-13
+## [0.17.5] - 2026-08-13
 
 **Design system rollout, Phase 4 (auth and account pages).** Covered the full checklist (Login/Register/ForgotPassword/ResetPassword/VerifyEmail/AcceptInvitation/Profile/Security/Sessions), but the real finding was two app-wide gaps these link- and heading-heavy pages happened to expose: no global heading typography at all (`h1`/`h2`/`h3` used raw browser defaults everywhere, not just here) and no global link color despite the design doc explicitly mandating one. Both fixed at the `global.css` level, not page-by-page. See `docs/product/WORLDBINDER_DESIGN_SYSTEM.md` §45 for detail.
 
@@ -340,7 +341,7 @@ All 7 phases of the UI/UX rework have now shipped: the root-cause width fix, the
 - **`AccountLayout`'s Profile/Security/Sessions tab nav had the same missing-active-state bug Phase 3 already fixed for `CampaignLayout`'s sidebar** — same root cause (`NavLink` needs the function-form `className` to expose `isActive`), same fix. Also needed an explicit inactive tab color scoped to `.wb-account-layout__bar`, since the new global link-accent default would otherwise make active and inactive tabs visually identical.
 - **`AcceptInvitationPage`'s loading state was a raw `<p>Loading invitation…</p>`** instead of the `LoadingState` primitive every other page uses; its error branch had no heading either. Both fixed.
 
-## [0.21.0] - 2026-08-13
+## [0.17.4] - 2026-08-13
 
 **Public demo login.** So people can see a populated Worldbinder campaign without registering an account, `LoginPage` gets a "View the demo campaign" button that logs straight in as the GM of a real seeded campaign, "Ashgate Crossing" — 39 entities, 48 relationships, 7 plot threads, 6 sessions, 14 timeline events, 2 maps, 6 attachments, wiki-link enrichment, and real revision history, built by the existing `demo-content` fixture (`apps/api/src/demo-content/`, previously local-dev-only). That fixture's account verification and campaign-invitation acceptance both depended on polling Mailpit for real emails — unavailable in production, which sends through Resend instead (ADR-0022) — so both got a production-safe path that writes the equivalent end state (`users.emailVerifiedAt`, a `campaign_members` row) directly via a DB connection instead, gated behind a new opt-in `DEMO_CONTENT_VERIFY_VIA_DB` flag so local dev's Mailpit-based behavior is unchanged. Actually run against the live production database this session (`pnpm --filter @worldbinder/api seed:demo:prod` via a Railway Postgres tunnel) — real accounts and a full campaign now exist on worldbinder.net, and all 10 of the script's own PASS/FAIL verification checks (including permission-filtered search) passed against it for real.
 
@@ -355,7 +356,7 @@ All 7 phases of the UI/UX rework have now shipped: the root-cause width fix, the
 - **The demo-login button's redirect lost a race against `RedirectIfAuthenticated`**: that guard fires synchronously off the same auth-status change a successful login triggers, and its hardcoded `/account/profile` target wins over a plain `navigate()` call from the mutation's `onSuccess` — a real, pre-existing inconsistency this just happened to be the first thing to expose, since the regular login form's default redirect already happened to agree with `RedirectIfAuthenticated`'s hardcoded value. Fixed by having `RedirectIfAuthenticated` respect `location.state.from.pathname` (falling back to its old default), the same channel `LoginPage`'s own submit handler already reads — every other page using this guard (Register/ForgotPassword/ResetPassword) benefits too, not just the demo button.
 - `pnpm --filter @worldbinder/api seed:demo:prod` — same script as the existing `seed:demo`, without the `dotenv -e ../../.env` wrapper (so it doesn't clobber the real production env vars the caller supplies) plus the new flag.
 
-## [0.20.0] - 2026-08-13
+## [0.17.3] - 2026-08-13
 
 **Design system rollout, Phase 3 (app shell).** `CampaignLayout.tsx` gets a real sidebar+topbar shell — the only place in the app where a sidebar makes sense, since its nav content (Dashboard/World/Sessions/Threads/Maps/Search/Members/Settings/Import-Export) is entirely campaign-scoped; `App.tsx`'s lighter top-level header (auth/account/status/help) is unchanged. Verified this time with a real headless-browser pass (Playwright, no `chromium-cli` in this sandbox), not just build/lint/test — see `docs/product/WORLDBINDER_DESIGN_SYSTEM.md` §45 for detail and a scope correction (the original plan's "wire up AuditPage's missing nav entry" was wrong — its own code comment documents that omission as deliberate).
 
@@ -370,7 +371,7 @@ All 7 phases of the UI/UX rework have now shipped: the root-cause width fix, the
 
 - **`.wb-button` and `.wb-icon-button` never reset `text-decoration`**, so every `<Link>` styled as a button (an established pattern in this app, e.g. "Edit"/"New entity" actions) rendered underlined — invisible in code review, caught immediately by this phase's real browser screenshots.
 
-## [0.19.0] - 2026-08-13
+## [0.17.2] - 2026-08-13
 
 **Design system rollout, Phase 2 (core primitives).** Built only the primitives with a confirmed real call site in the codebase (grepped for `window.confirm`, raw checkboxes, `<h1>`, tooltips, tables, and tablists before writing anything, per the design doc's §37 rule) — Dialog, ConfirmDialog, IconButton, Checkbox, Badge, PageHeader, plus a `danger` Button variant. Card, Tabs, Tooltip, Dropdown/Menu, Toast, Avatar, Skeleton, Breadcrumbs, table primitives, and sidebar nav item are deliberately deferred — no real need for them yet. See `docs/product/WORLDBINDER_DESIGN_SYSTEM.md` §45 for full detail.
 
@@ -387,7 +388,7 @@ All 7 phases of the UI/UX rework have now shipped: the root-cause width fix, the
 
 - **A second latent styling gap, on top of Phase 1's `.wb-tag-input` find**: `.wb-entity-header`/`.wb-entity-header__meta` had zero CSS rules anywhere despite being used across 10 files — every detail-page title was rendering with bare browser-default `<header>`/`<span>` styling. Fixed via the PageHeader migration above; the remaining 6 usages of the (genuinely generic, confirmed by grep) `.wb-entity-header__actions`/`__tags` action-row classes got real shared CSS in `global.css`.
 
-## [0.18.0] - 2026-08-13
+## [0.17.1] - 2026-08-13
 
 **Design system rollout, Phase 1 (foundations).** The live app looked visually unfinished — flat, left-aligned, no real spacing/type system — so `docs/product/WORLDBINDER_DESIGN_SYSTEM.md` (a full visual-direction spec) is now being rolled out in phases. Phase 1 lands the token system and retrofits existing primitives onto it; it does not touch page layouts, add new components, or rebuild the app shell — those are later phases. Explicit decision: this app stays on plain CSS custom properties, not Tailwind, despite the design doc's Tailwind-flavored examples — see the doc's new §45 for the full rationale and exact deviations from its suggested values.
 

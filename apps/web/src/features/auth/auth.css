@@ -1,0 +1,10 @@
+/* LoginPage's logo mark — the image is already a self-contained dark
+   badge (own background/border baked in), so it's centered above the
+   heading with no extra card/frame styling layered on top of it here. */
+.wb-login-logo {
+  display: block;
+  width: 96px;
+  height: 96px;
+  margin: 0 auto var(--wb-space-4);
+  border-radius: var(--wb-radius-md);
+}

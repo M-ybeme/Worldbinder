@@ -4,6 +4,7 @@ import { loginSchema, type LoginInput } from '@worldbinder/validation'
 import { useForm } from 'react-hook-form'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useLogin } from '../hooks/useAuthMutations'
+import '../auth.css'
 
 interface LocationState {
   from?: { pathname: string }
@@ -30,7 +31,8 @@ export function LoginPage() {
   const onSubmit = handleSubmit((data) => {
     login.mutate(data, {
       onSuccess: () => {
-        const redirectTo = (location.state as LocationState | null)?.from?.pathname ?? '/account/profile'
+        const redirectTo =
+          (location.state as LocationState | null)?.from?.pathname ?? '/account/profile'
         navigate(redirectTo, { replace: true })
       },
     })
@@ -51,6 +53,7 @@ export function LoginPage() {
 
   return (
     <section>
+      <img src="/worldbinder-logo.png" alt="Worldbinder" className="wb-login-logo" />
       <h1>Log in</h1>
       <form className="wb-form" onSubmit={onSubmit} noValidate>
         <TextField
@@ -79,7 +82,12 @@ export function LoginPage() {
 
       <div className="wb-banner">
         <p>Just want to look around? Skip the account and explore a fully populated campaign.</p>
-        <Button type="button" variant="secondary" disabled={demoLogin.isPending} onClick={handleDemoLogin}>
+        <Button
+          type="button"
+          variant="secondary"
+          disabled={demoLogin.isPending}
+          onClick={handleDemoLogin}
+        >
           {demoLogin.isPending ? 'Logging in…' : 'View the demo campaign'}
         </Button>
         <FormMessage message={demoLogin.error?.message} />
