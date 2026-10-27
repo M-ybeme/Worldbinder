@@ -121,9 +121,8 @@ test('session lifecycle: create, complete with world date, reveal, session appea
 
   await test.step('player can now see the revealed entity', async () => {
     await playerPage.goto(npcUrl.replace(new RegExp(`/world/.+$`), `/world`))
-    // By role, not getByLabel: the topbar's "Search (Ctrl/Cmd+K)" button and
-    // (since the collapsible sidebar, 1.0.0) the sidebar's "Search" nav link
-    // both share that accessible name with the World list's Search field.
+    // By role, not getByLabel: the sidebar's "Search (Ctrl/Cmd+K)" button
+    // shares that accessible name with the World list's Search field.
     await playerPage.getByRole('textbox', { name: 'Search', exact: true }).fill(secretName)
     await expect(playerPage.getByRole('link', { name: secretName })).toBeVisible()
   })

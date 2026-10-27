@@ -14,6 +14,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useCampaignOutletContext } from '../../campaigns/hooks/useCampaignContext'
 import { QuickCreateEntityDialog } from '../components/QuickCreateEntityDialog'
+import { WorldTabs } from '../components/WorldTabs'
 import { ENTITY_TYPE_LABELS, ENTITY_TYPES, EntityTypeIcon } from '../lib/entityTypeIcons'
 import { useEntitiesQuery } from '../hooks/useEntities'
 import '../entities.css'
@@ -75,17 +76,10 @@ export function WorldListPage() {
       <PageHeader
         title="World"
         actions={
-          <>
-            <Link
-              className="wb-button wb-button--secondary"
-              to={`/app/campaign/${campaign.id}/world/timeline`}
-            >
-              Timeline
-            </Link>
-            {canCreate && <Button onClick={() => setQuickCreateOpen(true)}>New entity</Button>}
-          </>
+          canCreate && <Button onClick={() => setQuickCreateOpen(true)}>New entity</Button>
         }
       />
+      <WorldTabs campaignId={campaign.id} />
 
       <QuickCreateEntityDialog
         campaignId={campaign.id}

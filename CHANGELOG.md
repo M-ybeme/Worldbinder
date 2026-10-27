@@ -4,6 +4,25 @@ All notable changes to this project are documented here. Format follows [Keep a 
 
 Every push to `main` should add an entry here. This is meant to be an honest record of what actually shipped, not a restatement of the roadmap's aspirations — if something was attempted and reverted, or shipped partially, say so.
 
+## [1.2.0] - 2026-10-27
+
+**Shared navigation shell (Shell E).** The campaign workspace's topbar is gone; one sidebar now carries everything it did, and phones get a real mobile layout instead of the old wrapped-row sidebar. First milestone of the UI redesign approved in Claude Design — page content is unchanged apart from the Dashboard's new heading and World's view tabs.
+
+### Changed
+
+- **Sidebar carries the shell.** Campaign switcher and "All campaigns" at the top; one search button (opens the same Ctrl/Cmd+K overlay, whose "See all results" still reaches the full results page) replacing both the sidebar's Search link and the topbar's search icon; the five primary sections; a "Manage" group; Help and Account in a footer with the collapse toggle. The sidebar is sticky at full viewport height so that footer stays in reach on long pages.
+- **Permissions unchanged.** Members and Import / Export stay visible to every role (players can still see and download existing exports); Settings and Audit Log stay owner/GM-only. Settings is also marked current on the Tags page it links to.
+- **Collapsed rail** keeps the existing `wb-sidebar-collapsed` preference, tooltips and `aria-label`s; the toggle now reports `aria-expanded`. Active items get a leading accent bar as well as the tint.
+- **Phones and tablets (≤768px):** a compact top bar (menu, current section, search), bottom tabs for Dashboard/World/Sessions/Threads/Maps, and the sidebar as an off-canvas drawer — a modal dialog that takes focus, closes on Escape, scrim click or navigation, returns focus to the menu button, and makes the rest of the page `inert` while open. The desktop collapse preference doesn't apply to the drawer but is kept for the next desktop visit.
+- **World's Encyclopedia and Timeline are now page tabs** (`WorldTabs`), replacing the World page's "Timeline" button; World stays current in the sidebar on both.
+- **Dashboard has its own `h1`** (the campaign name) now that the topbar heading is gone.
+- **Document titles** are set per section (`Timeline · <Campaign> · Worldbinder`); they were the static "Worldbinder" everywhere before.
+- **No nested `<main>`:** `App.tsx` wraps the campaign workspace in a plain `div`, since `CampaignLayout` renders its own `<main>` — the nesting demoted the shell's landmarks.
+
+### Verification
+
+`pnpm typecheck` / `pnpm lint` / web `build` clean; web vitest 40/40, including 16 new `CampaignLayout` tests (primary/manage items by role, `aria-current` including Tags → Settings, search button and Ctrl/Cmd+K, collapse persistence, tooltip on focus, document titles, drawer inert/dialog/Escape/focus return/close on navigate, bottom tabs). New `e2e/shell.spec.ts` (desktop + 390px phone) passes in Chromium, Firefox and WebKit; `campaign-membership.spec.ts` now also checks a non-manager still reaches Import / Export. Full Playwright run: every Chromium test passes. Firefox/WebKit had intermittent failures; the WebKit ones passed on rerun. Firefox's plot-thread quick-create (Title field cleared, so Create stays disabled) also fails on the pre-shell baseline (4 of 6 runs), so it predates this change and is still open. Screenshots checked for Dashboard, World, entity view/edit, Sessions, Threads, Maps and Settings: expanded and collapsed, light and dark, and the phone layout with the drawer open.
+
 ## [1.1.0] - 2026-09-12
 
 **Custom favicon and login-page branding**, replacing Vite's default lightning-bolt icon and the untitled `<title>web</title>` left over from the initial scaffold — first real use of the commissioned Worldbinder logo artwork (`images/WorldbinderLogo.png`) outside of marketing material.

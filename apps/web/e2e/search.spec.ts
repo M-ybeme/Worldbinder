@@ -134,7 +134,7 @@ test('search: overlay and results page respect entity visibility for GM vs. play
     // mounting — keyboard.press is a raw input event, not an auto-waiting
     // locator action, so pressing Ctrl+K before the layout's keydown
     // listener attaches would silently do nothing.
-    await expect(playerPage.getByRole('link', { name: 'Search' })).toBeVisible()
+    await expect(playerPage.getByRole('button', { name: 'Search (Ctrl/Cmd+K)' })).toBeVisible()
   })
 
   const playerOverlay = playerPage.locator('.wb-search-overlay__panel')

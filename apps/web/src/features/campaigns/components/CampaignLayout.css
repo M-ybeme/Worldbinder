@@ -3,13 +3,20 @@
   min-height: 100svh;
 }
 
+/* Sticky full-height column, so the footer (Help, Account, collapse
+   toggle) stays in reach on long pages instead of scrolling away with
+   the content. */
 .wb-sidebar {
-  width: 232px;
+  position: sticky;
+  top: 0;
+  height: 100svh;
+  overflow-y: auto;
+  width: 248px;
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
   gap: var(--wb-space-4);
-  padding: var(--wb-space-4);
+  padding: var(--wb-space-4) var(--wb-space-3);
   background: var(--wb-bg-surface);
   border-right: 1px solid var(--wb-border-default);
   transition: width var(--wb-motion-duration-base) var(--wb-motion-ease);
@@ -26,6 +33,8 @@
   width: 64px;
   padding-left: var(--wb-space-2);
   padding-right: var(--wb-space-2);
+  /* Tooltips sit to the right of the rail, outside its box. */
+  overflow: visible;
 }
 
 .wb-sidebar__header {
@@ -39,6 +48,7 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--wb-space-1);
+  min-height: 32px;
 }
 
 .wb-sidebar--collapsed .wb-sidebar__header-row {
@@ -49,6 +59,8 @@
   display: inline-flex;
   align-items: center;
   gap: var(--wb-space-1);
+  padding: var(--wb-space-1);
+  border-radius: var(--wb-radius-sm);
   color: var(--wb-text-muted);
   font-size: var(--wb-text-sm);
   text-decoration: none;
@@ -58,10 +70,57 @@
   color: var(--wb-text-primary);
 }
 
+/* The one search entry point — styled as a field so it reads as "type to
+   find", but it's a button that opens the shared overlay. */
+.wb-sidebar__search {
+  display: flex;
+  align-items: center;
+  gap: var(--wb-space-2);
+  width: 100%;
+  min-height: 36px;
+  padding: var(--wb-space-2) var(--wb-space-3);
+  border: 1px solid var(--wb-border-default);
+  border-radius: var(--wb-radius-md);
+  background: var(--wb-field-bg);
+  color: var(--wb-text-muted);
+  font: inherit;
+  font-size: var(--wb-text-sm);
+  text-align: left;
+  cursor: pointer;
+}
+
+.wb-sidebar__search:hover {
+  border-color: var(--wb-border-strong);
+  color: var(--wb-text-primary);
+}
+
+.wb-sidebar__search .wb-sidebar__link-label {
+  flex: 1;
+}
+
+.wb-sidebar__kbd {
+  padding: 0 var(--wb-space-1);
+  border: 1px solid var(--wb-border-subtle);
+  border-radius: var(--wb-radius-sm);
+  font-family: inherit;
+  font-size: var(--wb-text-xs);
+  color: var(--wb-text-muted);
+}
+
+.wb-sidebar--collapsed .wb-sidebar__search {
+  justify-content: center;
+  padding-left: var(--wb-space-2);
+  padding-right: var(--wb-space-2);
+}
+
+.wb-sidebar--collapsed .wb-sidebar__kbd {
+  display: none;
+}
+
 .wb-sidebar__nav {
   display: flex;
   flex-direction: column;
-  gap: var(--wb-space-1);
+  gap: 2px;
 }
 
 .wb-sidebar__nav--secondary {
@@ -69,15 +128,45 @@
   border-top: 1px solid var(--wb-border-subtle);
 }
 
+.wb-sidebar__group-label {
+  padding: 0 var(--wb-space-3) var(--wb-space-1);
+  color: var(--wb-text-muted);
+  font-size: var(--wb-text-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.wb-sidebar--collapsed .wb-sidebar__group-label {
+  display: none;
+}
+
+.wb-sidebar__footer {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-top: var(--wb-space-3);
+  border-top: 1px solid var(--wb-border-subtle);
+}
+
 .wb-sidebar__link {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: var(--wb-space-2);
+  gap: var(--wb-space-3);
+  width: 100%;
+  min-height: 36px;
   padding: var(--wb-space-2) var(--wb-space-3);
+  border: 0;
   border-radius: var(--wb-radius-sm);
+  background: transparent;
   color: var(--wb-text-secondary);
+  font: inherit;
   font-size: var(--wb-text-base);
+  text-align: left;
   text-decoration: none;
+  cursor: pointer;
   transition:
     background-color var(--wb-motion-duration-fast) var(--wb-motion-ease),
     color var(--wb-motion-duration-fast) var(--wb-motion-ease);
@@ -108,10 +197,31 @@
 .wb-sidebar__link--active {
   background: color-mix(in srgb, var(--wb-accent) 14%, transparent);
   color: var(--wb-accent);
-  font-weight: 500;
+  font-weight: 600;
 }
 
-.wb-sidebar__link:focus-visible {
+/* A bar on the leading edge, so "you are here" doesn't rest on the tint
+   alone — still readable in the collapsed rail and in forced colors. */
+.wb-sidebar__link--active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 6px;
+  bottom: 6px;
+  width: 3px;
+  border-radius: var(--wb-radius-full);
+  background: var(--wb-accent);
+}
+
+.wb-sidebar__toggle {
+  color: var(--wb-text-muted);
+  font-size: var(--wb-text-sm);
+}
+
+.wb-sidebar__link:focus-visible,
+.wb-sidebar__back:focus-visible,
+.wb-sidebar__search:focus-visible,
+.wb-tabbar__link:focus-visible {
   outline: 2px solid var(--wb-accent);
   outline-offset: 1px;
 }
@@ -123,32 +233,6 @@
   flex-direction: column;
 }
 
-.wb-topbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--wb-space-4);
-  padding: var(--wb-space-4) var(--wb-space-6);
-  border-bottom: 1px solid var(--wb-border-default);
-  background: var(--wb-bg-surface);
-}
-
-.wb-topbar__title {
-  margin: 0;
-  font-size: var(--wb-text-xl);
-  font-weight: 600;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.wb-topbar__actions {
-  display: flex;
-  align-items: center;
-  gap: var(--wb-space-1);
-  flex-shrink: 0;
-}
-
 .wb-campaign-layout__content {
   flex: 1;
   width: 100%;
@@ -157,34 +241,129 @@
   padding: var(--wb-space-8) var(--wb-space-6);
 }
 
-/* Milestone 13's own established scope: tablet layout tested down to
-   768px, no phone-width target (see global.css's .wb-links comment). The
-   sidebar collapses into a horizontal wrapped nav bar above the content
-   at that width rather than a drawer, matching that same convention. */
+/* Mobile-only chrome — not rendered visibly (or exposed to assistive
+   tech) above the breakpoint. */
+.wb-mobile-topbar,
+.wb-tabbar {
+  display: none;
+}
+
+/* Tablet width and below: the sidebar becomes an off-canvas drawer opened
+   from a compact top bar, and the five primary sections move to bottom
+   tabs. The collapsed-rail preference doesn't apply here — the drawer
+   always shows labels — but is kept for the next desktop visit. */
 @media (max-width: 768px) {
   .wb-campaign-layout {
     flex-direction: column;
   }
 
-  .wb-sidebar {
-    width: 100%;
-    flex-direction: row;
-    flex-wrap: wrap;
+  .wb-mobile-topbar {
+    position: sticky;
+    top: 0;
+    z-index: var(--wb-z-dropdown);
+    display: flex;
     align-items: center;
-    border-right: none;
+    gap: var(--wb-space-2);
+    min-height: 56px;
+    padding: var(--wb-space-1) var(--wb-space-2);
+    background: var(--wb-bg-surface);
     border-bottom: 1px solid var(--wb-border-default);
   }
 
-  .wb-sidebar__header {
-    flex-direction: row;
-    align-items: center;
+  .wb-mobile-topbar .wb-icon-button {
+    width: 44px;
+    height: 44px;
   }
 
-  .wb-sidebar__nav,
-  .wb-sidebar__nav--secondary {
-    flex-direction: row;
-    flex-wrap: wrap;
-    border-top: none;
-    padding-top: 0;
+  .wb-mobile-topbar__title {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: var(--wb-text-lg);
+    font-weight: 600;
+  }
+
+  .wb-sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: var(--wb-z-modal);
+    width: min(300px, 85vw);
+    height: 100svh;
+    border-right: 1px solid var(--wb-border-default);
+    box-shadow: var(--wb-shadow-lg);
+    transform: translateX(-100%);
+    visibility: hidden;
+    transition:
+      transform var(--wb-motion-duration-base) var(--wb-motion-ease),
+      visibility 0s linear var(--wb-motion-duration-base);
+  }
+
+  .wb-campaign-layout--drawer-open .wb-sidebar {
+    transform: none;
+    visibility: visible;
+    transition: transform var(--wb-motion-duration-base) var(--wb-motion-ease);
+  }
+
+  .wb-sidebar .wb-sidebar__link,
+  .wb-sidebar .wb-sidebar__search {
+    min-height: 44px;
+  }
+
+  /* No physical keyboard to hint at on a phone. */
+  .wb-sidebar__kbd {
+    display: none;
+  }
+
+  .wb-sidebar-scrim {
+    position: fixed;
+    inset: 0;
+    z-index: var(--wb-z-overlay);
+    background: rgb(0 0 0 / 0.45);
+  }
+
+  .wb-campaign-layout__content {
+    padding: var(--wb-space-5) var(--wb-space-4);
+    /* Clear the fixed bottom tabs. */
+    padding-bottom: calc(72px + env(safe-area-inset-bottom));
+  }
+
+  .wb-tabbar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: var(--wb-z-dropdown);
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    padding-bottom: env(safe-area-inset-bottom);
+    background: var(--wb-bg-surface);
+    border-top: 1px solid var(--wb-border-default);
+  }
+
+  .wb-tabbar__link {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    min-height: 56px;
+    color: var(--wb-text-muted);
+    font-size: var(--wb-text-xs);
+    text-decoration: none;
+  }
+
+  .wb-tabbar__link--active {
+    color: var(--wb-accent);
+    font-weight: 600;
+    box-shadow: inset 0 2px 0 var(--wb-accent);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wb-sidebar,
+  .wb-campaign-layout--drawer-open .wb-sidebar {
+    transition: none;
   }
 }

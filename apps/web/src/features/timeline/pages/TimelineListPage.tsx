@@ -5,6 +5,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useCampaignOutletContext } from '../../campaigns/hooks/useCampaignContext'
 import { EntityPicker } from '../../entities/components/EntityPicker'
+import { WorldTabs } from '../../entities/components/WorldTabs'
 import { QuickCreateTimelineEventDialog } from '../components/QuickCreateTimelineEventDialog'
 import { formatTimelineDate } from '../lib/formatTimelineDate'
 import { useTimelineEventsQuery } from '../hooks/useTimeline'
@@ -95,6 +96,7 @@ export function TimelineListPage() {
         <h1>Timeline</h1>
         {canCreate && <Button onClick={() => setQuickCreateOpen(true)}>New timeline event</Button>}
       </header>
+      <WorldTabs campaignId={campaign.id} />
 
       <QuickCreateTimelineEventDialog
         campaignId={campaign.id}

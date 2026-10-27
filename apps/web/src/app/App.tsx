@@ -6,7 +6,7 @@ export function App() {
   const location = useLocation()
   // CampaignLayout (rendered inside the Outlet for every /app/campaign/:id
   // route) already renders its own back-link, Help, and Account affordances
-  // in its sidebar/topbar — this outer header would just be duplicate chrome
+  // in its sidebar — this outer header would just be duplicate chrome
   // for that subtree, and its sibling <main> needs the full viewport width
   // instead of the narrow centered column every other route wants.
   const isCampaignWorkspace = location.pathname.startsWith('/app/campaign/')
@@ -29,13 +29,18 @@ export function App() {
           </nav>
         </header>
       )}
-      <main
-        className={
-          isCampaignWorkspace ? 'app-shell__main app-shell__main--full' : 'app-shell__main'
-        }
-      >
-        <Outlet />
-      </main>
+      {/* CampaignLayout renders its own <main> beside its sidebar, so the
+        campaign workspace gets a plain wrapper here — a <main> around it
+        would nest landmarks and demote the shell's own header and aside. */}
+      {isCampaignWorkspace ? (
+        <div className="app-shell__main app-shell__main--full">
+          <Outlet />
+        </div>
+      ) : (
+        <main className="app-shell__main">
+          <Outlet />
+        </main>
+      )}
     </div>
   )
 }

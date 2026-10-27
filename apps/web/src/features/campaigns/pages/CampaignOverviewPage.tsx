@@ -1,5 +1,5 @@
 import type { CampaignActivityItem, EntityType, WorldDate } from '@worldbinder/contracts'
-import { Button, CardGrid, ErrorState, LoadingState } from '@worldbinder/ui'
+import { Button, CardGrid, ErrorState, LoadingState, PageHeader } from '@worldbinder/ui'
 import { DEFAULT_DASHBOARD_BACKDROP_CONFIG } from '@worldbinder/validation'
 import { CalendarDays, GitBranch } from 'lucide-react'
 import { useState } from 'react'
@@ -79,6 +79,10 @@ export function CampaignOverviewPage() {
         />
       )}
       <div className="wb-dashboard-content">
+        {/* The page's own h1 — the campaign name used to live in a topbar
+          above every campaign page, removed when the sidebar took over its
+          job. */}
+        <PageHeader title={campaign.name} />
         <p>{campaign.description ?? 'No description yet.'}</p>
         {/* Reuses ProfilePage's key-value dl treatment rather than
           introducing a near-duplicate .wb-campaign-overview class — same

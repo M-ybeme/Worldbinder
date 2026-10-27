@@ -74,6 +74,15 @@ test('campaign lifecycle: create, invite, accept, switch, role change, remove, a
 
   await test.step('permission-aware nav: editor does not see Settings', async () => {
     await expect(inviteePage.getByRole('link', { name: 'Settings' })).toHaveCount(0)
+    await expect(inviteePage.getByRole('link', { name: 'Audit Log' })).toHaveCount(0)
+  })
+
+  await test.step('non-managers keep their existing access to Import / Export', async () => {
+    await inviteePage.getByRole('link', { name: 'Import / Export' }).click()
+    await expect(inviteePage.getByRole('heading', { name: 'Import / Export' })).toBeVisible()
+    await expect(
+      inviteePage.getByText('Only the campaign owner or GM can create an export.'),
+    ).toBeVisible()
   })
 
   await test.step("owner changes the invitee's role to viewer", async () => {
