@@ -34,6 +34,7 @@ const IMPORTANCE_OPTIONS = [
 ]
 
 const SAVE_STATUS_TEXT: Record<string, string> = {
+  pending: 'Waiting to save…',
   saving: 'Saving…',
   saved: 'Saved',
   offline: 'Offline — changes saved locally',
@@ -123,8 +124,9 @@ export function ThreadFormPage() {
   }, [updatedAt, title, summary, visibility, importance, publicContent, gmContent, entityIds, tags])
 
   useEffect(() => {
-    const needsWarning =
-      autosave.status === 'offline' || autosave.status === 'error' || autosave.status === 'conflict'
+    // pending/saving too: the change is already in IndexedDB, but closing the
+    // tab before it reaches the server shouldn't happen silently.
+    const needsWarning = autosave.status !== 'idle' && autosave.status !== 'saved'
     if (!needsWarning) return
     const handler = (event: BeforeUnloadEvent) => {
       event.preventDefault()
