@@ -173,14 +173,17 @@ test('search: overlay and results page respect entity visibility for GM vs. play
 
   await test.step('the full results page shows the same visibility split for the player', async () => {
     await playerPage.goto(campaignUrl.replace(/\/?$/, '/search'))
-    await playerPage.getByLabel('Search', { exact: true }).fill(publicEntityName)
+    // By role, not getByLabel: since the collapsible sidebar (1.0.0) its nav
+    // links carry aria-labels "Search", "World" and "Sessions" too.
+    const searchField = playerPage.getByRole('textbox', { name: 'Search', exact: true })
+    await searchField.fill(publicEntityName)
     await expect(
       playerPage.locator('.wb-search-results-page').getByText(publicEntityName),
     ).toBeVisible()
-    await expect(playerPage.getByLabel('World')).toBeVisible()
-    await expect(playerPage.getByLabel('Sessions')).toBeVisible()
+    await expect(playerPage.getByRole('checkbox', { name: 'World' })).toBeVisible()
+    await expect(playerPage.getByRole('checkbox', { name: 'Sessions' })).toBeVisible()
 
-    await playerPage.getByLabel('Search', { exact: true }).fill(hiddenEntityName)
+    await searchField.fill(hiddenEntityName)
     await expect(playerPage.getByText(/No matches for/)).toBeVisible()
   })
 

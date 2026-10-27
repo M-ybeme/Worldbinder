@@ -63,14 +63,16 @@ test('plot thread lifecycle: introduce, go neglected, resolve, player status pro
 
     if (linkThread && action) {
       // Plot-thread changes aren't part of quick-create's minimal field
-      // set — add it via Edit, then "Save changes" (this form isn't
-      // autosaved, unlike the entity form).
+      // set — add it via Edit, which autosaves (the explicit "Save changes"
+      // button was removed in 0.31.0), then return to the session.
+      const sessionUrl = ownerPage.url()
       await ownerPage.getByRole('link', { name: 'Edit' }).click()
       await ownerPage.getByLabel('Plot thread').fill(threadTitle)
       await ownerPage.locator('.wb-combobox__option', { hasText: threadTitle }).first().click()
       await ownerPage.getByLabel('Action').selectOption(action)
       await ownerPage.getByRole('button', { name: 'Add' }).click()
-      await ownerPage.getByRole('button', { name: 'Save changes' }).click()
+      await expect(ownerPage.getByText('Saved', { exact: true })).toBeVisible({ timeout: 10_000 })
+      await ownerPage.goto(sessionUrl)
       await expect(ownerPage.getByRole('heading', { name: new RegExp(title) })).toBeVisible()
     }
 
@@ -94,18 +96,20 @@ test('plot thread lifecycle: introduce, go neglected, resolve, player status pro
   })
 
   await test.step('the thread shows as neglected on the Threads page and the Dashboard', async () => {
+    // The Threads page shows neglect as a status filter plus a per-row badge
+    // (0.34.0), not a separate "Neglected" section.
     await ownerPage.getByRole('link', { name: 'Threads' }).click()
-    await expect(ownerPage.getByText('Neglected')).toBeVisible()
+    await ownerPage.getByLabel('Status').selectOption('neglected')
+    const neglectedRow = ownerPage
+      .getByRole('listitem')
+      .filter({ has: ownerPage.getByRole('link', { name: threadTitle }) })
+    await expect(neglectedRow).toBeVisible()
+    await expect(neglectedRow.getByText('Neglected', { exact: true })).toBeVisible()
 
-    const neglectedSection = ownerPage
-      .locator('h2', { hasText: 'Neglected' })
-      .locator('xpath=following-sibling::ul[1]')
-    await expect(neglectedSection.getByRole('link', { name: threadTitle })).toBeVisible()
-
+    // The Dashboard section was renamed "Neglected Threads" (0.31.0).
     await ownerPage.getByRole('link', { name: 'Dashboard' }).click()
-    await expect(ownerPage.getByText('Dormant Threads Requiring Attention')).toBeVisible()
     const dormantSection = ownerPage
-      .locator('h2', { hasText: 'Dormant Threads Requiring Attention' })
+      .locator('h2', { hasText: 'Neglected Threads' })
       .locator('xpath=following-sibling::ul[1]')
     await expect(dormantSection.getByRole('link', { name: threadTitle })).toBeVisible()
   })
@@ -113,7 +117,9 @@ test('plot thread lifecycle: introduce, go neglected, resolve, player status pro
   await test.step('owner resolves the thread via a session link', async () => {
     await createAndCompleteSession('Session Five', true, 'resolved')
 
+    // Resolved threads are hidden by the list's default "Unresolved" filter.
     await ownerPage.getByRole('link', { name: 'Threads' }).click()
+    await ownerPage.getByLabel('Status').selectOption('all')
     await ownerPage.getByRole('link', { name: threadTitle }).first().click()
     await expect(ownerPage.getByRole('heading', { name: threadTitle })).toBeVisible()
     await expect(ownerPage.locator('.wb-page-header__meta')).toContainText('resolved')
@@ -130,6 +136,7 @@ test('plot thread lifecycle: introduce, go neglected, resolve, player status pro
     await playerPage.getByRole('button', { name: 'Accept invitation' }).click()
 
     await playerPage.getByRole('link', { name: 'Threads' }).click()
+    await playerPage.getByLabel('Status').selectOption('all')
     await playerPage.getByRole('link', { name: threadTitle }).first().click()
     await expect(playerPage.getByRole('heading', { name: threadTitle })).toBeVisible()
     const playerMeta = playerPage.locator('.wb-page-header__meta')

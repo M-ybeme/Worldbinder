@@ -77,12 +77,13 @@ test('session lifecycle: create, complete with world date, reveal, session appea
     sessionUrl = ownerPage.url()
 
     // Featured entities isn't part of quick-create's minimal field set —
-    // add it via Edit, which (unlike the entity form) has an explicit
-    // "Save changes" submit rather than autosave.
+    // add it via Edit, which autosaves like the entity form (the explicit
+    // "Save changes" button was removed in 0.31.0).
     await ownerPage.getByRole('link', { name: 'Edit' }).click()
     await ownerPage.getByLabel('Add to featured entities').fill(npcName)
     await ownerPage.locator('.wb-combobox__option', { hasText: npcName }).first().click()
-    await ownerPage.getByRole('button', { name: 'Save changes' }).click()
+    await expect(ownerPage.getByText('Saved', { exact: true })).toBeVisible({ timeout: 10_000 })
+    await ownerPage.goto(sessionUrl)
     await expect(ownerPage.getByRole('heading', { name: new RegExp(sessionTitle) })).toBeVisible()
   })
 
@@ -120,10 +121,10 @@ test('session lifecycle: create, complete with world date, reveal, session appea
 
   await test.step('player can now see the revealed entity', async () => {
     await playerPage.goto(npcUrl.replace(new RegExp(`/world/.+$`), `/world`))
-    // Not just getByLabel('Search') — the topbar's Ctrl/Cmd+K search
-    // button's aria-label ("Search (Ctrl/Cmd+K)") also matches that
-    // substring, making it ambiguous with the World list's own Search field.
-    await playerPage.getByLabel('Search', { exact: true }).fill(secretName)
+    // By role, not getByLabel: the topbar's "Search (Ctrl/Cmd+K)" button and
+    // (since the collapsible sidebar, 1.0.0) the sidebar's "Search" nav link
+    // both share that accessible name with the World list's Search field.
+    await playerPage.getByRole('textbox', { name: 'Search', exact: true }).fill(secretName)
     await expect(playerPage.getByRole('link', { name: secretName })).toBeVisible()
   })
 
