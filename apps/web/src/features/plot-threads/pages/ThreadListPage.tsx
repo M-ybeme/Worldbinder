@@ -1,7 +1,7 @@
 import type { PlotThreadSummary } from '@worldbinder/contracts'
 import { Badge, Button, EmptyState, ErrorState, LoadingState, Select } from '@worldbinder/ui'
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useCampaignOutletContext } from '../../campaigns/hooks/useCampaignContext'
 import { QuickCreateThreadDialog } from '../components/QuickCreateThreadDialog'
 import { usePlotThreadsQuery } from '../hooks/usePlotThreads'
@@ -54,7 +54,15 @@ export function ThreadListPage() {
   const canCreate = MANAGEMENT_ROLES.has(campaign.role)
   const threadsQuery = usePlotThreadsQuery(campaign.id)
   const [quickCreateOpen, setQuickCreateOpen] = useState(false)
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('unresolved')
+  // `?status=` only seeds the filter (the Dashboard links here with
+  // `?status=neglected`); changing it afterwards stays local state.
+  const [searchParams] = useSearchParams()
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>(() => {
+    const requested = searchParams.get('status')
+    return STATUS_FILTER_OPTIONS.some((option) => option.value === requested)
+      ? (requested as StatusFilter)
+      : 'unresolved'
+  })
 
   const threads = threadsQuery.data ?? []
   const filteredThreads =

@@ -42,7 +42,7 @@ test('entity lifecycle: create, visibility, edit, tag filter, delete', async ({ 
   let entityUrl = ''
 
   await test.step('owner quick-creates an entity, then adds tags and split content via Edit', async () => {
-    await ownerPage.getByRole('link', { name: 'World' }).click()
+    await ownerPage.getByRole('link', { name: 'World', exact: true }).click()
     await ownerPage.getByRole('button', { name: 'New entity' }).click()
 
     await ownerPage.getByLabel('Name').fill(entityName)
@@ -135,7 +135,7 @@ test('offline mid-edit: change is preserved locally and synced once back online'
 
   await setUpOwnerWithCampaign(page, 'PW Draft Owner', campaignName)
 
-  await page.getByRole('link', { name: 'World' }).click()
+  await page.getByRole('link', { name: 'World', exact: true }).click()
   await page.getByRole('button', { name: 'New entity' }).click()
   await page.getByLabel('Name').fill(entityName)
   await page.getByRole('button', { name: 'Create', exact: true }).click()

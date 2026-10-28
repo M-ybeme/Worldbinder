@@ -56,7 +56,7 @@ test('search: overlay and results page respect entity visibility for GM vs. play
 
   await test.step('owner creates a public entity with public and GM-only content', async () => {
     campaignUrl = ownerPage.url()
-    await ownerPage.getByRole('link', { name: 'World' }).click()
+    await ownerPage.getByRole('link', { name: 'World', exact: true }).click()
     await ownerPage.getByRole('button', { name: 'New entity' }).click()
     await ownerPage.getByLabel('Name').fill(publicEntityName)
     await ownerPage.getByRole('button', { name: 'Create', exact: true }).click()
@@ -77,7 +77,7 @@ test('search: overlay and results page respect entity visibility for GM vs. play
   })
 
   await test.step('owner creates a GM-only entity', async () => {
-    await ownerPage.getByRole('link', { name: 'World' }).click()
+    await ownerPage.getByRole('link', { name: 'World', exact: true }).click()
     await ownerPage.getByRole('button', { name: 'New entity' }).click()
     await ownerPage.getByLabel('Name').fill(hiddenEntityName)
     await ownerPage.getByRole('button', { name: 'Create', exact: true }).click()
@@ -95,7 +95,7 @@ test('search: overlay and results page respect entity visibility for GM vs. play
     // `goto()` only resolves at the load event, not after React hydration,
     // and pressing the shortcut in that gap is a real race that showed up
     // as a flake in slower/differently-timed browsers.
-    await expect(ownerPage.getByRole('link', { name: 'World' })).toBeVisible()
+    await expect(ownerPage.getByRole('link', { name: 'World', exact: true })).toBeVisible()
     await ownerPage.keyboard.press('Control+k')
     const overlay = ownerPage.locator('.wb-search-overlay__panel')
     await expect(overlay).toBeVisible()

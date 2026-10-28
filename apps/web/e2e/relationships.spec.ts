@@ -31,14 +31,14 @@ test('relationship creation projects the reverse label on the target entity', as
   let westvaleUrl = ''
 
   await test.step('create the source and target entities', async () => {
-    await page.getByRole('link', { name: 'World' }).click()
+    await page.getByRole('link', { name: 'World', exact: true }).click()
     await page.getByRole('button', { name: 'New entity' }).click()
     await page.getByLabel('Name').fill(dukeName)
     await page.getByRole('button', { name: 'Create', exact: true }).click()
     await expect(page.getByRole('heading', { name: dukeName })).toBeVisible()
     dukeUrl = page.url()
 
-    await page.getByRole('link', { name: 'World' }).click()
+    await page.getByRole('link', { name: 'World', exact: true }).click()
     await page.getByRole('button', { name: 'New entity' }).click()
     // Quick-create's type picker is a button grid (icons per <option> can't
     // render in a native <select>), not a <select> — click the option
@@ -85,7 +85,7 @@ test('a [[ wiki-link mention creates a backlink on the target entity', async ({ 
 
   await setUpOwnerWithCampaign(page, 'PW Wiki Link Owner', campaignName)
 
-  await page.getByRole('link', { name: 'World' }).click()
+  await page.getByRole('link', { name: 'World', exact: true }).click()
   await page.getByRole('button', { name: 'New entity' }).click()
   await page.getByRole('button', { name: 'Location', exact: true }).click()
   await page.getByLabel('Name').fill(westvaleName)
@@ -93,7 +93,7 @@ test('a [[ wiki-link mention creates a backlink on the target entity', async ({ 
   await expect(page.getByRole('heading', { name: westvaleName })).toBeVisible()
   const westvaleUrl = page.url()
 
-  await page.getByRole('link', { name: 'World' }).click()
+  await page.getByRole('link', { name: 'World', exact: true }).click()
   await page.getByRole('button', { name: 'New entity' }).click()
   await page.getByLabel('Name').fill(dukeName)
   await page.getByRole('button', { name: 'Create', exact: true }).click()
@@ -138,14 +138,14 @@ test('a player cannot see a GM-only relationship', async ({ browser }) => {
   await registerAndVerify(playerPage, playerEmail, 'PW Hidden Rel Player')
   await login(playerPage, playerEmail)
 
-  await ownerPage.getByRole('link', { name: 'World' }).click()
+  await ownerPage.getByRole('link', { name: 'World', exact: true }).click()
   await ownerPage.getByRole('button', { name: 'New entity' }).click()
   await ownerPage.getByLabel('Name').fill(aName)
   await ownerPage.getByRole('button', { name: 'Create', exact: true }).click()
   await expect(ownerPage.getByRole('heading', { name: aName })).toBeVisible()
   const aUrl = ownerPage.url()
 
-  await ownerPage.getByRole('link', { name: 'World' }).click()
+  await ownerPage.getByRole('link', { name: 'World', exact: true }).click()
   await ownerPage.getByRole('button', { name: 'New entity' }).click()
   await ownerPage.getByLabel('Name').fill(bName)
   await ownerPage.getByRole('button', { name: 'Create', exact: true }).click()

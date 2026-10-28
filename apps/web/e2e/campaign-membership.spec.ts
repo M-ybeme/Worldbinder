@@ -47,11 +47,11 @@ test('campaign lifecycle: create, invite, accept, switch, role change, remove, a
   })
 
   await test.step('permission-aware nav: owner sees Settings', async () => {
-    await expect(ownerPage.getByRole('link', { name: 'Settings' })).toBeVisible()
+    await expect(ownerPage.getByRole('link', { name: 'Settings', exact: true })).toBeVisible()
   })
 
   await test.step('owner invites the second user as editor', async () => {
-    await ownerPage.getByRole('link', { name: 'Members' }).click()
+    await ownerPage.getByRole('link', { name: 'Members', exact: true }).click()
     await ownerPage.getByLabel('Email').fill(inviteeEmail)
     await ownerPage.getByLabel('Role', { exact: true }).selectOption('editor')
     await ownerPage.getByRole('button', { name: 'Send invitation' }).click()
@@ -73,7 +73,7 @@ test('campaign lifecycle: create, invite, accept, switch, role change, remove, a
   })
 
   await test.step('permission-aware nav: editor does not see Settings', async () => {
-    await expect(inviteePage.getByRole('link', { name: 'Settings' })).toHaveCount(0)
+    await expect(inviteePage.getByRole('link', { name: 'Settings', exact: true })).toHaveCount(0)
     await expect(inviteePage.getByRole('link', { name: 'Audit Log' })).toHaveCount(0)
   })
 
@@ -93,7 +93,7 @@ test('campaign lifecycle: create, invite, accept, switch, role change, remove, a
   })
 
   await test.step('owner archives then restores the campaign', async () => {
-    await ownerPage.getByRole('link', { name: 'Settings' }).click()
+    await ownerPage.getByRole('link', { name: 'Settings', exact: true }).click()
     await ownerPage.getByRole('button', { name: 'Archive campaign' }).click()
     await expect(ownerPage.getByRole('button', { name: 'Restore campaign' })).toBeVisible()
     await ownerPage.getByRole('button', { name: 'Restore campaign' }).click()
@@ -101,7 +101,7 @@ test('campaign lifecycle: create, invite, accept, switch, role change, remove, a
   })
 
   await test.step('owner removes the invitee', async () => {
-    await ownerPage.getByRole('link', { name: 'Members' }).click()
+    await ownerPage.getByRole('link', { name: 'Members', exact: true }).click()
     await expect(ownerPage.getByRole('heading', { name: 'Members', level: 1 })).toBeVisible()
     await ownerPage.getByRole('button', { name: 'Remove' }).click()
     await expect(ownerPage.getByText(inviteeEmail)).toHaveCount(0)

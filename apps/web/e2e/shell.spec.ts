@@ -21,7 +21,7 @@ test('desktop sidebar: search entry, collapse persists across reloads, World tab
 
   await test.step('the Dashboard owns the page h1 and is the current section', async () => {
     await expect(page.getByRole('heading', { level: 1, name: campaignName })).toBeVisible()
-    await expect(campaignNav.getByRole('link', { name: 'Dashboard' })).toHaveAttribute(
+    await expect(campaignNav.getByRole('link', { name: 'Dashboard', exact: true })).toHaveAttribute(
       'aria-current',
       'page',
     )
@@ -36,7 +36,7 @@ test('desktop sidebar: search entry, collapse persists across reloads, World tab
   })
 
   await test.step('World and Timeline are tabs of the same section', async () => {
-    await campaignNav.getByRole('link', { name: 'World' }).click()
+    await campaignNav.getByRole('link', { name: 'World', exact: true }).click()
     const tabs = page.getByRole('navigation', { name: 'World views' })
     await expect(tabs.getByRole('link', { name: 'Encyclopedia' })).toHaveAttribute(
       'aria-current',
@@ -44,7 +44,7 @@ test('desktop sidebar: search entry, collapse persists across reloads, World tab
     )
     await tabs.getByRole('link', { name: 'Timeline' }).click()
     await expect(page.getByRole('heading', { level: 1, name: 'Timeline' })).toBeVisible()
-    await expect(campaignNav.getByRole('link', { name: 'World' })).toHaveAttribute(
+    await expect(campaignNav.getByRole('link', { name: 'World', exact: true })).toHaveAttribute(
       'aria-current',
       'page',
     )
@@ -61,8 +61,8 @@ test('desktop sidebar: search entry, collapse persists across reloads, World tab
     await page.reload()
     await expect(page.getByRole('button', { name: 'Expand sidebar' })).toBeVisible()
     // Labels are hidden visually but stay the links' accessible names.
-    await expect(campaignNav.getByRole('link', { name: 'Sessions' })).toBeVisible()
-    await campaignNav.getByRole('link', { name: 'Sessions' }).focus()
+    await expect(campaignNav.getByRole('link', { name: 'Sessions', exact: true })).toBeVisible()
+    await campaignNav.getByRole('link', { name: 'Sessions', exact: true }).focus()
     await expect(page.getByRole('tooltip')).toHaveText('Sessions')
 
     await page.getByRole('button', { name: 'Expand sidebar' }).click()
@@ -82,9 +82,9 @@ test.describe('phone width', () => {
     await test.step('sidebar is hidden; bottom tabs carry the primary sections', async () => {
       await expect(page.locator('#wb-campaign-sidebar')).toBeHidden()
       await expect(tabs.getByRole('link')).toHaveCount(5)
-      await tabs.getByRole('link', { name: 'Sessions' }).click()
+      await tabs.getByRole('link', { name: 'Sessions', exact: true }).click()
       await expect(page.getByRole('heading', { level: 1, name: 'Sessions' })).toBeVisible()
-      await expect(tabs.getByRole('link', { name: 'Sessions' })).toHaveAttribute(
+      await expect(tabs.getByRole('link', { name: 'Sessions', exact: true })).toHaveAttribute(
         'aria-current',
         'page',
       )
@@ -106,7 +106,7 @@ test.describe('phone width', () => {
       await menuButton.click()
       await page
         .getByRole('dialog', { name: 'Navigation' })
-        .getByRole('link', { name: 'Members' })
+        .getByRole('link', { name: 'Members', exact: true })
         .click()
       await expect(page.getByRole('dialog', { name: 'Navigation' })).toBeHidden()
       await expect(page.getByRole('banner')).toContainText('Members')

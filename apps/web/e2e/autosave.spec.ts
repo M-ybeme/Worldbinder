@@ -36,7 +36,7 @@ test('entity edit typed just before navigating away is saved', async ({ page }) 
   const stamp = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
   await setUpOwnerWithCampaign(page, 'PW Autosave Entity Owner', `Autosave Entities ${stamp}`)
 
-  await page.getByRole('link', { name: 'World' }).click()
+  await page.getByRole('link', { name: 'World', exact: true }).click()
   await page.getByRole('button', { name: 'New entity' }).click()
   await page.getByLabel('Name').fill(`Blackwall ${stamp}`)
   await page.getByRole('button', { name: 'Create', exact: true }).click()
@@ -58,7 +58,7 @@ test('session edit typed just before navigating away is saved', async ({ page })
   const stamp = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
   await setUpOwnerWithCampaign(page, 'PW Autosave Session Owner', `Autosave Sessions ${stamp}`)
 
-  await page.getByRole('link', { name: 'Sessions' }).click()
+  await page.getByRole('link', { name: 'Sessions', exact: true }).click()
   await page.getByRole('button', { name: 'New session' }).click()
   await page.getByLabel('Title').fill(`Draft title ${stamp}`)
   await page.getByRole('button', { name: 'Create', exact: true }).click()
@@ -79,7 +79,7 @@ test('plot thread edit typed just before navigating away is saved', async ({ pag
   const stamp = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
   await setUpOwnerWithCampaign(page, 'PW Autosave Thread Owner', `Autosave Threads ${stamp}`)
 
-  await page.getByRole('link', { name: 'Threads' }).click()
+  await page.getByRole('link', { name: 'Threads', exact: true }).click()
   await page.getByRole('button', { name: 'New plot thread' }).click()
   await page.getByLabel('Title').fill(`The Missing Caravan ${stamp}`)
   await page.getByRole('button', { name: 'Create', exact: true }).click()

@@ -48,14 +48,14 @@ test('session lifecycle: create, complete with world date, reveal, session appea
   let npcUrl = ''
 
   await test.step('owner creates a featured entity and a GM-only secret entity', async () => {
-    await ownerPage.getByRole('link', { name: 'World' }).click()
+    await ownerPage.getByRole('link', { name: 'World', exact: true }).click()
     await ownerPage.getByRole('button', { name: 'New entity' }).click()
     await ownerPage.getByLabel('Name').fill(npcName)
     await ownerPage.getByRole('button', { name: 'Create', exact: true }).click()
     await expect(ownerPage.getByRole('heading', { name: npcName })).toBeVisible()
     npcUrl = ownerPage.url()
 
-    await ownerPage.getByRole('link', { name: 'World' }).click()
+    await ownerPage.getByRole('link', { name: 'World', exact: true }).click()
     await ownerPage.getByRole('button', { name: 'New entity' }).click()
     await ownerPage.getByLabel('Name').fill(secretName)
     await ownerPage.getByRole('button', { name: 'Create', exact: true }).click()
@@ -69,7 +69,7 @@ test('session lifecycle: create, complete with world date, reveal, session appea
   })
 
   await test.step('owner creates a session with the featured entity', async () => {
-    await ownerPage.getByRole('link', { name: 'Sessions' }).click()
+    await ownerPage.getByRole('link', { name: 'Sessions', exact: true }).click()
     await ownerPage.getByRole('button', { name: 'New session' }).click()
     await ownerPage.getByLabel('Title').fill(sessionTitle)
     await ownerPage.getByRole('button', { name: 'Create', exact: true }).click()

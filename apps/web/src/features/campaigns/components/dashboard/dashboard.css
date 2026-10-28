@@ -1,0 +1,372 @@
+/* Dashboard E. Sized by its own width (a container query), not the
+   viewport's, so the two-column layout responds to the sidebar being
+   collapsed or expanded as well as to the window. */
+.wb-dash {
+  container-type: inline-size;
+  display: flex;
+  flex-direction: column;
+  gap: var(--wb-space-6);
+}
+
+.wb-dash .wb-page-header {
+  margin-bottom: 0;
+}
+
+.wb-dash .wb-page-header__meta {
+  color: var(--wb-text-secondary);
+  font-size: var(--wb-text-base);
+  column-gap: var(--wb-space-3);
+}
+
+.wb-dash .wb-page-header__meta > span + span::before {
+  content: '·';
+  margin-right: var(--wb-space-3);
+  color: var(--wb-text-muted);
+}
+
+/* Narrow: the meta line wraps, and a separator would start the new line —
+   drop the dots and let the gap separate the items instead. */
+@container (max-width: 560px) {
+  .wb-dash .wb-page-header__meta > span + span::before {
+    content: none;
+  }
+}
+
+.wb-dash-strong {
+  color: var(--wb-text-primary);
+}
+
+.wb-dash-description {
+  max-width: 72ch;
+  margin: calc(-1 * var(--wb-space-3)) 0 0;
+  color: var(--wb-text-secondary);
+}
+
+.wb-dash-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--wb-space-6);
+  align-items: start;
+}
+
+@container (min-width: 820px) {
+  .wb-dash-grid {
+    grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr);
+  }
+}
+
+.wb-dash-main,
+.wb-dash-aside {
+  display: flex;
+  flex-direction: column;
+  gap: var(--wb-space-6);
+  min-width: 0;
+}
+
+/* --- Cards ------------------------------------------------------------ */
+
+.wb-dash-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--wb-space-3);
+  padding: var(--wb-space-5);
+  border: 1px solid var(--wb-border-default);
+  border-radius: var(--wb-radius-lg);
+  background: var(--wb-bg-surface-raised);
+  min-width: 0;
+}
+
+.wb-dash-card--flush {
+  padding: 0;
+  gap: 0;
+}
+
+.wb-dash-card__title {
+  margin: 0;
+  font-size: var(--wb-text-lg);
+}
+
+.wb-dash-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--wb-space-2);
+}
+
+.wb-dash-small-link {
+  font-size: var(--wb-text-sm);
+}
+
+.wb-dash-eyebrow {
+  margin: 0;
+  color: var(--wb-text-muted);
+  font-size: var(--wb-text-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.wb-dash-eyebrow--accent {
+  color: var(--wb-accent);
+}
+
+.wb-dash-muted,
+.wb-dash-secondary {
+  margin: 0;
+  font-size: var(--wb-text-sm);
+}
+
+.wb-dash-muted {
+  color: var(--wb-text-muted);
+}
+
+.wb-dash-secondary {
+  color: var(--wb-text-secondary);
+  font-size: var(--wb-text-base);
+}
+
+.wb-dash-meta {
+  flex-shrink: 0;
+  color: var(--wb-text-muted);
+  font-size: var(--wb-text-xs);
+}
+
+.wb-dash-link-button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--wb-accent);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.wb-dash-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--wb-space-2);
+}
+
+.wb-dash-empty {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--wb-space-3);
+}
+
+/* --- Lists and chips -------------------------------------------------- */
+
+.wb-dash-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.wb-dash-list li {
+  display: flex;
+  align-items: center;
+  gap: var(--wb-space-2);
+  min-height: 40px;
+  padding: var(--wb-space-1) 0;
+  border-top: 1px solid var(--wb-border-subtle);
+}
+
+.wb-dash-list li:first-child {
+  border-top: 0;
+}
+
+.wb-dash-list li > a {
+  flex: 1;
+  min-width: 0;
+}
+
+.wb-dash-list li > svg {
+  flex-shrink: 0;
+  color: var(--wb-text-muted);
+}
+
+.wb-dash-list--compact li {
+  min-height: 36px;
+}
+
+.wb-dash-ellipsis {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wb-dash-chips {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--wb-space-2);
+}
+
+.wb-dash-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--wb-space-1);
+  min-height: 32px;
+  padding: var(--wb-space-1) var(--wb-space-3);
+  border: 1px solid var(--wb-border-default);
+  border-radius: var(--wb-radius-full);
+  background: var(--wb-bg-surface);
+  color: var(--wb-text-primary);
+  font-size: var(--wb-text-sm);
+  text-decoration: none;
+}
+
+.wb-dash-chip:hover {
+  border-color: var(--wb-border-strong);
+  background: var(--wb-bg-surface-hover);
+}
+
+.wb-dash-chip__note {
+  color: var(--wb-text-muted);
+}
+
+/* --- Sessions --------------------------------------------------------- */
+
+.wb-dash-session {
+  display: flex;
+  flex-direction: column;
+  gap: var(--wb-space-3);
+  padding: var(--wb-space-5) var(--wb-space-6);
+}
+
+.wb-dash-session + .wb-dash-session {
+  border-top: 1px solid var(--wb-border-subtle);
+}
+
+/* The next session leads the page: a faint accent wash and stripe. */
+.wb-dash-session--next {
+  border-left: 3px solid var(--wb-accent);
+  border-top-left-radius: var(--wb-radius-lg);
+  background: color-mix(in srgb, var(--wb-accent) 5%, transparent);
+}
+
+.wb-dash-session--next:only-child {
+  border-bottom-left-radius: var(--wb-radius-lg);
+}
+
+.wb-dash-session__title {
+  margin: 0;
+  font-size: var(--wb-text-xl);
+}
+
+.wb-dash-session__title--small {
+  font-size: var(--wb-text-lg);
+}
+
+.wb-dash-session__title a {
+  color: var(--wb-text-primary);
+}
+
+.wb-dash-session__columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--wb-space-4);
+}
+
+.wb-dash-session__columns .wb-dash-eyebrow {
+  margin-bottom: var(--wb-space-1);
+}
+
+@container (min-width: 560px) {
+  .wb-dash-session__columns {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--wb-space-6);
+  }
+}
+
+/* --- Plot threads ----------------------------------------------------- */
+
+.wb-dash-attention {
+  padding: var(--wb-space-2) var(--wb-space-4);
+  border: 1px solid color-mix(in srgb, var(--wb-warning) 45%, transparent);
+  border-radius: var(--wb-radius-md);
+  background: color-mix(in srgb, var(--wb-warning) 10%, transparent);
+}
+
+.wb-dash-attention__title {
+  margin: var(--wb-space-1) 0;
+  font-size: var(--wb-text-sm);
+}
+
+.wb-dash-attention__hint {
+  color: var(--wb-text-secondary);
+  font-weight: 400;
+}
+
+.wb-dash-attention .wb-dash-list li {
+  border-top-color: color-mix(in srgb, var(--wb-warning) 25%, transparent);
+}
+
+/* --- Setup checklist -------------------------------------------------- */
+
+.wb-dash-checklist {
+  gap: var(--wb-space-4);
+  padding: var(--wb-space-6);
+}
+
+.wb-dash-checklist__title {
+  margin: 0 0 var(--wb-space-1);
+  font-size: var(--wb-text-xl);
+}
+
+.wb-dash-checklist__steps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.wb-dash-checklist__step {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--wb-space-2) var(--wb-space-4);
+  padding: var(--wb-space-4) 0;
+  border-top: 1px solid var(--wb-border-subtle);
+}
+
+.wb-dash-checklist__number {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--wb-radius-md);
+  background: color-mix(in srgb, var(--wb-accent) 14%, transparent);
+  color: var(--wb-accent);
+  font-weight: 600;
+}
+
+.wb-dash-checklist__step-title {
+  margin: 0;
+  font-size: var(--wb-text-base);
+}
+
+/* Narrow: the actions drop under the text, aligned with it. */
+.wb-dash-checklist__action {
+  grid-column: 2;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--wb-space-2);
+}
+
+@container (min-width: 720px) {
+  .wb-dash-checklist__step {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+
+  .wb-dash-checklist__action {
+    grid-column: auto;
+    justify-content: flex-end;
+  }
+}

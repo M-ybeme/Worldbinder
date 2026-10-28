@@ -4,6 +4,27 @@ All notable changes to this project are documented here. Format follows [Keep a 
 
 Every push to `main` should add an entry here. This is meant to be an honest record of what actually shipped, not a restatement of the roadmap's aspirations — if something was attempted and reverted, or shipped partially, say so.
 
+## [1.3.0] - 2026-10-28
+
+**Campaign Dashboard E.** The Dashboard is rebuilt around running the next session: the upcoming session leads, the last session's recap and the plot threads that need attention sit beneath it, and recent changes and favorites move to a narrow secondary column. New campaigns get a setup checklist. No backend changes — everything comes from the existing dashboard endpoint plus each session's existing detail endpoint, both of which already apply visibility rules server-side.
+
+### Changed
+
+- **Header** uses the shared `PageHeader`: campaign name (the page's only `h1`), status badge when not active, system, in-world date when set, and a "next session in N days" / "No session scheduled" indicator. Actions: "Browse the World" and one **+ New** menu (Character, Location, Other entry…, Session, Plot thread) that opens the existing quick-create dialogs — replacing the four separate Quick Actions buttons. The menu follows the WAI-ARIA menu-button pattern (arrow keys, Home/End, Escape returns focus) and opens on whichever side has room.
+- **New and edit actions are now limited to owner/GM/editor**, the same roles the World, Sessions and Threads pages already use. Players and viewers used to see Quick Actions buttons whose creates the API rejected.
+- **Up next** (when a session is scheduled): date and time, the plot threads linked to it, its featured entries and locations (de-duplicated), "Open session prep", and "Edit session" for editors. **Last time:** a plain-text excerpt of the recap, the threads it introduced/advanced/resolved, and what it revealed to players.
+- **Plot threads:** the API's own neglected threads (unresolved, not referenced by a recent played session) come first under "Needs attention", with the session they were last in; other active threads follow with an importance badge (GM-only data — not shown when the API omits it).
+- **Recently changed** shows times relative to now; "Full activity log" links to the Audit Log for owners/GMs only. **Favorites** are chips.
+- **Empty states:** no session scheduled (with "Plan next session", "All sessions", and "See neglected threads" when there are some); no active plot threads; nothing changed yet; no favorites; and for a campaign with no content, the checklist for owners/GMs or an explanatory empty state for everyone else.
+- **Setup checklist** (owners/GMs, until the first session is played): add entries, plan a session, invite players, and set up the calendar (optional). Each step's completion comes from the campaign's real data (recent activity, upcoming session, member count, `calendarConfigJson`), not stored flags, and done steps disappear.
+- **Layout** uses a container query on the Dashboard itself, so its two columns collapse to one based on the space actually available (which depends on the sidebar being collapsed or not), not just the window width.
+- **Threads page** reads `?status=neglected` (or another filter value) as its initial filter, so the Dashboard can link straight to neglected threads.
+- **e2e selectors for sidebar links are now exact** (`{ name: 'Sessions', exact: true }`, etc.). Playwright's default substring matching also matched the Dashboard's "All sessions", "All threads" and "Browse the World".
+
+### Verification
+
+`pnpm typecheck` / `pnpm lint` / web `build` clean. Web vitest 62/62, including 22 new Dashboard tests: populated, no upcoming session, empty sections, new campaign (checklist steps derived from real data and disappearing when done), player vs GM, the New menu's keyboard behaviour and each quick-create item, and loading/error states. New `e2e/dashboard.spec.ts` (checklist progress → scheduled session leads; real invited player sees only public data and no New/GM tools; 390px phone layout with no horizontal overflow and the New menu kept on-screen) passes in Chromium, Firefox and WebKit. That spec found two real bugs, both fixed: the New menu ran off-screen on phones, and the spec itself leaked browser contexts, which slowed WebKit enough to time out a later spec. Full Playwright run: all Chromium and WebKit tests pass after the fix; one Firefox failure is the known quick-create flake (Title cleared, Create disabled), which also fails without these changes. Visual checks used rendered screenshots at 1440 (expanded and collapsed), 1280, 900, 768, 390 and 360px, in light and dark, for a populated campaign, a partly set up one and a new one.
+
 ## [1.2.0] - 2026-10-27
 
 **Shared navigation shell (Shell E).** The campaign workspace's topbar is gone; one sidebar now carries everything it did, and phones get a real mobile layout instead of the old wrapped-row sidebar. First milestone of the UI redesign approved in Claude Design — page content is unchanged apart from the Dashboard's new heading and World's view tabs.

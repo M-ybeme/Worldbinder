@@ -1,65 +1,96 @@
-import type { CampaignActivityItem, EntityType, WorldDate } from '@worldbinder/contracts'
-import { Button, CardGrid, ErrorState, LoadingState, PageHeader } from '@worldbinder/ui'
+import type { CampaignStatus, EntityType } from '@worldbinder/contracts'
+import { Badge, EmptyState, ErrorState, LoadingState, PageHeader } from '@worldbinder/ui'
 import { DEFAULT_DASHBOARD_BACKDROP_CONFIG } from '@worldbinder/validation'
-import { CalendarDays, GitBranch } from 'lucide-react'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { QuickCreateEntityDialog } from '../../entities/components/QuickCreateEntityDialog'
-import { EntityTypeIcon } from '../../entities/lib/entityTypeIcons'
 import { QuickCreateThreadDialog } from '../../plot-threads/components/QuickCreateThreadDialog'
 import { QuickCreateSessionDialog } from '../../sessions/components/QuickCreateSessionDialog'
 import { DashboardBackdrop } from '../components/DashboardBackdrop'
+import { NewMenu, type NewMenuItem } from '../components/NewMenu'
+import { RecentPanel } from '../components/dashboard/RecentPanel'
+import { SessionPanel } from '../components/dashboard/SessionPanel'
+import { SetupChecklist } from '../components/dashboard/SetupChecklist'
+import { ThreadsPanel } from '../components/dashboard/ThreadsPanel'
 import { useCampaignOutletContext } from '../hooks/useCampaignContext'
 import { useCampaignDashboardQuery } from '../hooks/useCampaigns'
+import { describeNextSession, formatWorldDate, isSetupPhase } from '../lib/dashboardFormat'
 import '../campaigns.css'
+import '../components/dashboard/dashboard.css'
 
-function formatWorldDate(date: WorldDate | null | undefined): string | null {
-  if (!date) return null
-  return (
-    date.label ??
-    `${date.year}-${String(date.month).padStart(2, '0')}-${String(date.day).padStart(2, '0')}`
-  )
+// Same role sets the World/Sessions/Threads pages use for their own
+// "New" buttons — the API rejects creates from players and viewers.
+const CREATE_ROLES = new Set(['owner', 'gm', 'editor'])
+const MANAGEMENT_ROLES = new Set(['owner', 'gm'])
+
+const STATUS_LABELS: Record<CampaignStatus, string> = {
+  draft: 'Draft',
+  active: 'Active',
+  hiatus: 'On hiatus',
+  completed: 'Completed',
+  archived: 'Archived',
 }
 
-function activityLink(campaignId: string, item: CampaignActivityItem): string {
-  const base = `/app/campaign/${campaignId}`
-  if (item.resourceType === 'entity') return `${base}/world/${item.id}`
-  if (item.resourceType === 'session') return `${base}/sessions/${item.id}`
-  return `${base}/threads/${item.id}`
-}
-
-// Reuses the same icons CampaignLayout's sidebar nav already uses for
-// Sessions/Threads, for visual consistency across the app.
-function ActivityIcon({ item }: { item: CampaignActivityItem }) {
-  if (item.resourceType === 'entity' && item.entityType) {
-    return <EntityTypeIcon type={item.entityType} />
-  }
-  if (item.resourceType === 'session') return <CalendarDays size={16} aria-hidden="true" />
-  return <GitBranch size={16} aria-hidden="true" />
-}
+type EntityDialog = { open: false } | { open: true; fixedType?: EntityType }
 
 /**
- * The campaign "Dashboard" (roadmap §11.2/ui-ux.md) — this is the same
- * index route the Milestone 2-era campaign overview used, upgraded in
- * place rather than added as a separate `/dashboard` route, so the nav
- * stays as small as the roadmap's own "Dashboard, World, Sessions,
- * Threads, Maps, Search" model calls for.
+ * The campaign Dashboard ("Dashboard E"): the next session leads, with the
+ * last session's recap and the plot threads that need attention beneath
+ * it, and recent changes and favorites in a narrow secondary column. A
+ * campaign that hasn't played a session yet gets a setup checklist (for
+ * owners/GMs) built from the app's existing actions. Everything comes from
+ * the dashboard query plus each session's own detail query; both apply the
+ * API's visibility rules, so nothing GM-only reaches a player here.
  */
 export function CampaignOverviewPage() {
   const { campaign } = useCampaignOutletContext()
   const dashboardQuery = useCampaignDashboardQuery(campaign.id)
   const dashboard = dashboardQuery.data
-  const [entityDialogType, setEntityDialogType] = useState<EntityType | null>(null)
+  const canCreate = CREATE_ROLES.has(campaign.role)
+  const canManage = MANAGEMENT_ROLES.has(campaign.role)
+  const [entityDialog, setEntityDialog] = useState<EntityDialog>({ open: false })
   const [sessionDialogOpen, setSessionDialogOpen] = useState(false)
   const [threadDialogOpen, setThreadDialogOpen] = useState(false)
+
+  const openEntity = (fixedType?: EntityType) => setEntityDialog({ open: true, fixedType })
+  const openSession = () => setSessionDialogOpen(true)
+  const openThread = () => setThreadDialogOpen(true)
+
+  const newItems: NewMenuItem[] = [
+    { label: 'Character', onSelect: () => openEntity('character') },
+    { label: 'Location', onSelect: () => openEntity('location') },
+    { label: 'Other entry…', onSelect: () => openEntity() },
+    { label: 'Session', onSelect: openSession },
+    { label: 'Plot thread', onSelect: openThread },
+  ]
+
+  const worldDate = formatWorldDate(dashboard?.currentWorldDateJson)
+  const isEmptyCampaign =
+    dashboard !== undefined &&
+    dashboard.upcomingSession === null &&
+    dashboard.lastPlayedSession === null &&
+    dashboard.activeThreads.length === 0 &&
+    dashboard.neglectedThreads.length === 0 &&
+    dashboard.recentActivity.length === 0 &&
+    dashboard.favoriteEntities.length === 0
+  const showChecklist = dashboard !== undefined && canManage && isSetupPhase(dashboard)
+
+  const checklist = dashboard && showChecklist && (
+    <SetupChecklist
+      campaign={campaign}
+      dashboard={dashboard}
+      onNewEntity={openEntity}
+      onPlanSession={openSession}
+    />
+  )
 
   return (
     <section className="wb-campaign-overview">
       <QuickCreateEntityDialog
         campaignId={campaign.id}
-        open={entityDialogType !== null}
-        onClose={() => setEntityDialogType(null)}
-        fixedType={entityDialogType ?? 'character'}
+        open={entityDialog.open}
+        onClose={() => setEntityDialog({ open: false })}
+        fixedType={entityDialog.open ? entityDialog.fixedType : undefined}
       />
       <QuickCreateSessionDialog
         campaignId={campaign.id}
@@ -78,35 +109,43 @@ export function CampaignOverviewPage() {
           className="wb-dashboard-backdrop--ambient"
         />
       )}
-      <div className="wb-dashboard-content">
-        {/* The page's own h1 — the campaign name used to live in a topbar
-          above every campaign page, removed when the sidebar took over its
-          job. */}
-        <PageHeader title={campaign.name} />
-        <p>{campaign.description ?? 'No description yet.'}</p>
-        {/* Reuses ProfilePage's key-value dl treatment rather than
-          introducing a near-duplicate .wb-campaign-overview class — same
-          shape (a handful of label/value pairs), no reason for its own
-          styling. */}
-        <dl className="status-panel">
-          <dt>System</dt>
-          {/* || not ?? — the create-campaign form submits an empty string,
-            not null/undefined, for a blank optional field (its Zod schema
-            has no .nullable() or empty-to-undefined transform), so ??
-            alone left this dd silently blank. Found by an entry that
-            visibly had no value in a real screenshot, not assumed. */}
-          <dd>{campaign.systemName || '—'}</dd>
-          <dt>Status</dt>
-          <dd>{campaign.status}</dd>
-          <dt>Your role</dt>
-          <dd>{campaign.role}</dd>
-          <dt>Current in-world date</dt>
-          <dd>
-            {dashboardQuery.isLoading
-              ? '…'
-              : (formatWorldDate(dashboard?.currentWorldDateJson) ?? '—')}
-          </dd>
-        </dl>
+
+      <div className="wb-dashboard-content wb-dash">
+        <PageHeader
+          title={campaign.name}
+          meta={
+            <>
+              {campaign.status !== 'active' && <Badge>{STATUS_LABELS[campaign.status]}</Badge>}
+              {campaign.systemName && <span>{campaign.systemName}</span>}
+              {worldDate && (
+                <span>
+                  In-world: <strong className="wb-dash-strong">{worldDate}</strong>
+                </span>
+              )}
+              {dashboard && (
+                <span>
+                  {dashboard.upcomingSession?.scheduledAt
+                    ? describeNextSession(dashboard.upcomingSession.scheduledAt)
+                    : 'No session scheduled'}
+                </span>
+              )}
+            </>
+          }
+          actions={
+            <>
+              {!isEmptyCampaign && (
+                <Link
+                  className="wb-button wb-button--secondary"
+                  to={`/app/campaign/${campaign.id}/world`}
+                >
+                  Browse the World
+                </Link>
+              )}
+              {canCreate && <NewMenu items={newItems} />}
+            </>
+          }
+        />
+        {campaign.description && <p className="wb-dash-description">{campaign.description}</p>}
 
         {dashboardQuery.isLoading && <LoadingState label="Loading dashboard…" />}
         {dashboardQuery.isError && (
@@ -116,118 +155,49 @@ export function CampaignOverviewPage() {
           />
         )}
 
-        {!dashboardQuery.isLoading && !dashboardQuery.isError && (
-          <CardGrid minItemWidth={320}>
-            <div className="wb-dashboard-widget">
-              <h2>Sessions</h2>
-              <p>
-                Upcoming:{' '}
-                {dashboard?.upcomingSession ? (
-                  <Link
-                    to={`/app/campaign/${campaign.id}/sessions/${dashboard.upcomingSession.id}`}
-                  >
-                    Session {dashboard.upcomingSession.sessionNumber}:{' '}
-                    {dashboard.upcomingSession.title}
-                  </Link>
-                ) : (
-                  'None scheduled'
-                )}
-              </p>
-              <p>
-                Last played:{' '}
-                {dashboard?.lastPlayedSession ? (
-                  <Link
-                    to={`/app/campaign/${campaign.id}/sessions/${dashboard.lastPlayedSession.id}`}
-                  >
-                    Session {dashboard.lastPlayedSession.sessionNumber}:{' '}
-                    {dashboard.lastPlayedSession.title}
-                  </Link>
-                ) : (
-                  'None yet'
-                )}
-              </p>
-            </div>
-
-            <div className="wb-dashboard-widget">
-              <h2>Active Plot Threads</h2>
-              {dashboard && dashboard.activeThreads.length === 0 && <p>No active plot threads.</p>}
-              <ul className="wb-relationship-list">
-                {dashboard?.activeThreads.map((thread) => (
-                  <li key={thread.id}>
-                    <Link to={`/app/campaign/${campaign.id}/threads/${thread.id}`}>
-                      {thread.title}
-                    </Link>
-                    {thread.importance ? ` · ${thread.importance}` : ''}
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="wb-dashboard-widget">
-              <h2>Favorites</h2>
-              {dashboard && dashboard.favoriteEntities.length === 0 && <p>No favorites yet.</p>}
-              <ul className="wb-relationship-list">
-                {dashboard?.favoriteEntities.map((entity) => (
-                  <li key={entity.id} className="wb-dashboard-activity__item">
-                    <EntityTypeIcon type={entity.entityType} />
-                    <Link to={`/app/campaign/${campaign.id}/world/${entity.id}`}>
-                      {entity.name}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            {dashboard && dashboard.neglectedThreads.length > 0 && (
-              <div className="wb-dashboard-widget">
-                <h2>Neglected Threads</h2>
-                <ul className="wb-relationship-list">
-                  {dashboard.neglectedThreads.map((thread) => (
-                    <li key={thread.id}>
-                      <Link to={`/app/campaign/${campaign.id}/threads/${thread.id}`}>
-                        {thread.title}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </div>
+        {dashboard && isEmptyCampaign && (
+          <>
+            {checklist}
+            {!showChecklist && (
+              <EmptyState
+                message={
+                  canCreate
+                    ? 'Nothing here yet. Use New to add the first entries, sessions and plot threads.'
+                    : 'Nothing here yet. Entries, sessions and plot threads appear here once your GM shares them.'
+                }
+              />
             )}
+          </>
+        )}
 
-            <div className="wb-dashboard-widget">
-              <h2>Recent Activity</h2>
-              {dashboard && dashboard.recentActivity.length === 0 && <p>Nothing yet.</p>}
-              <ul className="wb-relationship-list">
-                {dashboard?.recentActivity.map((item) => (
-                  <li
-                    key={`${item.resourceType}-${item.id}`}
-                    className="wb-dashboard-activity__item"
-                  >
-                    <ActivityIcon item={item} />
-                    <Link to={activityLink(campaign.id, item)}>{item.title}</Link>
-                    {` · ${item.resourceType.replace('_', ' ')}`}
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="wb-dashboard-widget">
-              <h2>Quick Actions</h2>
-              <div className="wb-entity-header__actions">
-                <Button variant="secondary" onClick={() => setEntityDialogType('character')}>
-                  New Character
-                </Button>
-                <Button variant="secondary" onClick={() => setEntityDialogType('location')}>
-                  New Location
-                </Button>
-                <Button variant="secondary" onClick={() => setSessionDialogOpen(true)}>
-                  New Session
-                </Button>
-                <Button variant="secondary" onClick={() => setThreadDialogOpen(true)}>
-                  New Plot Thread
-                </Button>
+        {dashboard && !isEmptyCampaign && (
+          <>
+            {checklist}
+            <div className="wb-dash-grid">
+              <div className="wb-dash-main">
+                <SessionPanel
+                  campaignId={campaign.id}
+                  upcoming={dashboard.upcomingSession}
+                  last={dashboard.lastPlayedSession}
+                  canEdit={canCreate}
+                  neglectedCount={dashboard.neglectedThreads.length}
+                  onPlanSession={canCreate ? openSession : null}
+                />
+                <ThreadsPanel
+                  campaignId={campaign.id}
+                  activeThreads={dashboard.activeThreads}
+                  neglectedThreads={dashboard.neglectedThreads}
+                  onNewThread={canCreate ? openThread : null}
+                />
               </div>
+              <RecentPanel
+                campaignId={campaign.id}
+                recentActivity={dashboard.recentActivity}
+                favoriteEntities={dashboard.favoriteEntities}
+                canViewAuditLog={canManage}
+              />
             </div>
-          </CardGrid>
+          </>
         )}
       </div>
     </section>
