@@ -4,6 +4,19 @@ All notable changes to this project are documented here. Format follows [Keep a 
 
 Every push to `main` should add an entry here. This is meant to be an honest record of what actually shipped, not a restatement of the roadmap's aspirations — if something was attempted and reverted, or shipped partially, say so.
 
+## [1.4.1] - 2026-10-28
+
+**Entity article refinements from the Stage 1 review.**
+
+### Fixed
+
+- **No duplicate connections.** When an explicit relationship states the same fact as a metadata field (same entity, and a label recorded as equivalent for that field: a location's Parent location and a "Located in" relationship, a faction's Leader and "Led by", and so on), it's listed once, under From details, marked "Also recorded as a relationship" with its description. Presentation only: no relationship records are changed. GM-only relationships are never folded in (their visibility differs from the detail), and only relationships the API returned to this member take part, so merging can't reveal anything. (`entities/lib/mergeConnections.ts`)
+- **Phones read article-first.** Summary and facts come first (the facts strip now uses two columns on phones), then a compact preview of three connections with "Show all connections (and mentions)" (`aria-expanded`), then the article. Desktop is unchanged.
+
+### Verification
+
+Unit tests 46/46 for entities, including 7 new merge-rule tests (same fact, different label, different entity, GM-only kept separate, one-to-one pairing, character location, hidden relationship) and page tests for the merged entry and the phone preview. `entity-detail` and `relationships` e2e specs pass in Chromium and WebKit; typecheck and lint clean. Screenshots checked: Blackwall (desktop, Northern March once) and Captain Mara Voss (390px phone, 11 connections collapsed to a preview).
+
 ## [1.4.0] - 2026-10-28
 
 **Entity Detail D, Stage 1: the article view.** Entity pages now read like encyclopedia articles: the article leads, key facts come from the entity's metadata, and connected information sits in a side column. Viewing only: editing still uses the existing `/world/:id/edit` page until Stage 2 (the tabbed editor). No backend changes.

@@ -24,6 +24,10 @@ export interface ReferenceDefinition {
   factLabel: string
   /** Relationship-style label in Connections, e.g. "Located in". */
   connectionLabel: string
+  /** Relationship labels (as seen from this entity, i.e. already
+   * direction-adjusted by the API) that state the *same* fact as this
+   * field — used only to avoid listing one fact twice. */
+  sameFactLabels: string[]
 }
 
 const FACTS: Record<EntityType, FactDefinition[]> = {
@@ -65,27 +69,27 @@ const FACTS: Record<EntityType, FactDefinition[]> = {
 
 const REFERENCES: Record<EntityType, ReferenceDefinition[]> = {
   character: [
-    { key: 'currentLocationEntityId', factLabel: 'Current location', connectionLabel: 'Currently in' },
+    { key: 'currentLocationEntityId', factLabel: 'Current location', connectionLabel: 'Currently in', sameFactLabels: ['Located in'] },
   ],
   location: [
-    { key: 'parentLocationEntityId', factLabel: 'Parent location', connectionLabel: 'Located in' },
+    { key: 'parentLocationEntityId', factLabel: 'Parent location', connectionLabel: 'Located in', sameFactLabels: ['Located in'] },
   ],
   faction: [
-    { key: 'leaderEntityId', factLabel: 'Leader', connectionLabel: 'Led by' },
-    { key: 'headquartersLocationEntityId', factLabel: 'Headquarters', connectionLabel: 'Based in' },
+    { key: 'leaderEntityId', factLabel: 'Leader', connectionLabel: 'Led by', sameFactLabels: ['Led by'] },
+    { key: 'headquartersLocationEntityId', factLabel: 'Headquarters', connectionLabel: 'Based in', sameFactLabels: ['Located in'] },
   ],
   organization: [
-    { key: 'leaderEntityId', factLabel: 'Leader', connectionLabel: 'Led by' },
-    { key: 'headquartersLocationEntityId', factLabel: 'Headquarters', connectionLabel: 'Based in' },
+    { key: 'leaderEntityId', factLabel: 'Leader', connectionLabel: 'Led by', sameFactLabels: ['Led by'] },
+    { key: 'headquartersLocationEntityId', factLabel: 'Headquarters', connectionLabel: 'Based in', sameFactLabels: ['Located in'] },
   ],
   item: [
-    { key: 'currentOwnerEntityId', factLabel: 'Current owner', connectionLabel: 'Owned by' },
-    { key: 'currentLocationEntityId', factLabel: 'Current location', connectionLabel: 'Kept in' },
+    { key: 'currentOwnerEntityId', factLabel: 'Current owner', connectionLabel: 'Owned by', sameFactLabels: ['Owned by'] },
+    { key: 'currentLocationEntityId', factLabel: 'Current location', connectionLabel: 'Kept in', sameFactLabels: ['Located in'] },
   ],
   deity: [],
   creature: [],
-  event: [{ key: 'locationEntityId', factLabel: 'Location', connectionLabel: 'Took place in' }],
-  quest: [{ key: 'questGiverEntityId', factLabel: 'Quest giver', connectionLabel: 'Given by' }],
+  event: [{ key: 'locationEntityId', factLabel: 'Location', connectionLabel: 'Took place in', sameFactLabels: ['Located in'] }],
+  quest: [{ key: 'questGiverEntityId', factLabel: 'Quest giver', connectionLabel: 'Given by', sameFactLabels: [] }],
   lore: [],
   custom: [],
 }

@@ -1,6 +1,6 @@
 import type { CampaignRole, EntityDetail } from '@worldbinder/contracts'
 import { Badge, ErrorState } from '@worldbinder/ui'
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { RelatedContentPanel } from '../../../relationships/components/RelatedContentPanel'
 import {
@@ -8,11 +8,14 @@ import {
   useEntityRelationshipsQuery,
 } from '../../../relationships/hooks/useRelationships'
 import type { EntityReference } from '../../lib/entityFacts'
+import { mergeConnections } from '../../lib/mergeConnections'
 import { ShowMoreList } from './ShowMore'
 import { SidePanel } from './SidePanel'
 
 const RELATIONSHIP_LIMIT = 6
 const MENTION_LIMIT = 6
+// Phones: how many connections the collapsed preview shows.
+const PREVIEW_LIMIT = 3
 
 /**
  * Everything this entity is connected to, by source:
@@ -23,7 +26,11 @@ const MENTION_LIMIT = 6
  * - **Mentioned in** — entries whose text links here (wiki-link backlinks).
  * All three come from endpoints that apply the API's visibility rules;
  * a reference the member can't see is resolved to `null` upstream and
- * never rendered.
+ * never rendered. A relationship stating the same fact as a detail is
+ * listed once, under the detail (see `mergeConnections`).
+ *
+ * `compact` (phones) shows only a short preview until expanded, so a long
+ * connection list doesn't push the article down the page.
  */
 export function ConnectionsPanel({
   campaignId,
@@ -32,6 +39,7 @@ export function ConnectionsPanel({
   resolved,
   canEdit,
   campaignRole,
+  compact = false,
 }: {
   campaignId: string
   entity: EntityDetail
@@ -39,16 +47,23 @@ export function ConnectionsPanel({
   resolved: Map<string, EntityDetail | null>
   canEdit: boolean
   campaignRole: CampaignRole
+  compact?: boolean
 }) {
   const relationshipsQuery = useEntityRelationshipsQuery(campaignId, entity.id)
   const backlinksQuery = useEntityBacklinksQuery(campaignId, entity.id)
   const [managing, setManaging] = useState(false)
+  const [expanded, setExpanded] = useState(false)
+  const bodyId = useId()
 
-  const derived = references.flatMap((reference) => {
-    const target = resolved.get(reference.entityId)
-    return target ? [{ ...reference, target }] : []
-  })
-  const relationships = relationshipsQuery.data ?? []
+  const { derived, relationships } = mergeConnections(
+    references.flatMap((reference) => {
+      const target = resolved.get(reference.entityId)
+      return target ? [{ ...reference, target }] : []
+    }),
+    relationshipsQuery.data ?? [],
+  )
+  const connectionCount = derived.length + relationships.length
+  const showPreview = compact && !expanded && !managing
   const backlinks = backlinksQuery.data ?? []
   const worldUrl = (id: string) => `/app/campaign/${campaignId}/world/${id}`
   const loading = relationshipsQuery.isLoading || backlinksQuery.isLoading
@@ -58,7 +73,7 @@ export function ConnectionsPanel({
   return (
     <SidePanel
       title="Connections"
-      count={derived.length + relationships.length}
+      count={connectionCount}
       collapsible={false}
       action={
         canEdit && (
@@ -73,6 +88,47 @@ export function ConnectionsPanel({
         )
       }
     >
+      {showPreview && connectionCount > 0 && (
+        <ul className="wb-ed-list" aria-label="Connection preview">
+          {[
+            ...derived.map((item) => ({
+              key: item.key,
+              label: item.connectionLabel,
+              entity: item.target,
+              gmOnly: item.target.visibility === 'gm_only',
+            })),
+            ...relationships.map((rel) => ({
+              key: rel.relationshipId,
+              label: rel.label,
+              entity: rel.otherEntity,
+              gmOnly: rel.visibility === 'gm_only',
+            })),
+          ]
+            .slice(0, PREVIEW_LIMIT)
+            .map((item) => (
+              <li key={item.key}>
+                <span className="wb-ed-rel-label">{item.label}</span>
+                <Link to={worldUrl(item.entity.id)}>{item.entity.name}</Link>
+                {item.gmOnly && <Badge tone="warning">GM only</Badge>}
+              </li>
+            ))}
+        </ul>
+      )}
+      {compact && (connectionCount > PREVIEW_LIMIT || backlinks.length > 0) && !managing && (
+        <button
+          type="button"
+          className="wb-ed-more"
+          aria-expanded={expanded}
+          aria-controls={bodyId}
+          onClick={() => setExpanded((value) => !value)}
+        >
+          {expanded
+            ? 'Show fewer connections'
+            : `Show all connections${backlinks.length > 0 ? ' and mentions' : ''}`}
+        </button>
+      )}
+
+      <div id={bodyId} className="wb-ed-connections-body" hidden={showPreview}>
       {derived.length > 0 && (
         <div className="wb-ed-group">
           <h3 className="wb-ed-eyebrow">From details</h3>
@@ -82,6 +138,12 @@ export function ConnectionsPanel({
                 <span className="wb-ed-rel-label">{item.connectionLabel}</span>
                 <Link to={worldUrl(item.target.id)}>{item.target.name}</Link>
                 {item.target.visibility === 'gm_only' && <Badge tone="warning">GM only</Badge>}
+                {item.relationship && (
+                  <span className="wb-ed-rel-note">
+                    Also recorded as a relationship
+                    {item.relationship.description && `: ${item.relationship.description}`}
+                  </span>
+                )}
               </li>
             ))}
           </ul>
@@ -140,6 +202,8 @@ export function ConnectionsPanel({
           />
         </div>
       )}
+
+      </div>
 
       {loading && <p className="wb-ed-muted">Loading connections…</p>}
       {isEmpty && !managing && <p className="wb-ed-muted">No connections yet.</p>}

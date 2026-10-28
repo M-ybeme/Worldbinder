@@ -480,15 +480,78 @@ describe('Entity article — threads, sessions, files and history', () => {
 describe('Entity article — phone layout', () => {
   beforeEach(() => stubPhone(true))
 
-  it('moves connections up under the summary and collapses the rest', () => {
+  it('puts summary and facts first, then a compact connections preview, then the article', () => {
+    relationships = Array.from({ length: 11 }, (_, i) => relationship(`r${i}`, 'Ally of', `Ally ${i}`))
+    backlinks = [{ sourceEntity: summary('b1', 'Source 1'), section: 'public' }]
     renderPage()
     const article = screen.getByRole('article', { name: 'Blackwall' })
-    const connections = within(article).getByRole('region', { name: /^Connections/ })
     const facts = within(article).getByLabelText('Key facts')
-    expect(connections.compareDocumentPosition(facts) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    const connections = within(article).getByRole('region', { name: /^Connections/ })
+    const prose = within(article).getAllByTestId('prose')[0]!
+    const follows = (a: Element, b: Element) => Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING)
+    expect(follows(facts, connections)).toBe(true)
+    expect(follows(connections, prose)).toBe(true)
+
+    // Only a short preview at first: three of the twelve connections.
+    const preview = within(connections).getByRole('list', { name: 'Connection preview' })
+    expect(within(preview).getAllByRole('listitem')).toHaveLength(3)
+    expect(within(connections).queryByRole('list', { name: 'Relationships' })).not.toBeInTheDocument()
+    expect(within(connections).queryByRole('list', { name: 'Mentioned in' })).not.toBeInTheDocument()
+
+    const expand = within(connections).getByRole('button', { name: 'Show all connections and mentions' })
+    expect(expand).toHaveAttribute('aria-expanded', 'false')
+    fireEvent.click(expand)
+    expect(within(connections).queryByRole('list', { name: 'Connection preview' })).not.toBeInTheDocument()
+    expect(within(connections).getByRole('list', { name: 'Relationships' })).toBeVisible()
+    expect(within(connections).getByRole('list', { name: 'Mentioned in' })).toBeVisible()
+    expect(within(connections).getByRole('button', { name: 'Show fewer connections' })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    )
+  })
+
+  it('collapses the other panels into disclosures', () => {
+    renderPage()
     for (const title of ['Plot threads', 'Appears in', 'Files', 'Revision history']) {
       expect(within(aside()).getByText(title).closest('details')).not.toBeNull()
     }
+  })
+
+  it('needs no expand control when everything fits in the preview', () => {
+    renderPage()
+    expect(screen.queryByRole('button', { name: /Show all connections/ })).not.toBeInTheDocument()
+  })
+})
+
+describe('Entity article — duplicate connections', () => {
+  it('lists a relationship that restates a detail once, keeping its description', () => {
+    relationships = [
+      relationship('r1', 'Located in', 'Northern March', {
+        otherEntity: summary('p1', 'Northern March'),
+        description: 'Since the treaty of 1102.',
+      }),
+      relationship('r2', 'Controlled by', 'Duke Renald'),
+    ]
+    renderPage()
+    const connections = region(/^Connections/)
+    expect(within(connections).getAllByRole('link', { name: 'Northern March' })).toHaveLength(1)
+    const derived = within(connections).getByRole('list', { name: 'Connections from details' })
+    expect(within(derived).getByText(/Also recorded as a relationship: Since the treaty of 1102\./)).toBeInTheDocument()
+    expect(within(connections).getByRole('list', { name: 'Relationships' })).not.toHaveTextContent('Northern March')
+    expect(within(connections).getByRole('heading', { name: /Connections\s*2/ })).toBeInTheDocument()
+  })
+
+  it('keeps a GM-only relationship listed separately with its badge', () => {
+    relationships = [
+      relationship('r1', 'Located in', 'Northern March', {
+        otherEntity: summary('p1', 'Northern March'),
+        visibility: 'gm_only',
+      }),
+    ]
+    renderPage()
+    const connections = region(/^Connections/)
+    expect(within(connections).getAllByRole('link', { name: 'Northern March' })).toHaveLength(2)
+    expect(within(within(connections).getByRole('list', { name: 'Relationships' })).getByText('GM only')).toBeInTheDocument()
   })
 })
 

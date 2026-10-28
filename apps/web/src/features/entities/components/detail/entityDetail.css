@@ -142,7 +142,8 @@
 
 .wb-ed-facts {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  /* Two columns even on phones, so facts don't stack into a tall list. */
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   gap: var(--wb-space-4) var(--wb-space-6);
   margin: 0;
   padding: var(--wb-space-4) var(--wb-space-5);
@@ -298,6 +299,16 @@
   font-size: var(--wb-text-sm);
   text-decoration: underline;
   cursor: pointer;
+}
+
+.wb-ed-connections-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--wb-space-3);
+}
+
+.wb-ed-connections-body[hidden] {
+  display: none;
 }
 
 .wb-ed-group {

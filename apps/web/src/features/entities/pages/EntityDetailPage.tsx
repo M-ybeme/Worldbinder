@@ -26,8 +26,9 @@ import '../entities.css'
 import '../components/detail/entityDetail.css'
 
 const MANAGEMENT_ROLES = new Set(['owner', 'gm', 'editor'])
-// Phones: connections move up under the summary and the remaining panels
-// collapse into disclosures (Design D's mobile article view).
+// Phones: a compact connections preview sits under the summary and facts,
+// ahead of the article, and the remaining panels collapse into disclosures
+// (Design D's mobile article view).
 const PHONE_QUERY = '(max-width: 768px)'
 
 /**
@@ -103,6 +104,7 @@ export function EntityDetailPage() {
       resolved={referenced.entities}
       canEdit={canManage}
       campaignRole={campaign.role}
+      compact={isPhone}
     />
   )
 
@@ -144,13 +146,13 @@ export function EntityDetailPage() {
       <div className="wb-ed-layout">
         <article className="wb-ed-article" aria-label={entity.name}>
           {entity.summary && <p className="wb-ed-lede">{entity.summary}</p>}
-          {isPhone && connections}
           <FactsStrip
             campaignId={campaign.id}
             facts={facts}
             references={references}
             resolved={referenced.entities}
           />
+          {isPhone && connections}
 
           {hasPublicText ? (
             <div className="wb-ed-prose">
