@@ -5,6 +5,7 @@ import {
   login,
   registerAndVerify,
   setUpOwnerWithCampaign,
+  sidebarLink,
 } from './helpers'
 
 /**
@@ -48,14 +49,14 @@ test('session lifecycle: create, complete with world date, reveal, session appea
   let npcUrl = ''
 
   await test.step('owner creates a featured entity and a GM-only secret entity', async () => {
-    await ownerPage.getByRole('link', { name: 'World', exact: true }).click()
+    await sidebarLink(ownerPage, 'World').click()
     await ownerPage.getByRole('button', { name: 'New entity' }).click()
     await ownerPage.getByLabel('Name').fill(npcName)
     await ownerPage.getByRole('button', { name: 'Create', exact: true }).click()
     await expect(ownerPage.getByRole('heading', { name: npcName })).toBeVisible()
     npcUrl = ownerPage.url()
 
-    await ownerPage.getByRole('link', { name: 'World', exact: true }).click()
+    await sidebarLink(ownerPage, 'World').click()
     await ownerPage.getByRole('button', { name: 'New entity' }).click()
     await ownerPage.getByLabel('Name').fill(secretName)
     await ownerPage.getByRole('button', { name: 'Create', exact: true }).click()
@@ -69,7 +70,7 @@ test('session lifecycle: create, complete with world date, reveal, session appea
   })
 
   await test.step('owner creates a session with the featured entity', async () => {
-    await ownerPage.getByRole('link', { name: 'Sessions', exact: true }).click()
+    await sidebarLink(ownerPage, 'Sessions').click()
     await ownerPage.getByRole('button', { name: 'New session' }).click()
     await ownerPage.getByLabel('Title').fill(sessionTitle)
     await ownerPage.getByRole('button', { name: 'Create', exact: true }).click()
@@ -134,13 +135,12 @@ test('session lifecycle: create, complete with world date, reveal, session appea
     await expect(playerPage.getByText('GM-only notes')).toHaveCount(0)
   })
 
-  await test.step('the featured entity shows this session under Session Appearances', async () => {
+  await test.step('the featured entity shows this session under "Appears in"', async () => {
     await ownerPage.goto(npcUrl)
-    await expect(ownerPage.getByText('Session Appearances')).toBeVisible()
     await expect(
       ownerPage
-        .locator('.wb-related-content', { hasText: 'Session Appearances' })
-        .getByText(new RegExp(sessionTitle)),
+        .getByRole('list', { name: 'Session appearances' })
+        .getByRole('link', { name: new RegExp(sessionTitle) }),
     ).toBeVisible()
   })
 

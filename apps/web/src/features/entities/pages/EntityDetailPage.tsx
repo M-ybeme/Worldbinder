@@ -1,117 +1,126 @@
-import {
-  Badge,
-  Button,
-  ConfirmDialog,
-  EmptyState,
-  ErrorState,
-  IconButton,
-  LoadingState,
-  PageHeader,
-} from '@worldbinder/ui'
-import { Star } from 'lucide-react'
+import { Badge, ConfirmDialog, EmptyState, ErrorState, LoadingState } from '@worldbinder/ui'
 import { useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { AttachmentsPanel } from '../../attachments/components/AttachmentsPanel'
 import { useCampaignOutletContext } from '../../campaigns/hooks/useCampaignContext'
-import { EntityPlotThreadsPanel } from '../../plot-threads/components/EntityPlotThreadsPanel'
-import { BacklinksPanel } from '../../relationships/components/BacklinksPanel'
-import { RelatedContentPanel } from '../../relationships/components/RelatedContentPanel'
-import { RevisionHistoryPanel } from '../../revisions/components/RevisionHistoryPanel'
 import { ApiError } from '../../../lib/apiClient'
+import { clearDraft } from '../../../lib/draftDb'
+import { tiptapToPlainText } from '../../../lib/tiptapText'
+import { useMediaQuery } from '../../../lib/useMediaQuery'
 import { RichTextEditor } from '../components/RichTextEditor'
+import { ConnectionsPanel } from '../components/detail/ConnectionsPanel'
+import { EntityHeader } from '../components/detail/EntityHeader'
+import { FactsStrip } from '../components/detail/FactsStrip'
+import {
+  AppearsInPanel,
+  EntityThreadsPanel,
+  FilesAndHistoryPanels,
+} from '../components/detail/RelatedPanels'
 import {
   useDeleteEntityMutation,
   useEntityQuery,
-  useEntitySessionsQuery,
+  useReferencedEntities,
   useToggleFavoriteMutation,
 } from '../hooks/useEntities'
-import { clearDraft } from '../../../lib/draftDb'
-import { EntityTypeIcon } from '../lib/entityTypeIcons'
+import { readFacts, readReferences } from '../lib/entityFacts'
 import '../entities.css'
+import '../components/detail/entityDetail.css'
 
 const MANAGEMENT_ROLES = new Set(['owner', 'gm', 'editor'])
+// Phones: connections move up under the summary and the remaining panels
+// collapse into disclosures (Design D's mobile article view).
+const PHONE_QUERY = '(max-width: 768px)'
 
+/**
+ * An entity's article page (Design D, Stage 1 — viewing). The article
+ * (summary, facts, public text, GM-only notes) leads; connected
+ * information sits in a side column: connections, plot threads, session
+ * appearances, files and revision history. Editing stays on the existing
+ * `/edit` route until Stage 2.
+ *
+ * Every panel reads through an endpoint that applies the API's visibility
+ * rules; `gmContentJson` is present on the entity only when the caller may
+ * see it. Nothing here hides data the API sent — it only decides layout.
+ */
 export function EntityDetailPage() {
   const { entityId } = useParams<{ entityId: string }>()
   const { campaign } = useCampaignOutletContext()
   const navigate = useNavigate()
+  const isPhone = useMediaQuery(PHONE_QUERY)
 
   const entityQuery = useEntityQuery(campaign.id, entityId)
-  const sessionAppearancesQuery = useEntitySessionsQuery(campaign.id, entityId)
+  const entity = entityQuery.data
+  const references = entity ? readReferences(entity.entityType, entity.metadataJson) : []
+  const referenced = useReferencedEntities(
+    campaign.id,
+    references.map((reference) => reference.entityId),
+  )
   const deleteEntity = useDeleteEntityMutation(campaign.id)
   const toggleFavorite = useToggleFavoriteMutation(campaign.id, entityId ?? '')
   const canManage = MANAGEMENT_ROLES.has(campaign.role)
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
+  const [status, setStatus] = useState('')
 
-  if (entityQuery.isLoading) return <LoadingState label="Loading entity…" />
+  if (entityQuery.isLoading) return <LoadingState label="Loading entry…" />
   if (entityQuery.isError) {
     const isNotFound = entityQuery.error instanceof ApiError && entityQuery.error.status === 404
-    if (isNotFound) return <EmptyState message="This entry could not be found." />
+    if (isNotFound) {
+      // Also what a member sees for an entry they aren't allowed to view —
+      // the API answers 404 rather than confirming it exists.
+      return (
+        <EmptyState
+          message="This entry could not be found. It may have been deleted, or it isn’t shared with you."
+          action={
+            <Link className="wb-button wb-button--secondary" to={`/app/campaign/${campaign.id}/world`}>
+              Back to World
+            </Link>
+          }
+        />
+      )
+    }
     return <ErrorState message={entityQuery.error.message} onRetry={() => entityQuery.refetch()} />
   }
-  if (!entityQuery.data) return null
+  if (!entity) return null
 
-  const entity = entityQuery.data
+  const facts = readFacts(entity.entityType, entity.metadataJson)
+  const hasPublicText = tiptapToPlainText(entity.publicContentJson) !== ''
+  const gmNotes = 'gmContentJson' in entity ? (entity.gmContentJson ?? null) : null
+  const hasGmNotes = tiptapToPlainText(gmNotes) !== ''
+
+  async function copyLink() {
+    try {
+      await navigator.clipboard.writeText(window.location.href)
+      setStatus('Link copied.')
+    } catch {
+      setStatus('Couldn’t copy the link — copy it from the address bar instead.')
+    }
+  }
+
+  const connections = (
+    <ConnectionsPanel
+      campaignId={campaign.id}
+      entity={entity}
+      references={references}
+      resolved={referenced.entities}
+      canEdit={canManage}
+      campaignRole={campaign.role}
+    />
+  )
 
   return (
-    <section>
-      <PageHeader
-        title={
-          <span className="wb-entity-header__title">
-            <EntityTypeIcon type={entity.entityType} size={20} />
-            {entity.name}
-          </span>
-        }
-        meta={
-          <>
-            <span>{entity.entityType}</span>
-            {entity.visibility === 'gm_only' && <Badge tone="warning">GM only</Badge>}
-            {entity.tags.length > 0 && (
-              <div className="wb-entity-header__tags">
-                {entity.tags.map((tag) => (
-                  <span key={tag} className="wb-tag-input__chip">
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            )}
-          </>
-        }
-        actions={
-          <>
-            <IconButton
-              label={entity.isFavorite ? 'Remove from favorites' : 'Add to favorites'}
-              className="wb-favorite-toggle"
-              aria-pressed={entity.isFavorite}
-              disabled={toggleFavorite.isPending}
-              onClick={() => toggleFavorite.mutate(!entity.isFavorite)}
-            >
-              <Star
-                size={18}
-                fill={entity.isFavorite ? 'currentColor' : 'none'}
-                aria-hidden="true"
-              />
-            </IconButton>
-            {canManage && (
-              <>
-                <Link
-                  className="wb-button wb-button--secondary"
-                  to={`/app/campaign/${campaign.id}/world/${entity.id}/edit`}
-                >
-                  Edit
-                </Link>
-                <Button
-                  variant="secondary"
-                  disabled={deleteEntity.isPending}
-                  onClick={() => setConfirmDeleteOpen(true)}
-                >
-                  Delete
-                </Button>
-              </>
-            )}
-          </>
-        }
+    <div className="wb-ed">
+      <EntityHeader
+        campaignId={campaign.id}
+        entity={entity}
+        hasGmNotes={hasGmNotes}
+        canManage={canManage}
+        favoritePending={toggleFavorite.isPending}
+        onToggleFavorite={() => toggleFavorite.mutate(!entity.isFavorite)}
+        onCopyLink={() => void copyLink()}
+        onDelete={() => setConfirmDeleteOpen(true)}
       />
+      <p className="wb-visually-hidden" role="status">
+        {status}
+      </p>
 
       <ConfirmDialog
         open={confirmDeleteOpen}
@@ -132,73 +141,74 @@ export function EntityDetailPage() {
         onCancel={() => setConfirmDeleteOpen(false)}
       />
 
-      <div className="wb-entity-detail">
-        <div className="wb-entity-detail__main">
-          {entity.summary && <p>{entity.summary}</p>}
-
-          <RichTextEditor
-            label="Content"
-            content={entity.publicContentJson}
-            editable={false}
+      <div className="wb-ed-layout">
+        <article className="wb-ed-article" aria-label={entity.name}>
+          {entity.summary && <p className="wb-ed-lede">{entity.summary}</p>}
+          {isPhone && connections}
+          <FactsStrip
             campaignId={campaign.id}
+            facts={facts}
+            references={references}
+            resolved={referenced.entities}
           />
 
-          {'gmContentJson' in entity && (
-            <div className="wb-gm-content">
+          {hasPublicText ? (
+            <div className="wb-ed-prose">
               <RichTextEditor
-                label="GM-only content"
-                content={entity.gmContentJson ?? null}
+                label="Content"
+                content={entity.publicContentJson}
                 editable={false}
                 campaignId={campaign.id}
+                presentation="article"
               />
             </div>
-          )}
-        </div>
-
-        <aside className="wb-entity-detail__rail">
-          <RelatedContentPanel
-            campaignId={campaign.id}
-            entityId={entity.id}
-            canEdit={canManage}
-            campaignRole={campaign.role}
-          />
-
-          <EntityPlotThreadsPanel campaignId={campaign.id} entityId={entity.id} />
-
-          <div className="wb-related-content">
-            <div>
-              <h2>Session Appearances</h2>
-              {sessionAppearancesQuery.data?.length === 0 && <p>No session appearances yet.</p>}
-              <ul className="wb-relationship-list">
-                {sessionAppearancesQuery.data?.map((session) => (
-                  <li key={session.id}>
-                    <Link to={`/app/campaign/${campaign.id}/sessions/${session.id}`}>
-                      Session {session.sessionNumber}: {session.title}
+          ) : (
+            !entity.summary && (
+              <p className="wb-ed-muted wb-ed-empty-article">
+                Nothing has been written about {entity.name} yet.
+                {canManage && (
+                  <>
+                    {' '}
+                    <Link to={`/app/campaign/${campaign.id}/world/${entity.id}/edit`}>
+                      Start writing
                     </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </div>
+                  </>
+                )}
+              </p>
+            )
+          )}
 
-          <AttachmentsPanel
+          {hasGmNotes && (
+            <section className="wb-ed-gm" aria-labelledby="wb-ed-gm-title">
+              <div className="wb-ed-gm__head">
+                <h2 id="wb-ed-gm-title">GM-only notes</h2>
+                <Badge tone="warning">Hidden from players</Badge>
+              </div>
+              <div className="wb-ed-prose">
+                <RichTextEditor
+                  label="GM-only notes"
+                  content={gmNotes}
+                  editable={false}
+                  campaignId={campaign.id}
+                  presentation="article"
+                />
+              </div>
+            </section>
+          )}
+        </article>
+
+        <aside className="wb-ed-aside" aria-label={`Connected to ${entity.name}`}>
+          {!isPhone && connections}
+          <EntityThreadsPanel campaignId={campaign.id} entityId={entity.id} collapsible={isPhone} />
+          <AppearsInPanel campaignId={campaign.id} entityId={entity.id} collapsible={isPhone} />
+          <FilesAndHistoryPanels
             campaignId={campaign.id}
-            resourceType="entity"
-            resourceId={entity.id}
+            entity={entity}
             canManage={canManage}
-          />
-
-          <BacklinksPanel campaignId={campaign.id} entityId={entity.id} />
-
-          <RevisionHistoryPanel
-            campaignId={campaign.id}
-            resourceType="entity"
-            resourceId={entity.id}
-            canRestore={canManage}
             onRestored={() => void entityQuery.refetch()}
           />
         </aside>
       </div>
-    </section>
+    </div>
   )
 }

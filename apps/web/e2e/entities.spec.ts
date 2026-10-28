@@ -5,6 +5,7 @@ import {
   login,
   registerAndVerify,
   setUpOwnerWithCampaign,
+  sidebarLink,
 } from './helpers'
 
 /**
@@ -42,7 +43,7 @@ test('entity lifecycle: create, visibility, edit, tag filter, delete', async ({ 
   let entityUrl = ''
 
   await test.step('owner quick-creates an entity, then adds tags and split content via Edit', async () => {
-    await ownerPage.getByRole('link', { name: 'World', exact: true }).click()
+    await sidebarLink(ownerPage, 'World').click()
     await ownerPage.getByRole('button', { name: 'New entity' }).click()
 
     await ownerPage.getByLabel('Name').fill(entityName)
@@ -109,12 +110,10 @@ test('entity lifecycle: create, visibility, edit, tag filter, delete', async ({ 
 
   await test.step('owner deletes the entity', async () => {
     await ownerPage.goto(entityUrl)
-    // ConfirmDialog replaced the native window.confirm() this app used to
-    // use for delete — a real modal with its own "Delete" button, not a
-    // native dialog. Two elements share that label (the trigger button and
-    // the modal's confirm button), so the second click is scoped to the
-    // dialog to disambiguate.
-    await ownerPage.getByRole('button', { name: 'Delete' }).click()
+    // Delete lives in the article header's "More actions" menu (Entity
+    // Detail D, 1.4.0) and confirms in a ConfirmDialog.
+    await ownerPage.getByRole('button', { name: 'More actions' }).click()
+    await ownerPage.getByRole('menuitem', { name: 'Delete…' }).click()
     await ownerPage.getByRole('dialog').getByRole('button', { name: 'Delete' }).click()
     await expect(ownerPage).toHaveURL(/\/world$/)
   })
@@ -135,7 +134,7 @@ test('offline mid-edit: change is preserved locally and synced once back online'
 
   await setUpOwnerWithCampaign(page, 'PW Draft Owner', campaignName)
 
-  await page.getByRole('link', { name: 'World', exact: true }).click()
+  await sidebarLink(page, 'World').click()
   await page.getByRole('button', { name: 'New entity' }).click()
   await page.getByLabel('Name').fill(entityName)
   await page.getByRole('button', { name: 'Create', exact: true }).click()

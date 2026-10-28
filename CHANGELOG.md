@@ -4,6 +4,29 @@ All notable changes to this project are documented here. Format follows [Keep a 
 
 Every push to `main` should add an entry here. This is meant to be an honest record of what actually shipped, not a restatement of the roadmap's aspirations — if something was attempted and reverted, or shipped partially, say so.
 
+## [1.4.0] - 2026-10-28
+
+**Entity Detail D, Stage 1: the article view.** Entity pages now read like encyclopedia articles: the article leads, key facts come from the entity's metadata, and connected information sits in a side column. Viewing only: editing still uses the existing `/world/:id/edit` page until Stage 2 (the tabbed editor). No backend changes.
+
+### Changed
+
+- **Header:** breadcrumbs (World › type › name, as their own `Breadcrumb` landmark), the page's only `h1` with a type tile, the type and aliases, badges for GM-only entries, "Has GM-only notes" and archived status, and tags. Actions: favorite (any member, as before), a primary **Edit** for owner/GM/editor, and a **More actions** menu (Copy link; Delete… for owner/GM/editor, still confirmed in a dialog).
+- **Article:** the summary as an introduction, then the facts strip, then the public text rendered as prose (headings, lists, tables and `[[` mentions kept; stored content untouched), then **GM-only notes** in their own marked section, shown only when the API includes `gmContentJson`. An entry with nothing written says so, with "Start writing" for editors.
+- **Facts strip:** read from `metadataJson` through a per-type definition table (`entities/lib/entityFacts.ts`) using the edit form's labels. It covers every entity type, including custom entities' own fields. Empty fields don't render; the strip disappears when there are none. References to other entities (a location's parent, a character's current location, a faction's leader and headquarters, and so on) show as links.
+- **Connections panel:** **From details** (connections derived from those metadata references, computed when the page renders, never stored as relationships), **Relationships** (explicit records with their label, description, and a GM-only badge), and **Mentioned in** (backlinks, noting mentions from GM notes). Long lists collapse behind "Show N more", which reports `aria-expanded`. "Manage" (editors) reveals the existing relationship editor in place.
+- **Plot threads**, **Appears in** (session appearances, with "Show more"), **Files** (with count) and **Revision history** ("edited 4d ago") panels. Files and history keep the existing AttachmentsPanel and RevisionHistoryPanel with their permissions, behind disclosures that load only when opened.
+- **Phones:** connections move up under the summary, and the other panels become 48px disclosures. **Layout** uses a container query, so collapsing the sidebar widens the article.
+- **Visibility:** referenced entities resolve through the same per-entity endpoint (`useReferencedEntities`). Anything the member can't see comes back 404 and simply isn't shown, with no name or placeholder. Opening a hidden or deleted entry says it "could not be found … or isn't shared with you" and links back to World.
+- **World page** reads `?type=` as its starting filter (the breadcrumb's type link).
+- **Shared `MenuButton`** in `packages/ui`, extracted from the Dashboard's New menu (which now wraps it), for the entity page's More actions menu.
+- `RichTextEditor` gains an opt-in `presentation="article"`: read-only prose with no field label and no `textbox` role. Other pages are unchanged.
+- Removed `BacklinksPanel` and `EntityPlotThreadsPanel`, which the new panels replace (nothing else used them), along with the old page's layout CSS.
+- **e2e:** new `sidebarLink(page, name)` helper scopes sidebar clicks to the sidebar, because an entity page's "World" breadcrumb shares the sidebar link's name. Relationship/backlink/session-appearance/delete steps updated for the new page (the Manage toggle, More actions → Delete…, the "Relationships", "Mentioned in" and "Session appearances" lists).
+
+### Verification
+
+`pnpm typecheck` / `pnpm lint` / web `build` clean. Web vitest 99/99, including 35 new tests: `entityFacts` for every metadata shape, and the page for location, character and faction entries, empty and long articles, 11 relationships and 8 backlinks behind "Show more", derived connections and unresolvable (hidden) references, player vs GM/editor (GM notes, Edit, Manage, Delete, file and restore permissions), favorites, the phone layout, and loading/404/error. New `e2e/entity-detail.spec.ts` uses a real invited player: a public character whose current location is GM-only shows the GM the facts, derived connection and GM notes, while the player sees none of them and the location's own URL reads as not found. It also covers favorites persisting, Edit opening the existing editor, the collapsed sidebar keeping two columns, and the 390px layout. Full Playwright run: 58/60. All Chromium and WebKit tests pass. The two Firefox failures are the known quick-create flake (Title cleared, Create disabled) in `autosave` and `plot-threads`, not on the entity page, and still tracked separately. Screenshots of the running app checked at 1440 (expanded and collapsed), 1280, 900, 390 and 360px in light and dark, for a location, a character with 11 connections, a faction and a sparse entry.
+
 ## [1.3.1] - 2026-10-28
 
 **Dashboard setup checklist now uses authoritative content checks.** It used to decide whether a campaign had entries or sessions from `recentActivity`, which holds only the 10 most recent mixed items. A campaign whose entries had all been pushed out by newer sessions or threads could wrongly show "Add the first people and places".

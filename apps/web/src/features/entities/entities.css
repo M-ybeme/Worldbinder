@@ -136,52 +136,6 @@
   color: var(--wb-text-muted);
 }
 
-/* EntityDetailPage's PageHeader title — icon + name, inline since this
-   renders inside PageHeader's own <h1>. */
-.wb-entity-header__title {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--wb-space-2);
-}
-
-/* EntityDetailPage's two-column layout: main reading content (summary +
-   rich text) on the left, a persistent rail of connection/metadata panels
-   (Relationships/Plot Threads/Sessions/Attachments/Backlinks/Revisions)
-   on the right — chosen over a single wide column with cards below so the
-   rail stays visible while scrolling long entity content, matching the
-   Notion/Linear/Obsidian inspiration the design doc names. */
-.wb-entity-detail {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 320px;
-  gap: var(--wb-space-8);
-  align-items: start;
-  margin-top: var(--wb-space-6);
-}
-
-.wb-entity-detail__main {
-  max-width: var(--wb-container-reading);
-}
-
-.wb-entity-detail__rail {
-  display: flex;
-  flex-direction: column;
-  gap: var(--wb-space-6);
-  position: sticky;
-  top: var(--wb-space-4);
-}
-
-/* Hard-coded 1200px = --wb-breakpoint-wide (packages/ui/src/tokens.css) —
-   CSS custom properties can't appear inside @media feature values. */
-@media (max-width: 1199px) {
-  .wb-entity-detail {
-    grid-template-columns: 1fr;
-  }
-
-  .wb-entity-detail__rail {
-    position: static;
-  }
-}
-
 /* EntityTypePicker — the quick-create dialog's icon+label type grid. */
 .wb-entity-type-picker {
   display: grid;

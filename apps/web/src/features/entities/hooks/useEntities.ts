@@ -1,4 +1,5 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
+import type { EntityDetail } from '@worldbinder/contracts'
 import type {
   CreateEntityInput,
   ListEntitiesQuery,
@@ -31,6 +32,31 @@ export function useEntityQuery(campaignId: string, entityId: string | undefined)
     enabled: !!entityId,
     retry: false,
   })
+}
+
+/** Resolves entity IDs held in another entity's metadata (e.g. a
+ * character's current location) through the same per-entity endpoint and
+ * cache as the detail page — so the API's visibility rules decide what a
+ * member may see. An ID the member can't see (or that no longer exists)
+ * resolves to `null`, never to a name. */
+export function useReferencedEntities(
+  campaignId: string,
+  entityIds: string[],
+): { entities: Map<string, EntityDetail | null>; isLoading: boolean } {
+  const results = useQueries({
+    queries: entityIds.map((id) => ({
+      queryKey: entityQueryKey(campaignId, id),
+      queryFn: () => entitiesApi.getEntity(campaignId, id),
+      retry: false,
+    })),
+  })
+  const entities = new Map<string, EntityDetail | null>()
+  entityIds.forEach((id, index) => {
+    const result = results[index]
+    if (result?.isSuccess) entities.set(id, result.data)
+    else if (result?.isError) entities.set(id, null)
+  })
+  return { entities, isLoading: results.some((result) => result.isLoading) }
 }
 
 export function useCreateEntityMutation(campaignId: string) {

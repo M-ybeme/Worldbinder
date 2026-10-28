@@ -5,6 +5,7 @@ import {
   login,
   registerAndVerify,
   setUpOwnerWithCampaign,
+  sidebarLink,
 } from './helpers'
 
 /**
@@ -31,14 +32,14 @@ test('relationship creation projects the reverse label on the target entity', as
   let westvaleUrl = ''
 
   await test.step('create the source and target entities', async () => {
-    await page.getByRole('link', { name: 'World', exact: true }).click()
+    await sidebarLink(page, 'World').click()
     await page.getByRole('button', { name: 'New entity' }).click()
     await page.getByLabel('Name').fill(dukeName)
     await page.getByRole('button', { name: 'Create', exact: true }).click()
     await expect(page.getByRole('heading', { name: dukeName })).toBeVisible()
     dukeUrl = page.url()
 
-    await page.getByRole('link', { name: 'World', exact: true }).click()
+    await sidebarLink(page, 'World').click()
     await page.getByRole('button', { name: 'New entity' }).click()
     // Quick-create's type picker is a button grid (icons per <option> can't
     // render in a native <select>), not a <select> — click the option
@@ -52,28 +53,25 @@ test('relationship creation projects the reverse label on the target entity', as
 
   await test.step('add a "Controls" relationship from Duke Renald to Westvale', async () => {
     await page.goto(dukeUrl)
+    // Relationship management sits behind the Connections panel's
+    // "Manage" toggle (Entity Detail D, 1.4.0).
+    await page.getByRole('button', { name: 'Manage' }).click()
     await page.getByRole('button', { name: '+ Relationship' }).click()
     await page.getByLabel('Relationship type').selectOption({ label: 'Controls' })
     await page.getByLabel('Target entity').fill(westvaleName)
     await page.locator('.wb-combobox__option', { hasText: westvaleName }).first().click()
     await page.getByRole('button', { name: 'Save' }).click()
 
-    await expect(page.getByText('Outgoing')).toBeVisible()
-    await expect(
-      page
-        .locator('.wb-relationship-list', { hasText: 'Controls' })
-        .getByRole('link', { name: westvaleName }),
-    ).toBeVisible()
+    const relationships = page.getByRole('list', { name: 'Relationships', exact: true })
+    await expect(relationships.getByText('Controls')).toBeVisible()
+    await expect(relationships.getByRole('link', { name: westvaleName })).toBeVisible()
   })
 
   await test.step('the reverse label appears on the target entity', async () => {
     await page.goto(westvaleUrl)
-    await expect(page.getByText('Incoming')).toBeVisible()
-    await expect(
-      page
-        .locator('.wb-relationship-list', { hasText: 'Controlled by' })
-        .getByRole('link', { name: dukeName }),
-    ).toBeVisible()
+    const relationships = page.getByRole('list', { name: 'Relationships', exact: true })
+    await expect(relationships.getByText('Controlled by')).toBeVisible()
+    await expect(relationships.getByRole('link', { name: dukeName })).toBeVisible()
   })
 })
 
@@ -85,7 +83,7 @@ test('a [[ wiki-link mention creates a backlink on the target entity', async ({ 
 
   await setUpOwnerWithCampaign(page, 'PW Wiki Link Owner', campaignName)
 
-  await page.getByRole('link', { name: 'World', exact: true }).click()
+  await sidebarLink(page, 'World').click()
   await page.getByRole('button', { name: 'New entity' }).click()
   await page.getByRole('button', { name: 'Location', exact: true }).click()
   await page.getByLabel('Name').fill(westvaleName)
@@ -93,7 +91,7 @@ test('a [[ wiki-link mention creates a backlink on the target entity', async ({ 
   await expect(page.getByRole('heading', { name: westvaleName })).toBeVisible()
   const westvaleUrl = page.url()
 
-  await page.getByRole('link', { name: 'World', exact: true }).click()
+  await sidebarLink(page, 'World').click()
   await page.getByRole('button', { name: 'New entity' }).click()
   await page.getByLabel('Name').fill(dukeName)
   await page.getByRole('button', { name: 'Create', exact: true }).click()
@@ -116,9 +114,9 @@ test('a [[ wiki-link mention creates a backlink on the target entity', async ({ 
   await expect(page.getByText('Saved')).toBeVisible({ timeout: 10_000 })
 
   await page.goto(westvaleUrl)
-  await expect(page.getByRole('heading', { name: 'Backlinks' })).toBeVisible()
+  // Backlinks show as "Mentioned in" in the Connections panel (1.4.0).
   await expect(
-    page.locator('.wb-backlink-list').getByRole('link', { name: dukeName }),
+    page.getByRole('list', { name: 'Mentioned in' }).getByRole('link', { name: dukeName }),
   ).toBeVisible()
 })
 
@@ -138,27 +136,32 @@ test('a player cannot see a GM-only relationship', async ({ browser }) => {
   await registerAndVerify(playerPage, playerEmail, 'PW Hidden Rel Player')
   await login(playerPage, playerEmail)
 
-  await ownerPage.getByRole('link', { name: 'World', exact: true }).click()
+  await sidebarLink(ownerPage, 'World').click()
   await ownerPage.getByRole('button', { name: 'New entity' }).click()
   await ownerPage.getByLabel('Name').fill(aName)
   await ownerPage.getByRole('button', { name: 'Create', exact: true }).click()
   await expect(ownerPage.getByRole('heading', { name: aName })).toBeVisible()
   const aUrl = ownerPage.url()
 
-  await ownerPage.getByRole('link', { name: 'World', exact: true }).click()
+  await sidebarLink(ownerPage, 'World').click()
   await ownerPage.getByRole('button', { name: 'New entity' }).click()
   await ownerPage.getByLabel('Name').fill(bName)
   await ownerPage.getByRole('button', { name: 'Create', exact: true }).click()
   await expect(ownerPage.getByRole('heading', { name: bName })).toBeVisible()
 
   await ownerPage.goto(aUrl)
+  await ownerPage.getByRole('button', { name: 'Manage' }).click()
   await ownerPage.getByRole('button', { name: '+ Relationship' }).click()
   await ownerPage.getByLabel('Relationship type').selectOption({ label: 'Ally of' })
   await ownerPage.getByLabel('Target entity').fill(bName)
   await ownerPage.locator('.wb-combobox__option', { hasText: bName }).first().click()
   await ownerPage.getByLabel('Visibility').selectOption('gm_only')
   await ownerPage.getByRole('button', { name: 'Save' }).click()
-  await expect(ownerPage.getByText('Outgoing')).toBeVisible()
+  await expect(
+    ownerPage
+      .getByRole('list', { name: 'Relationships', exact: true })
+      .getByRole('link', { name: bName }),
+  ).toBeVisible()
 
   await ownerPage.goto(aUrl.replace(/\/world\/.+$/, '/members'))
   await ownerPage.getByLabel('Email').fill(playerEmail)
@@ -169,7 +172,9 @@ test('a player cannot see a GM-only relationship', async ({ browser }) => {
   await playerPage.getByRole('button', { name: 'Accept invitation' }).click()
 
   await playerPage.goto(aUrl)
-  await expect(playerPage.getByText('No relationships yet.')).toBeVisible()
+  await expect(playerPage.getByRole('heading', { level: 1, name: aName })).toBeVisible()
+  await expect(playerPage.getByText('No connections yet.')).toBeVisible()
+  await expect(playerPage.getByText(bName)).toHaveCount(0)
 
   await ownerContext.close()
   await playerContext.close()

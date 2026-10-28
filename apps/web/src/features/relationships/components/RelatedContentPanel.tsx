@@ -18,11 +18,10 @@ export interface RelatedContentPanelProps {
 }
 
 /**
- * Outgoing/incoming relationships for the entity detail page's rail —
- * the roadmap's "start on any page and discover related information"
- * principle. Backlinks used to render here too; split into its own
- * BacklinksPanel so the rail can position it after Attachments, matching
- * docs/planning/ui-ux.md's specified section order.
+ * Relationship management — the outgoing/incoming list with remove
+ * buttons and the "+ Relationship" form. On the entity page this sits
+ * behind the Connections panel's "Manage" toggle; the panel itself shows
+ * the read-only view (see components/detail/ConnectionsPanel.tsx).
  */
 export function RelatedContentPanel({
   campaignId,

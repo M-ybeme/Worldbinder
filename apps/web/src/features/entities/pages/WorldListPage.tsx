@@ -11,7 +11,7 @@ import {
   TextField,
 } from '@worldbinder/ui'
 import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useCampaignOutletContext } from '../../campaigns/hooks/useCampaignContext'
 import { QuickCreateEntityDialog } from '../components/QuickCreateEntityDialog'
 import { WorldTabs } from '../components/WorldTabs'
@@ -41,7 +41,13 @@ const DEFAULT_SORT = 'updatedAt' as const
 
 export function WorldListPage() {
   const { campaign } = useCampaignOutletContext()
-  const [entityType, setEntityType] = useState('')
+  // `?type=` only seeds the filter (an entity page's breadcrumb links here
+  // with its type); changing it afterwards stays local state.
+  const [searchParams] = useSearchParams()
+  const [entityType, setEntityType] = useState(() => {
+    const requested = searchParams.get('type') ?? ''
+    return (ENTITY_TYPES as string[]).includes(requested) ? requested : ''
+  })
   const [tag, setTag] = useState('')
   const [search, setSearch] = useState('')
   const [visibility, setVisibility] = useState('')

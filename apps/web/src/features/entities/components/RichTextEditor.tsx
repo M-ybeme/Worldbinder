@@ -20,6 +20,10 @@ export interface RichTextEditorProps {
   /** Enables the `[[` wiki-link mention node — omit to render plain rich
    * text with no entity-linking capability. */
   campaignId?: string
+  /** 'article' renders read-only content as prose for reading (the entity
+   * page): no field label and no textbox role, which describe an input,
+   * not a document. Only meaningful with `editable={false}`. */
+  presentation?: 'field' | 'article'
 }
 
 /**
@@ -33,7 +37,9 @@ export function RichTextEditor({
   onChange,
   editable = true,
   campaignId,
+  presentation = 'field',
 }: RichTextEditorProps) {
+  const asArticle = presentation === 'article' && !editable
   const navigate = useNavigate()
   const labelId = useId()
 
@@ -46,7 +52,9 @@ export function RichTextEditor({
       // EditorContent doesn't forward. role="textbox" is required too —
       // a plain <div>'s implicit role doesn't permit aria-labelledby at
       // all, an automated scan caught aria-labelledby alone as invalid.
-      attributes: { role: 'textbox', 'aria-multiline': 'true', 'aria-labelledby': labelId },
+      attributes: asArticle
+        ? {}
+        : { role: 'textbox', 'aria-multiline': 'true', 'aria-labelledby': labelId },
     },
     extensions: [
       StarterKit,
@@ -72,6 +80,14 @@ export function RichTextEditor({
   })
 
   if (!editor) return null
+
+  if (asArticle) {
+    return (
+      <div className="wb-richtext wb-richtext--article">
+        <EditorContent editor={editor} />
+      </div>
+    )
+  }
 
   return (
     <div className="wb-field">

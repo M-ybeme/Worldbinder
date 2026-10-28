@@ -5,6 +5,7 @@ import {
   login,
   registerAndVerify,
   setUpOwnerWithCampaign,
+  sidebarLink,
 } from './helpers'
 
 /**
@@ -43,7 +44,7 @@ test('plot thread lifecycle: introduce, go neglected, resolve, player status pro
   })
 
   await test.step('owner creates a plot thread', async () => {
-    await ownerPage.getByRole('link', { name: 'Threads', exact: true }).click()
+    await sidebarLink(ownerPage, 'Threads').click()
     await ownerPage.getByRole('button', { name: 'New plot thread' }).click()
     await ownerPage.getByLabel('Title').fill(threadTitle)
     await ownerPage.getByRole('button', { name: 'Create', exact: true }).click()
@@ -55,7 +56,7 @@ test('plot thread lifecycle: introduce, go neglected, resolve, player status pro
     linkThread: boolean,
     action?: 'introduced' | 'resolved',
   ) {
-    await ownerPage.getByRole('link', { name: 'Sessions', exact: true }).click()
+    await sidebarLink(ownerPage, 'Sessions').click()
     await ownerPage.getByRole('button', { name: 'New session' }).click()
     await ownerPage.getByLabel('Title').fill(title)
     await ownerPage.getByRole('button', { name: 'Create', exact: true }).click()
@@ -98,7 +99,7 @@ test('plot thread lifecycle: introduce, go neglected, resolve, player status pro
   await test.step('the thread shows as neglected on the Threads page and the Dashboard', async () => {
     // The Threads page shows neglect as a status filter plus a per-row badge
     // (0.34.0), not a separate "Neglected" section.
-    await ownerPage.getByRole('link', { name: 'Threads', exact: true }).click()
+    await sidebarLink(ownerPage, 'Threads').click()
     await ownerPage.getByLabel('Status').selectOption('neglected')
     const neglectedRow = ownerPage
       .getByRole('listitem')
@@ -108,7 +109,7 @@ test('plot thread lifecycle: introduce, go neglected, resolve, player status pro
 
     // Dashboard E lists neglected threads under "Needs attention" in its
     // Plot threads panel (1.3.0).
-    await ownerPage.getByRole('link', { name: 'Dashboard', exact: true }).click()
+    await sidebarLink(ownerPage, 'Dashboard').click()
     const attention = ownerPage
       .getByRole('heading', { name: /Needs attention/ })
       .locator('xpath=following-sibling::ul[1]')
@@ -119,7 +120,7 @@ test('plot thread lifecycle: introduce, go neglected, resolve, player status pro
     await createAndCompleteSession('Session Five', true, 'resolved')
 
     // Resolved threads are hidden by the list's default "Unresolved" filter.
-    await ownerPage.getByRole('link', { name: 'Threads', exact: true }).click()
+    await sidebarLink(ownerPage, 'Threads').click()
     await ownerPage.getByLabel('Status').selectOption('all')
     await ownerPage.getByRole('link', { name: threadTitle }).first().click()
     await expect(ownerPage.getByRole('heading', { name: threadTitle })).toBeVisible()
@@ -136,7 +137,7 @@ test('plot thread lifecycle: introduce, go neglected, resolve, player status pro
     await playerPage.goto(inviteLink)
     await playerPage.getByRole('button', { name: 'Accept invitation' }).click()
 
-    await playerPage.getByRole('link', { name: 'Threads', exact: true }).click()
+    await sidebarLink(playerPage, 'Threads').click()
     await playerPage.getByLabel('Status').selectOption('all')
     await playerPage.getByRole('link', { name: threadTitle }).first().click()
     await expect(playerPage.getByRole('heading', { name: threadTitle })).toBeVisible()

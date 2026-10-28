@@ -1,14 +1,14 @@
-.wb-new-menu {
+.wb-menu {
   position: relative;
 }
 
-.wb-new-menu__button {
+.wb-menu__button {
   display: inline-flex;
   align-items: center;
   gap: var(--wb-space-1);
 }
 
-.wb-new-menu__list {
+.wb-menu__list {
   position: absolute;
   right: 0;
   top: calc(100% + var(--wb-space-1));
@@ -23,12 +23,12 @@
   box-shadow: var(--wb-shadow-md);
 }
 
-.wb-new-menu__list--start {
+.wb-menu__list--start {
   left: 0;
   right: auto;
 }
 
-.wb-new-menu__item {
+.wb-menu__item {
   min-height: 36px;
   padding: var(--wb-space-2) var(--wb-space-3);
   border: 0;
@@ -40,12 +40,16 @@
   cursor: pointer;
 }
 
-.wb-new-menu__item:hover,
-.wb-new-menu__item:focus-visible {
+.wb-menu__item:hover,
+.wb-menu__item:focus-visible {
   background: var(--wb-bg-surface-hover);
 }
 
-.wb-new-menu__item:focus-visible {
+.wb-menu__item--danger {
+  color: var(--wb-danger);
+}
+
+.wb-menu__item:focus-visible {
   outline: 2px solid var(--wb-accent);
   outline-offset: -2px;
 }

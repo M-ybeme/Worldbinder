@@ -1,4 +1,4 @@
-import { expect, type Page } from '@playwright/test'
+import { expect, type Locator, type Page } from '@playwright/test'
 import { execSync } from 'node:child_process'
 
 export const MAILPIT_URL = 'http://127.0.0.1:8025'
@@ -95,4 +95,13 @@ export async function setUpOwnerWithCampaign(
   await page.getByRole('button', { name: 'Create campaign' }).click()
   await page.getByRole('link', { name: campaignName }).click()
   await expect(page.getByRole('heading', { name: campaignName })).toBeVisible()
+}
+
+/** A link in the campaign sidebar, scoped to the sidebar itself — other
+ * navigation on a page can share its name (an entity page's "World"
+ * breadcrumb, the Dashboard's "All sessions"). Desktop widths only: on
+ * phones the sidebar is a closed drawer and the bottom tabs carry the
+ * primary sections. */
+export function sidebarLink(page: Page, name: string): Locator {
+  return page.locator('#wb-campaign-sidebar').getByRole('link', { name, exact: true })
 }
