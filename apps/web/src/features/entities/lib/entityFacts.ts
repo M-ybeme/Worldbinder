@@ -150,3 +150,17 @@ export function readReferences(
     return typeof id === 'string' && id !== '' ? [{ ...definition, entityId: id }] : []
   })
 }
+
+/** The edit form's label for a metadata field, for the conflict view. */
+export function metadataFieldLabel(entityType: EntityType, key: string): string {
+  return (
+    FACTS[entityType].find((definition) => definition.key === key)?.label ??
+    REFERENCES[entityType].find((definition) => definition.key === key)?.factLabel ??
+    key
+  )
+}
+
+/** Metadata keys that hold another entity's ID. */
+export function referenceKeys(entityType: EntityType): string[] {
+  return REFERENCES[entityType].map((definition) => definition.key)
+}

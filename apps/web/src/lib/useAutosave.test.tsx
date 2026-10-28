@@ -310,3 +310,109 @@ describe('useAutosave', () => {
     expect(result.current.autosave.status).toBe('saved')
   })
 })
+
+describe('useAutosave — retry, local draft confirmation, accepting the server version', () => {
+  it('retry() resends a failed save without needing a new edit', async () => {
+    const server = fakeServer()
+    const real = server.save.getMockImplementation()!
+    server.save.mockRejectedValueOnce(new ApiError('Boom', 500, null))
+    const { result } = renderHook(() => useEditorLike(server.save))
+
+    act(() => result.current.setSummary('important'))
+    await advance(AUTOSAVE_DELAY_MS)
+    expect(result.current.autosave.status).toBe('error')
+    expect(result.current.autosave.hasUnsavedWork()).toBe(true)
+    // flush() alone doesn't hammer a failing server.
+    let flushed = ''
+    await act(async () => {
+      flushed = await result.current.autosave.flush()
+    })
+    expect(flushed).toBe('error')
+
+    server.save.mockImplementation(real)
+    let retried = ''
+    await act(async () => {
+      retried = await result.current.autosave.retry()
+    })
+    expect(retried).toBe('saved')
+    expect(server.saved.map((s) => s.summary)).toEqual(['important'])
+    expect(result.current.autosave.hasUnsavedWork()).toBe(false)
+  })
+
+  it('confirms the local draft only once it is actually stored', async () => {
+    const server = fakeServer()
+    const { result } = renderHook(() => useEditorLike(server.save))
+    vi.mocked(saveDraft).mockRejectedValueOnce(new Error('QuotaExceededError'))
+    act(() => result.current.setSummary('one'))
+    let stored = true
+    await act(async () => {
+      stored = await result.current.autosave.hasLocalDraft()
+    })
+    expect(stored).toBe(false)
+
+    act(() => result.current.setSummary('two'))
+    await act(async () => {
+      stored = await result.current.autosave.hasLocalDraft()
+    })
+    expect(stored).toBe(true)
+
+    await advance(AUTOSAVE_DELAY_MS)
+    await act(async () => {
+      stored = await result.current.autosave.hasLocalDraft()
+    })
+    // Saved to the server: the draft was cleared.
+    expect(stored).toBe(false)
+  })
+
+  it('acceptServerVersion drops pending work and its draft, and saves nothing', async () => {
+    const server = fakeServer()
+    const { result } = renderHook(() => useEditorLike(server.save))
+    act(() => result.current.setSummary('mine'))
+    expect(result.current.autosave.hasUnsavedWork()).toBe(true)
+
+    await act(async () => {
+      await result.current.autosave.acceptServerVersion({ summary: 'theirs', updatedAt: 'v0' })
+    })
+    expect(result.current.autosave.status).toBe('idle')
+    expect(result.current.autosave.hasUnsavedWork()).toBe(false)
+    expect(clearDraft).toHaveBeenCalled()
+    // Showing the server's content doesn't schedule a save of it.
+    act(() => result.current.setSummary('theirs'))
+    await advance(AUTOSAVE_DELAY_MS * 2)
+    expect(server.save).not.toHaveBeenCalled()
+  })
+
+  it('reports unsaved work while a request is in flight', async () => {
+    let release!: () => void
+    const save = vi.fn(
+      (input: Input) =>
+        new Promise<Result>((resolve) => (release = () => resolve({ updatedAt: `${input.updatedAt}+` }))),
+    )
+    const { result } = renderHook(() => useEditorLike(save))
+    act(() => result.current.setSummary('in flight'))
+    await advance(AUTOSAVE_DELAY_MS)
+    expect(result.current.autosave.status).toBe('saving')
+    expect(result.current.autosave.hasUnsavedWork()).toBe(true)
+    await act(async () => release())
+    await advance(0)
+    expect(result.current.autosave.hasUnsavedWork()).toBe(false)
+  })
+
+  it('flush() with a queued edit doesn’t loop resending identical content', async () => {
+    // Reproduces a browser-found loop: flush() sends the queued edit the
+    // moment the earlier save returns — before React re-renders from that
+    // save's onSaved — so the re-render's scheduleSave lands mid-flight.
+    const server = fakeServer()
+    const { result } = renderHook(() => useEditorLike(server.save))
+    act(() => result.current.setSummary('first'))
+    await advance(AUTOSAVE_DELAY_MS) // first save in flight / done
+    act(() => result.current.setSummary('second'))
+    let finished = ''
+    await act(async () => {
+      finished = await result.current.autosave.flush()
+    })
+    for (let i = 0; i < 5; i += 1) await advance(AUTOSAVE_DELAY_MS)
+    expect(finished).toBe('saved')
+    expect(server.saved.map((s) => s.summary)).toEqual(['first', 'second'])
+  })
+})

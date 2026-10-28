@@ -52,6 +52,8 @@ export function useAutosave<TInput extends Record<string, unknown>, TResult>({
   // Latest edit not yet sent to the server.
   const pendingRef = useRef<TInput | null>(null)
   const inFlightRef = useRef<Promise<void> | null>(null)
+  // Content (minus version) of the request in flight.
+  const inFlightKeyRef = useRef<string | null>(null)
   const lastSavedKeyRef = useRef<string | null>(null)
   // Version a save was sent with -> version the server returned. Lets a
   // queued input built against an already-superseded version of our own be
@@ -61,6 +63,9 @@ export function useAutosave<TInput extends Record<string, unknown>, TResult>({
   // IndexedDB writes/clears run in order, so a slow write can't land after
   // the clear that should have removed it.
   const draftQueueRef = useRef<Promise<void>>(Promise.resolve())
+  // Whether the latest local copy is confirmed written to IndexedDB —
+  // callers may only offer "leave, keep on this device" when it is.
+  const draftStateRef = useRef<'none' | 'stored' | 'failed'>('none')
   const mountedRef = useRef(true)
 
   // Kept in refs so the unmount flush uses the latest callbacks/target.
@@ -80,9 +85,13 @@ export function useAutosave<TInput extends Record<string, unknown>, TResult>({
           ? saveDraft(type, campaign, id, input)
           : clearDraft(type, campaign, id),
       )
+      .then(() => {
+        draftStateRef.current = op === 'save' ? 'stored' : 'none'
+      })
       .catch(() => {
         // Local storage unavailable (private mode, quota): the server save
         // still runs; there's just no offline copy to fall back on.
+        if (op === 'save') draftStateRef.current = 'failed'
       })
     return draftQueueRef.current
   }, [])
@@ -107,6 +116,7 @@ export function useAutosave<TInput extends Record<string, unknown>, TResult>({
     }
     const input = withCurrentVersion(pendingRef.current)
     pendingRef.current = null
+    inFlightKeyRef.current = contentKey(input)
     if (statusRef.current !== 'conflict') setStatus('saving')
 
     const flight = (async () => {
@@ -126,7 +136,11 @@ export function useAutosave<TInput extends Record<string, unknown>, TResult>({
         // was in flight is already in IndexedDB and must not be replaced by
         // the older input that just failed.
         if (!pendingRef.current) await queueDraft('save', input)
-        if (error instanceof ApiError && error.status === 409) {
+        const isConflict = error instanceof ApiError && error.status === 409
+        // Keep a failed (non-conflict) input queued so `retry()` can resend
+        // it; a conflict's input is stale and waits for the user's choice.
+        if (!isConflict && !pendingRef.current) pendingRef.current = input
+        if (isConflict) {
           const conflictBody = error.body as { currentUpdatedAt?: string } | undefined
           if (mountedRef.current) setConflictUpdatedAt(conflictBody?.currentUpdatedAt ?? null)
           setStatus('conflict')
@@ -137,6 +151,7 @@ export function useAutosave<TInput extends Record<string, unknown>, TResult>({
         }
       } finally {
         inFlightRef.current = null
+        inFlightKeyRef.current = null
       }
     })()
     inFlightRef.current = flight
@@ -156,6 +171,20 @@ export function useAutosave<TInput extends Record<string, unknown>, TResult>({
           pendingRef.current = null
           void queueDraft('clear')
           if (statusRef.current === 'pending') setStatus('saved')
+        }
+        return
+      }
+
+      // Identical to the request already in flight — only the version token
+      // differs (the re-render from a previous save's onSaved can land
+      // while flush() is already sending the next one). Queuing it would
+      // resend the same content after every save, forever.
+      if (inFlightRef.current && contentKey(input) === inFlightKeyRef.current) {
+        if (pendingRef.current) {
+          // A pending edit was undone back to what's being sent.
+          pendingRef.current = null
+          void queueDraft('save', input)
+          if (statusRef.current === 'pending') setStatus('saving')
         }
         return
       }
@@ -219,6 +248,52 @@ export function useAutosave<TInput extends Record<string, unknown>, TResult>({
     }
   }, [flush])
 
+  /** Re-sends after a failed (`error`/`offline`) save, then waits like
+   * `flush()`. A conflict isn't retried — it needs the user's choice. */
+  const retry = useCallback(async (): Promise<SaveStatus> => {
+    if (statusRef.current === 'error' || statusRef.current === 'offline') {
+      setStatus(pendingRef.current ? 'pending' : 'idle')
+    }
+    return flush()
+  }, [flush, setStatus])
+
+  /** Anything the server hasn't acknowledged: a debounced or queued edit, a
+   * request in flight, or a failed/conflicting save. Reads refs, so it's
+   * accurate at navigation time even between renders. */
+  const hasUnsavedWork = useCallback(
+    () =>
+      pendingRef.current !== null ||
+      inFlightRef.current !== null ||
+      timerRef.current !== null ||
+      ['error', 'offline', 'conflict'].includes(statusRef.current),
+    [],
+  )
+
+  /** Whether the latest local change is confirmed stored in IndexedDB. */
+  const hasLocalDraft = useCallback(async (): Promise<boolean> => {
+    await draftQueueRef.current
+    return draftStateRef.current === 'stored'
+  }, [])
+
+  /** The user chose the server's version over their own (conflict "load
+   * saved version"): drop pending work and the local draft, and treat
+   * `baseline` — the server's content, as the caller will now show it — as
+   * saved, so re-hydrating doesn't schedule a redundant save. */
+  const acceptServerVersion = useCallback(
+    async (baseline: TInput) => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current)
+        timerRef.current = null
+      }
+      pendingRef.current = null
+      lastSavedKeyRef.current = contentKey(baseline)
+      setConflictUpdatedAt(null)
+      setStatus('idle')
+      await queueDraft('clear')
+    },
+    [queueDraft, setStatus],
+  )
+
   const resolveConflict = useCallback(() => {
     setStatus(pendingRef.current ? 'pending' : 'idle')
     setConflictUpdatedAt(null)
@@ -232,5 +307,15 @@ export function useAutosave<TInput extends Record<string, unknown>, TResult>({
     }
   }, [sendPending, setStatus])
 
-  return { status, conflictUpdatedAt, scheduleSave, resolveConflict, flush }
+  return {
+    status,
+    conflictUpdatedAt,
+    scheduleSave,
+    resolveConflict,
+    flush,
+    retry,
+    hasUnsavedWork,
+    hasLocalDraft,
+    acceptServerVersion,
+  }
 }

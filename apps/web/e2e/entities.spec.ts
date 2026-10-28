@@ -153,7 +153,7 @@ test('offline mid-edit: change is preserved locally and synced once back online'
 
   await context.setOffline(true)
   await page.getByLabel('Summary').fill('Written while offline.')
-  await expect(page.getByText('Offline — changes saved locally')).toBeVisible({
+  await expect(page.getByText('Offline — saved on this device')).toBeVisible({
     timeout: 10_000,
   })
 

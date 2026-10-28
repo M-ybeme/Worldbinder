@@ -140,7 +140,7 @@ async function advance(ms: number) {
 
 const tabs = () => screen.getByRole('navigation', { name: 'Editor sections' })
 const tab = (name: string) => within(tabs()).getByRole('link', { name })
-const saveStatus = () => document.querySelector('.wb-edit-status') as HTMLElement
+const saveStatus = () => document.querySelector('.wb-save-state') as HTMLElement
 const panel = (name: string) => document.querySelector(`section[aria-label="${name}"]`) as HTMLElement
 
 beforeEach(() => {
@@ -253,7 +253,7 @@ describe('Entity editor — state survives tab switches', () => {
       ['First', 'Blackwall', 'v0'],
       ['First', 'Second', 'v1'],
     ])
-    expect(screen.queryByText('This entry was changed elsewhere.')).not.toBeInTheDocument()
+    expect(screen.queryByText('Changed elsewhere')).not.toBeInTheDocument()
   })
 })
 
@@ -268,16 +268,6 @@ describe('Entity editor — View article', () => {
     expect(router.state.location.pathname).toBe('/app/campaign/c1/world/e1')
   })
 
-  it('stays put and explains when the change can’t be saved', async () => {
-    vi.mocked(entitiesApi.updateEntity).mockRejectedValue(new ApiError('Boom', 500, null))
-    const router = renderEditor('/app/campaign/c1/world/e1/edit/content')
-    fireEvent.change(screen.getByLabelText('Summary'), { target: { value: 'Changed' } })
-    fireEvent.click(screen.getByRole('button', { name: 'View article' }))
-    await advance(0)
-    expect(router.state.location.pathname).toBe('/app/campaign/c1/world/e1/edit/content')
-    expect(screen.getByRole('alert')).toHaveTextContent(/aren’t saved to the server yet/)
-    expect(screen.getByRole('link', { name: 'Leave anyway' })).toHaveAttribute('href', '/app/campaign/c1/world/e1')
-  })
 })
 
 describe('Entity editor — drafts', () => {

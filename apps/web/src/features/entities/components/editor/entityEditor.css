@@ -2,22 +2,6 @@
    header styles (entityDetail.css); this adds the tabs, panels and save
    status. */
 
-.wb-edit-status {
-  font-size: var(--wb-text-sm);
-  color: var(--wb-text-muted);
-}
-
-.wb-edit-status--saved {
-  color: var(--wb-success);
-}
-
-.wb-edit-status--offline,
-.wb-edit-status--error,
-.wb-edit-status--conflict {
-  color: var(--wb-danger);
-  font-weight: 600;
-}
-
 .wb-ed-header__actions .wb-button {
   display: inline-flex;
   align-items: center;
