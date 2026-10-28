@@ -6,6 +6,7 @@ import {
   registerAndVerify,
   setUpOwnerWithCampaign,
   sidebarLink,
+  openEditorTab,
 } from './helpers'
 
 /**
@@ -53,6 +54,7 @@ test('GM sees facts, derived connections and GM notes; a player sees none of the
   await test.step('owner creates a GM-only location', async () => {
     vaultUrl = await quickCreate(ownerPage, 'Location', vaultName)
     await ownerPage.getByRole('link', { name: 'Edit' }).click()
+    await openEditorTab(ownerPage, 'Details')
     await ownerPage.getByLabel('Visibility').selectOption('gm_only')
     await expect(ownerPage.getByText('Saved')).toBeVisible({ timeout: 10_000 })
   })
@@ -60,9 +62,13 @@ test('GM sees facts, derived connections and GM notes; a player sees none of the
   await test.step('owner writes a public character whose current location is the vault', async () => {
     maraUrl = await quickCreate(ownerPage, 'Character', maraName)
     await ownerPage.getByRole('link', { name: 'Edit' }).click()
+    await openEditorTab(ownerPage, 'Details')
     await ownerPage.getByLabel('Occupation').fill('Garrison captain')
     await ownerPage.getByLabel('Current location').fill(vaultName)
     await ownerPage.locator('.wb-combobox__option', { hasText: vaultName }).first().click()
+    // Back to Content while the Details change is still pending: switching
+    // tabs must keep it (and not reset the editors).
+    await openEditorTab(ownerPage, 'Content')
     await ownerPage
       .locator('.wb-field', { hasText: 'Public content' })
       .locator('[contenteditable="true"]')
@@ -103,7 +109,8 @@ test('GM sees facts, derived connections and GM notes; a player sees none of the
     await ownerPage.reload()
     await expect(ownerPage.getByRole('button', { name: 'Remove from favorites' })).toBeVisible()
     await ownerPage.getByRole('link', { name: 'Edit' }).click()
-    await expect(ownerPage).toHaveURL(/\/edit$/)
+    await expect(ownerPage).toHaveURL(/\/edit\/content$/)
+    await openEditorTab(ownerPage, 'Details')
     await expect(ownerPage.getByLabel('Occupation')).toHaveValue('Garrison captain')
   })
 

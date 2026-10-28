@@ -35,8 +35,8 @@ const PHONE_QUERY = '(max-width: 768px)'
  * An entity's article page (Design D, Stage 1 — viewing). The article
  * (summary, facts, public text, GM-only notes) leads; connected
  * information sits in a side column: connections, plot threads, session
- * appearances, files and revision history. Editing stays on the existing
- * `/edit` route until Stage 2.
+ * appearances, files and revision history. Editing happens in the tabbed
+ * editor at `/edit/:tab` (EntityFormPage).
  *
  * Every panel reads through an endpoint that applies the API's visibility
  * rules; `gmContentJson` is present on the entity only when the caller may
@@ -171,7 +171,7 @@ export function EntityDetailPage() {
                 {canManage && (
                   <>
                     {' '}
-                    <Link to={`/app/campaign/${campaign.id}/world/${entity.id}/edit`}>
+                    <Link to={`/app/campaign/${campaign.id}/world/${entity.id}/edit/content`}>
                       Start writing
                     </Link>
                   </>

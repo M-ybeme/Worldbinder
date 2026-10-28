@@ -6,6 +6,7 @@ import {
   registerAndVerify,
   setUpOwnerWithCampaign,
   sidebarLink,
+  openEditorTab,
 } from './helpers'
 
 /**
@@ -85,6 +86,7 @@ test('search: overlay and results page respect entity visibility for GM vs. play
     await expect(ownerPage.getByRole('heading', { name: hiddenEntityName })).toBeVisible()
 
     await ownerPage.getByRole('link', { name: 'Edit' }).click()
+    await openEditorTab(ownerPage, 'Details')
     await ownerPage.getByLabel('Visibility').selectOption('gm_only')
     await expect(ownerPage.getByText('Saved')).toBeVisible({ timeout: 10_000 })
   })

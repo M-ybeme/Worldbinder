@@ -218,7 +218,7 @@ describe('Entity article — header', () => {
 
   it('offers Edit, favorite and delete to editors', () => {
     renderPage('editor')
-    expect(screen.getByRole('link', { name: 'Edit' })).toHaveAttribute('href', '/app/campaign/c1/world/e1/edit')
+    expect(screen.getByRole('link', { name: 'Edit' })).toHaveAttribute('href', '/app/campaign/c1/world/e1/edit/content')
     const star = screen.getByRole('button', { name: 'Add to favorites' })
     expect(star).toHaveAttribute('aria-pressed', 'false')
     fireEvent.click(star)
@@ -278,7 +278,7 @@ describe('Entity article — content', () => {
     expect(screen.getByText(/Nothing has been written about Blackwall yet/)).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Start writing' })).toHaveAttribute(
       'href',
-      '/app/campaign/c1/world/e1/edit',
+      '/app/campaign/c1/world/e1/edit/content',
     )
     expect(screen.queryByRole('region', { name: 'GM-only notes' })).not.toBeInTheDocument()
   })

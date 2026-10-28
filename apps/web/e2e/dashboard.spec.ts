@@ -5,6 +5,7 @@ import {
   login,
   registerAndVerify,
   setUpOwnerWithCampaign,
+  openEditorTab,
 } from './helpers'
 
 /**
@@ -129,6 +130,7 @@ test('players see only what is shared with them, and no create or GM tools', asy
     }
     await ownerPage.getByRole('link', { name: secretName }).click()
     await ownerPage.getByRole('link', { name: 'Edit' }).click()
+    await openEditorTab(ownerPage, 'Details')
     await ownerPage.getByLabel('Visibility').selectOption('gm_only')
     await expect(ownerPage.getByText('Saved')).toBeVisible({ timeout: 10_000 })
   })

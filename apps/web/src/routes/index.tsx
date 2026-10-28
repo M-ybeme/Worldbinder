@@ -182,7 +182,15 @@ export const router = createBrowserRouter([
                       })),
                   },
                   {
+                    // Pre-tabs edit URL: redirects to the Content tab.
                     path: 'world/:entityId/edit',
+                    lazy: () =>
+                      import('../features/entities/pages/EntityFormPage').then((m) => ({
+                        Component: m.EntityEditRedirect,
+                      })),
+                  },
+                  {
+                    path: 'world/:entityId/edit/:tab',
                     lazy: () =>
                       import('../features/entities/pages/EntityFormPage').then((m) => ({
                         Component: m.EntityFormPage,

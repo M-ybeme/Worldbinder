@@ -1,22 +1,9 @@
-import type { EntityDetail, EntityType } from '@worldbinder/contracts'
+import type { EntityDetail } from '@worldbinder/contracts'
 import { Badge, IconButton, MenuButton, type MenuButtonItem } from '@worldbinder/ui'
 import { MoreHorizontal, Pencil, Star } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { ENTITY_TYPE_LABELS, EntityTypeIcon } from '../../lib/entityTypeIcons'
-
-const TYPE_PLURALS: Record<EntityType, string> = {
-  character: 'Characters',
-  location: 'Locations',
-  faction: 'Factions',
-  organization: 'Organizations',
-  item: 'Items',
-  deity: 'Deities',
-  creature: 'Creatures',
-  event: 'Events',
-  quest: 'Quests',
-  lore: 'Lore',
-  custom: 'Custom entries',
-}
+import { EntityBreadcrumbs } from './EntityBreadcrumbs'
 
 /**
  * The entity page's identity block: breadcrumbs (World › type › name),
@@ -52,19 +39,12 @@ export function EntityHeader({
 
   return (
     <header className="wb-ed-header">
-      <nav aria-label="Breadcrumb" className="wb-ed-breadcrumbs">
-        <ol>
-          <li>
-            <Link to={worldUrl}>World</Link>
-          </li>
-          <li>
-            <Link to={`${worldUrl}?type=${entity.entityType}`}>
-              {TYPE_PLURALS[entity.entityType]}
-            </Link>
-          </li>
-          <li aria-current="page">{entity.name}</li>
-        </ol>
-      </nav>
+      <EntityBreadcrumbs
+        campaignId={campaignId}
+        entityId={entity.id}
+        entityType={entity.entityType}
+        name={entity.name}
+      />
 
       <div className="wb-ed-header__row">
         <div className="wb-ed-header__identity">
@@ -116,7 +96,7 @@ export function EntityHeader({
             items={moreItems}
           />
           {canManage && (
-            <Link className="wb-button wb-button--primary wb-ed-edit" to={`${worldUrl}/${entity.id}/edit`}>
+            <Link className="wb-button wb-button--primary wb-ed-edit" to={`${worldUrl}/${entity.id}/edit/content`}>
               <Pencil size={16} aria-hidden="true" />
               Edit
             </Link>

@@ -4,6 +4,27 @@ All notable changes to this project are documented here. Format follows [Keep a 
 
 Every push to `main` should add an entry here. This is meant to be an honest record of what actually shipped, not a restatement of the roadmap's aspirations — if something was attempted and reverted, or shipped partially, say so.
 
+## [1.5.0] - 2026-10-28
+
+**Entity Detail D, Stage 2 (foundation): the tabbed editor.** Editing an entry now happens in a focused workspace with **Content**, **Details**, **Connections** and **Files** tabs at `/world/:id/edit/:tab`, sharing the article's breadcrumbs and identity header. No backend changes, and stored data formats are unchanged.
+
+### Changed
+
+- **Routes.** `/world/:id/edit/:tab`, with `/world/:id/edit` (the old URL) and any unknown tab redirecting to Content. Tabs are links, so Back/Forward and direct links work. The article's Edit and "Start writing" links go straight to Content.
+- **One owner of state.** `EntityFormPage` still owns every field and the single `useAutosave` lifecycle. A tab switch changes only the URL within the same route, so the editor never remounts or re-hydrates. Content and Details stay mounted (hidden when inactive), so TipTap documents and field values are never reset, and switching tabs never sends a save by itself. Edits made across tabs go out in one debounced save; an edit made during an in-flight save is sent next with the new version. Draft restore, the conflict banner (Reload / Keep my changes) and the unsaved-changes warning are unchanged.
+- **Content** (default): summary, public text, and GM-only text when the API sends it. **Details**: name, type (shown, locked, with an explanation), aliases, tags, visibility, status, and the type's own fields in a labelled group (reusing `EntityMetadataFields`). **Connections** and **Files** host the existing relationship and attachment managers unchanged; they save through their own endpoints, which don't change the entity's `updatedAt`, so they can't cause a false conflict.
+- **Save status** sits in the header (`role="status"`): "Waiting to save…", "Saving…", "Saved", or the offline/error/conflict wording. **View article** replaces any notion of "Done": it flushes the pending save and leaves only once the server has it. If it can't save, it stays and explains that the changes are kept on this device, offering "Leave anyway" (except during a conflict) or "Stay".
+- **Permissions.** Players and viewers opening an edit URL get "You don't have permission to edit this entry" and a link back, and autosave is disabled for them. The API still enforces this.
+- **Shared** `EntityBreadcrumbs` (article and editor). `e2e/helpers.ts` gains `openEditorTab()`, and existing specs switch to Details before editing tags, visibility or type-specific fields.
+
+### Not yet (next Stage 2 milestones)
+
+The Done state machine and conflict-comparison view; the in-app navigation guard; the redesigned connection manager (reverse direction, Undo notifications, mobile bottom sheet); the collapsible editing reference panel; the keyboard-docked mobile toolbar.
+
+### Verification
+
+`pnpm typecheck` / `pnpm lint` / web `build` clean. Web vitest 129/129, including 19 new editor tests, which run the real `useAutosave` with only the network and IndexedDB stubbed: the old URL and unknown tabs resolve to Content; direct tab URLs; Back/Forward; a pending change kept across tab switches with one save and no rich-text remount; switching tabs alone never saves; an edit during an in-flight save is sent next with the new version; View article flushes, and stays with an explanation when the save fails; draft restore; Location, Character and Faction fields; GM-only editor only with GM access; no editor (and no saves) for players; the Connections and Files managers. New `e2e/entity-editor.spec.ts` (Chromium, Firefox, WebKit) covers tabs and history, pending edits across tabs persisting after reload, View article, relationship creation on Connections, Files, keyboard switching, player denial, and the 390px layout. WebKit doesn't Tab between links by default, so there the spec checks focusability and Enter. Full Playwright: 72/75 before that adjustment, all passing after it except two Firefox failures, which are the known quick-create flake (Title cleared, Create disabled) in `sessions` and `plot-threads`, still tracked separately. Screenshots checked: Content, Details (location, character, faction), Connections and Files at 1440 (light, and dark with the collapsed rail) and at 390/360px.
+
 ## [1.4.1] - 2026-10-28
 
 **Entity article refinements from the Stage 1 review.**

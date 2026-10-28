@@ -105,3 +105,12 @@ export async function setUpOwnerWithCampaign(
 export function sidebarLink(page: Page, name: string): Locator {
   return page.locator('#wb-campaign-sidebar').getByRole('link', { name, exact: true })
 }
+
+/** Switches the entity editor to one of its tabs (Content is the default;
+ * name, tags, visibility and type-specific fields are on Details). */
+export async function openEditorTab(
+  page: Page,
+  tab: 'Content' | 'Details' | 'Connections' | 'Files',
+): Promise<void> {
+  await page.getByRole('navigation', { name: 'Editor sections' }).getByRole('link', { name: tab }).click()
+}

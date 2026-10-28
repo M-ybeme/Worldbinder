@@ -28,7 +28,7 @@ async function leaveImmediatelyAndExpectSave(
       response.request().method() === 'PATCH' && response.url().includes(resourcePath),
     { timeout: 10_000 },
   )
-  await page.getByRole('link', { name: sectionLink, exact: true }).click()
+  await sidebarLink(page, sectionLink).click()
   expect((await saved).ok()).toBe(true)
 }
 

@@ -6,6 +6,7 @@ import {
   registerAndVerify,
   setUpOwnerWithCampaign,
   sidebarLink,
+  openEditorTab,
 } from './helpers'
 
 /**
@@ -52,8 +53,12 @@ test('entity lifecycle: create, visibility, edit, tag filter, delete', async ({ 
     entityUrl = ownerPage.url()
 
     await ownerPage.getByRole('link', { name: 'Edit' }).click()
+    await openEditorTab(ownerPage, 'Details')
     await ownerPage.getByLabel('Tags').fill('nobility')
     await ownerPage.getByLabel('Tags').press('Enter')
+    // Back to Content while the Details change is still pending: switching
+    // tabs must keep it (and not reset the editors).
+    await openEditorTab(ownerPage, 'Content')
 
     await ownerPage
       .locator('.wb-field', { hasText: 'Public content' })
