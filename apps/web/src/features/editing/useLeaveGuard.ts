@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useBlocker } from 'react-router-dom'
-import type { SaveStatus } from './useAutosave'
+import type { SaveStatus } from '../../lib/useAutosave'
 
 export type LeaveProblem = 'error' | 'offline' | 'conflict'
 
@@ -41,40 +41,41 @@ export function useLeaveGuard({ isWithinEditor, hasUnsavedWork, flush, retry }: 
   )
   const [problem, setProblem] = useState<LeaveProblem | null>(null)
   const [busy, setBusy] = useState(false)
-  // One save attempt per blocked navigation, however often it re-renders.
-  const handledRef = useRef<typeof blocker | null>(null)
+  // Always act on the router's current blocker: a repeated navigation while
+  // paused replaces it, and proceeding a superseded one is invalid.
+  const blockerRef = useRef(blocker)
+  blockerRef.current = blocker
+  // One save attempt per paused navigation — repeated clicks (each a new
+  // blocker object) don't start another save or a second proceed().
+  const activeRef = useRef(false)
 
-  const settle = useCallback(
-    (status: SaveStatus) => {
-      if (blocker.state !== 'blocked') return
-      if (status === 'saved' || status === 'idle') {
-        setProblem(null)
-        blocker.proceed()
-      } else if (status === 'error' || status === 'offline' || status === 'conflict') {
-        setProblem(status)
-      } else {
-        setProblem('error')
-      }
-    },
-    [blocker],
-  )
+  const settle = useCallback((status: SaveStatus) => {
+    const current = blockerRef.current
+    if (current.state !== 'blocked') return
+    if (status === 'saved' || status === 'idle') {
+      setProblem(null)
+      current.proceed()
+    } else if (status === 'error' || status === 'offline' || status === 'conflict') {
+      setProblem(status)
+    } else {
+      setProblem('error')
+    }
+  }, [])
 
   useEffect(() => {
-    if (blocker.state !== 'blocked' || handledRef.current === blocker) return
-    handledRef.current = blocker
+    if (blocker.state !== 'blocked') {
+      activeRef.current = false
+      if (blocker.state === 'unblocked') setProblem(null)
+      return
+    }
+    if (activeRef.current) return
+    activeRef.current = true
     setBusy(true)
     void optionsRef.current
       .flush()
       .then(settle)
       .finally(() => setBusy(false))
   }, [blocker, settle])
-
-  useEffect(() => {
-    if (blocker.state === 'unblocked') {
-      handledRef.current = null
-      setProblem(null)
-    }
-  }, [blocker.state])
 
   return {
     /** A navigation is paused while saving (`busy`) or because of `problem`. */
@@ -91,11 +92,11 @@ export function useLeaveGuard({ isWithinEditor, hasUnsavedWork, flush, retry }: 
     },
     keepEditing: () => {
       setProblem(null)
-      if (blocker.state === 'blocked') blocker.reset()
+      if (blockerRef.current.state === 'blocked') blockerRef.current.reset()
     },
     leave: () => {
       setProblem(null)
-      if (blocker.state === 'blocked') blocker.proceed()
+      if (blockerRef.current.state === 'blocked') blockerRef.current.proceed()
     },
   }
 }

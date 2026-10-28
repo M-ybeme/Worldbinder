@@ -151,6 +151,9 @@ test('closing the tab with a pending change warns, and the draft is offered back
 }) => {
   const { articleUrl } = await setUp(page, 'Close')
   await page.getByLabel('Summary').fill('Typed right before closing.')
+  // The change is registered (draft queued, unload warning armed) once the
+  // editor shows it as pending — a few ms after the keystroke.
+  await expect(page.getByText('Waiting to save…')).toBeVisible()
   const unloadPrompt = page.waitForEvent('dialog')
   void page.close({ runBeforeUnload: true })
   const prompt = await unloadPrompt

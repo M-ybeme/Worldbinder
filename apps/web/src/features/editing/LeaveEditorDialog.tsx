@@ -1,11 +1,11 @@
 import { Button, Dialog } from '@worldbinder/ui'
 
-import type { LeaveProblem } from '../../../../lib/useLeaveGuard'
+import type { LeaveProblem } from './useLeaveGuard'
 
-const TITLES: Record<LeaveProblem, string> = {
-  error: 'Your latest changes couldn’t be saved',
-  offline: 'You’re offline',
-  conflict: 'This entry was changed elsewhere',
+function title(problem: LeaveProblem, recordNoun: string): string {
+  if (problem === 'error') return 'Your latest changes couldn’t be saved'
+  if (problem === 'offline') return 'You’re offline'
+  return `This ${recordNoun} was changed elsewhere`
 }
 
 /**
@@ -18,6 +18,7 @@ const TITLES: Record<LeaveProblem, string> = {
 export function LeaveEditorDialog({
   open,
   problem,
+  recordNoun,
   draftStored,
   retrying,
   onRetry,
@@ -27,6 +28,8 @@ export function LeaveEditorDialog({
 }: {
   open: boolean
   problem: LeaveProblem
+  /** "entry", "session", "plot thread". */
+  recordNoun: string
   draftStored: boolean
   retrying: boolean
   onRetry: () => void
@@ -35,7 +38,7 @@ export function LeaveEditorDialog({
   onReview: () => void
 }) {
   return (
-    <Dialog open={open} onClose={onKeepEditing} title={TITLES[problem]} className="wb-leave-dialog">
+    <Dialog open={open} onClose={onKeepEditing} title={title(problem, recordNoun)} className="wb-leave-dialog">
       <div className="wb-leave-dialog__body">
         {problem === 'error' && (
           <p>The server didn’t accept your latest changes, so they aren’t saved yet.</p>

@@ -22,22 +22,20 @@ import { Link, NavLink, Navigate, useNavigate, useParams } from 'react-router-do
 import { AttachmentsPanel } from '../../attachments/components/AttachmentsPanel'
 import { useCampaignOutletContext } from '../../campaigns/hooks/useCampaignContext'
 import { RelatedContentPanel } from '../../relationships/components/RelatedContentPanel'
-import { ApiError } from '../../../lib/apiClient'
 import { clearDraft, loadDraft, type ResourceDraft } from '../../../lib/draftDb'
 import { useAutosave } from '../../../lib/useAutosave'
-import { useLeaveGuard } from '../../../lib/useLeaveGuard'
 import * as entitiesApi from '../api/entitiesApi'
 import { EntityBreadcrumbs } from '../components/detail/EntityBreadcrumbs'
-import { ConflictDialog, type ServerVersionState } from '../components/editor/ConflictDialog'
-import { LeaveEditorDialog } from '../components/editor/LeaveEditorDialog'
-import { SaveStatusIndicator } from '../components/editor/SaveStatusIndicator'
+import { EditorSafetyPanels } from '../../editing/EditorSafetyPanels'
+import { SaveStatusIndicator } from '../../editing/SaveStatusIndicator'
+import { useEditorSafety } from '../../editing/useEditorSafety'
 import { EntityMetadataFields } from '../components/EntityMetadataFields'
 import { RichTextEditor } from '../components/RichTextEditor'
 import { useEntityQuery } from '../hooks/useEntities'
+import { entityDifferences } from '../lib/entityConflict'
 import { ENTITY_TYPE_LABELS, EntityTypeIcon } from '../lib/entityTypeIcons'
 import '../components/detail/entityDetail.css'
 import '../components/editor/entityEditor.css'
-import '../components/editor/editorSafety.css'
 
 export const EDITOR_TABS = ['content', 'details', 'connections', 'files'] as const
 export type EditorTab = (typeof EDITOR_TABS)[number]
@@ -111,11 +109,6 @@ export function EntityFormPage() {
   const [hasGmAccess, setHasGmAccess] = useState(false)
   const [formKey, setFormKey] = useState(0)
   const [draftBanner, setDraftBanner] = useState<ResourceDraft | null>(null)
-  const [conflictOpen, setConflictOpen] = useState(false)
-  const [serverVersion, setServerVersion] = useState<ServerVersionState>({ status: 'loading' })
-  const [resolving, setResolving] = useState(false)
-  const [changedAgain, setChangedAgain] = useState(false)
-  const [draftStored, setDraftStored] = useState(false)
 
   const hydratedRef = useRef(false)
   const skipNextAutosaveRef = useRef(true)
@@ -252,93 +245,38 @@ export function EntityFormPage() {
   const editBase = `${articleUrl}/edit`
 
   // Every way out of the editor (links, Back/Forward, View article,
-  // campaign switch) goes through this; tab switches don't.
-  const guard = useLeaveGuard({
+  // campaign switch) is guarded; tab switches aren't. Conflict resolution
+  // re-saves against exactly the version reviewed.
+  const safety = useEditorSafety({
+    autosave,
     isWithinEditor: (pathname) => pathname === editBase || pathname.startsWith(`${editBase}/`),
-    hasUnsavedWork: autosave.hasUnsavedWork,
-    flush: autosave.flush,
-    retry: autosave.retry,
+    fetchServer: useCallback(
+      () => entitiesApi.getEntity(campaign.id, entityId ?? ''),
+      [campaign.id, entityId],
+    ),
+    applyKeepMine: (server: EntityDetail) => {
+      skipNextAutosaveRef.current = true
+      setUpdatedAt(server.updatedAt)
+      autosave.scheduleSave(buildUpdateInput(server.updatedAt))
+    },
+    applyServer: (server: EntityDetail) => {
+      setName(server.name)
+      setSummary(server.summary ?? '')
+      setTags(server.tags)
+      setAliases(server.aliases)
+      setVisibility(server.visibility)
+      setStatus(server.status)
+      setMetadata((server.metadataJson as Record<string, unknown> | null) ?? {})
+      setPublicContent(server.publicContentJson)
+      setHasGmAccess('gmContentJson' in server)
+      setGmContent('gmContentJson' in server ? (server.gmContentJson ?? null) : null)
+      setUpdatedAt(server.updatedAt)
+      setFormKey((key) => key + 1)
+      setDraftBanner(null)
+      return inputFromServer(server)
+    },
   })
-
-  useEffect(() => {
-    if (!guard.problem) return
-    let cancelled = false
-    void autosave.hasLocalDraft().then((stored) => {
-      if (!cancelled) setDraftStored(stored)
-    })
-    return () => {
-      cancelled = true
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [guard.problem])
-
-  /** Fetches the server's current version through the normal entity
-   * endpoint, so the comparison shows only what this member may see. */
-  const loadServerVersion = useCallback(async () => {
-    setServerVersion({ status: 'loading' })
-    try {
-      const fresh = await entitiesApi.getEntity(campaign.id, entityId ?? '')
-      setServerVersion({ status: 'ready', entity: fresh })
-      return fresh
-    } catch (error) {
-      if (error instanceof ApiError && (error.status === 404 || error.status === 403)) {
-        setServerVersion({ status: 'unavailable' })
-      } else {
-        setServerVersion({
-          status: 'error',
-          message: error instanceof Error ? error.message : 'Unknown error',
-        })
-      }
-      return null
-    }
-  }, [campaign.id, entityId])
-
-  function openConflict() {
-    setChangedAgain(false)
-    setConflictOpen(true)
-    void loadServerVersion()
-  }
-
-  /** Keep mine: re-save the local version against the exact server version
-   * the user just reviewed. If it changed again since, the API's 409 brings
-   * the new differences back instead of overwriting them. */
-  async function keepMine(server: EntityDetail) {
-    setResolving(true)
-    skipNextAutosaveRef.current = true
-    setUpdatedAt(server.updatedAt)
-    autosave.scheduleSave(buildUpdateInput(server.updatedAt))
-    autosave.resolveConflict()
-    const result = await autosave.flush()
-    setResolving(false)
-    if (result === 'conflict') {
-      setChangedAgain(true)
-      await loadServerVersion()
-    } else {
-      setConflictOpen(false)
-    }
-  }
-
-  /** Load the saved version: replace local state (after the user confirmed
-   * discarding it) and drop the local draft. */
-  async function loadServer(server: EntityDetail) {
-    setResolving(true)
-    setName(server.name)
-    setSummary(server.summary ?? '')
-    setTags(server.tags)
-    setAliases(server.aliases)
-    setVisibility(server.visibility)
-    setStatus(server.status)
-    setMetadata((server.metadataJson as Record<string, unknown> | null) ?? {})
-    setPublicContent(server.publicContentJson)
-    setHasGmAccess('gmContentJson' in server)
-    setGmContent('gmContentJson' in server ? (server.gmContentJson ?? null) : null)
-    setUpdatedAt(server.updatedAt)
-    setFormKey((key) => key + 1)
-    setDraftBanner(null)
-    await autosave.acceptServerVersion(inputFromServer(server))
-    setResolving(false)
-    setConflictOpen(false)
-  }
+  const { guard } = safety
 
   // Unknown tab names (and the bare /edit URL, via EntityEditRedirect)
   // resolve to Content. Same route, so this doesn't remount the editor.
@@ -391,7 +329,7 @@ export function EntityFormPage() {
               <SaveStatusIndicator
                 status={autosave.status}
                 onRetry={() => void autosave.retry()}
-                onReview={openConflict}
+                onReview={safety.conflict.openConflict}
               />
             </div>
           </div>
@@ -426,54 +364,30 @@ export function EntityFormPage() {
         </div>
       )}
 
-      {autosave.status === 'conflict' && (
-        <div className="wb-banner wb-banner--warning">
-          <p>
-            Someone else saved this entry while you were editing. Your changes aren’t saved yet.
-          </p>
-          <Button onClick={openConflict}>Review differences</Button>
-        </div>
-      )}
-
-      {conflictOpen && (
-        <ConflictDialog
-          key={serverVersion.status === 'ready' ? serverVersion.entity.updatedAt : 'pending'}
-          open
-          campaignId={campaign.id}
-          changedAgain={changedAgain}
-          local={{
-            entityType,
-            name,
-            summary,
-            aliases,
-            tags,
-            visibility,
-            status,
-            metadata,
-            publicContent,
-            ...(hasGmAccess ? { gmContent } : {}),
-          }}
-          server={serverVersion}
-          pending={resolving}
-          onKeepEditing={() => setConflictOpen(false)}
-          onRetryLoad={() => void loadServerVersion()}
-          onKeepMine={(server) => void keepMine(server)}
-          onLoadServer={(server) => void loadServer(server)}
-        />
-      )}
-
-      <LeaveEditorDialog
-        open={guard.problem !== null}
-        problem={guard.problem ?? 'error'}
-        draftStored={draftStored}
-        retrying={guard.busy}
-        onRetry={() => void guard.retry()}
-        onKeepEditing={guard.keepEditing}
-        onLeave={guard.leave}
-        onReview={() => {
-          guard.keepEditing()
-          openConflict()
-        }}
+      <EditorSafetyPanels
+        safety={safety}
+        status={autosave.status}
+        campaignId={campaign.id}
+        recordNoun="entry"
+        describe={(server: EntityDetail) => ({
+          name: server.name,
+          updatedAt: server.updatedAt,
+          differences: entityDifferences(
+            {
+              entityType,
+              name,
+              summary,
+              aliases,
+              tags,
+              visibility,
+              status,
+              metadata,
+              publicContent,
+              ...(hasGmAccess ? { gmContent } : {}),
+            },
+            server,
+          ),
+        })}
       />
 
       <nav className="wb-edit-tabs" aria-label="Editor sections">

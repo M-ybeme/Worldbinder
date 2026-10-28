@@ -4,6 +4,34 @@ All notable changes to this project are documented here. Format follows [Keep a 
 
 Every push to `main` should add an entry here. This is meant to be an honest record of what actually shipped, not a restatement of the roadmap's aspirations — if something was attempted and reverted, or shipped partially, say so.
 
+## [1.7.0] - 2026-10-28
+
+**Editing safety for Sessions and Plot Threads.** The session and plot-thread editors now have the entity editor's guarantees: guarded navigation, honest save states, failure/offline handling, and field-level conflict comparison. They're built from one shared implementation, not copies.
+
+### Changed
+
+- **Shared editing-safety module** (`features/editing/`): `useEditorSafety` (the leave guard, local-draft confirmation, and the conflict state machine of fetch, keep mine against the exact version reviewed, or load the saved version), `EditorSafetyPanels` (conflict banner, comparison, leave dialog), `SaveStatusIndicator`, `LeaveEditorDialog`, a generic `ConflictDialog`, and `compare.ts` comparison primitives (value, entity references, rich-text paragraph diff). The entity editor was moved onto it with no behaviour change.
+- **Session editor:** save-state indicator and **View session** exit in the header. Every in-app way out is guarded, the same as for entities. The conflict comparison covers title, visibility, scheduled time, in-world start date, participants (by name), featured entities and locations (names via the visibility-checked endpoint), plot-thread changes (title and action), tags, the recap, and the GM-only planned content and notes (only when the server sends them).
+- **Plot-thread editor:** the same, with **View plot thread**; it compares title, summary, visibility, importance (GM-level, only when sent), related entities, tags, and public and GM-only content.
+- **Players and viewers** opening either edit URL get a "no permission" message and nothing autosaves. The API was already enforcing this.
+- The leave dialog names the record ("This session was changed elsewhere").
+
+### Fixed
+
+- **Restored drafts could be silently overwritten (sessions and plot threads).** The rich-text editors read their content only on mount, and these two editors never remounted them, so **Restore** (and the old conflict **Reload**) updated the saved state while the editor kept showing the old text. The next keystroke sent the old text plus the edit, overwriting what was restored. The editors now remount whenever their state is replaced (load, draft restore, loading the saved version), as the entity editor already did.
+- **Repeated navigation while a leave was paused** (for example clicking a link twice during a slow save) started a second save attempt and later called the router's `proceed()` twice ("Invalid blocker state transition"). One paused navigation now gets one save attempt, and settling always acts on the router's current blocker.
+
+### Tests
+
+- `editing/recordEditors.safety.test.tsx`: 22 tests (11 scenarios × session and plot thread) with the real hooks and router blocker. They cover leaving immediately after typing (once, even with repeated clicks); Back; waiting for an in-flight save plus a queued edit, asserting no duplicate proceed (this assertion fails against the old guard); failure → Keep editing → Try again; offline leave keeping the draft; no leave without a confirmed local copy; conflict comparison → keep mine after confirmation; a second concurrent update shown rather than overwritten; load saved version showing it in the rich-text editor; draft restore showing the draft's rich text (the bug above); and players.
+- `e2e/record-editor-safety.spec.ts`: 5 browser scenarios × session and plot thread.
+- The entity spec's tab-close test now waits until the change is registered as pending before closing, the precondition its name states. Before that it was intermittent in WebKit (2/4) because it could close the tab within milliseconds of the keystroke; now 10/10.
+- A Dashboard unit test scheduled "now + 6×24h", which crosses the daylight-saving change on 1 Nov 2026 and lands on calendar day 5. It now adds 6 calendar days.
+
+### Verification
+
+Typecheck, lint and build clean; web vitest 177 passing, excluding the separately committed quick-create regression tests. Browser suite for the editors (entity safety, editor, session/thread safety, autosave, sessions, plot-threads, entities) across Chromium, Firefox and WebKit: 87/93. Every Firefox failure stalled at a quick-create dialog's disabled **Create** button while creating the test record, before reaching any editor. That's the quick-create race fixed separately in 1.7.1. The sixth failure was the WebKit tab-close test, fixed above.
+
 ## [1.6.0] - 2026-10-28
 
 **Entity editor safety: protected navigation, honest save states, conflict comparison.** Nothing typed in the entity editor can now be silently left behind, a change that exists only on this device is never presented as saved, and a concurrent edit is never overwritten without the user seeing exactly what they'd replace. No backend changes; the existing optimistic concurrency (409 on a stale `updatedAt`) stays authoritative.

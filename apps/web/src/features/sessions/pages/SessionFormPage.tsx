@@ -1,4 +1,4 @@
-import type { EntityVisibility, TiptapDoc } from '@worldbinder/contracts'
+import type { CampaignSessionDetail, EntityVisibility, TiptapDoc } from '@worldbinder/contracts'
 import {
   DEFAULT_CALENDAR_CONFIG,
   type PlotThreadChangeInput,
@@ -7,22 +7,27 @@ import {
 import {
   Button,
   Checkbox,
+  EmptyState,
   ErrorState,
-  FormMessage,
   LoadingState,
   Select,
   TagInput,
   TextField,
 } from '@worldbinder/ui'
-import { useEffect, useRef, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { ArrowLeft } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useCampaignOutletContext } from '../../campaigns/hooks/useCampaignContext'
+import { EditorSafetyPanels } from '../../editing/EditorSafetyPanels'
+import { SaveStatusIndicator } from '../../editing/SaveStatusIndicator'
+import { useEditorSafety } from '../../editing/useEditorSafety'
 import { clearDraft, loadDraft, type ResourceDraft } from '../../../lib/draftDb'
 import { useAutosave } from '../../../lib/useAutosave'
 import { useMembersQuery } from '../../membership/hooks/useCampaignMembers'
 import { EntityMultiPicker } from '../../entities/components/EntityMultiPicker'
 import { RichTextEditor } from '../../entities/components/RichTextEditor'
 import { PlotThreadChangesEditor } from '../../plot-threads/components/PlotThreadChangesEditor'
+import { usePlotThreadsQuery } from '../../plot-threads/hooks/usePlotThreads'
 import { StructuredDateEditor } from '../../calendar/components/StructuredDateEditor'
 import {
   EMPTY_STRUCTURED_DATE,
@@ -32,28 +37,27 @@ import {
 import { useCampaignTagsQuery } from '../../tags/hooks/useTags'
 import * as sessionsApi from '../api/sessionsApi'
 import { useSessionQuery } from '../hooks/useSessions'
+import { sessionDifferences } from '../lib/sessionConflict'
 
 const VISIBILITY_OPTIONS = [
   { value: 'public', label: 'Public — visible to all campaign members' },
   { value: 'gm_only', label: 'GM only — hidden from players' },
 ]
 
-const SAVE_STATUS_TEXT: Record<string, string> = {
-  pending: 'Waiting to save…',
-  saving: 'Saving…',
-  saved: 'Saved',
-  offline: 'Offline — changes saved locally',
-  error: 'Save failed — changes saved locally',
-}
+// Same role set as the session page's Edit link; the API enforces it.
+const EDIT_ROLES = new Set(['owner', 'gm', 'editor'])
 
 export function SessionFormPage() {
   const { sessionId } = useParams<{ sessionId: string }>()
   const { campaign } = useCampaignOutletContext()
+  const navigate = useNavigate()
 
   const sessionQuery = useSessionQuery(campaign.id, sessionId)
   const membersQuery = useMembersQuery(campaign.id)
   const campaignTagsQuery = useCampaignTagsQuery(campaign.id)
+  const threadsQuery = usePlotThreadsQuery(campaign.id)
 
+  const canEdit = EDIT_ROLES.has(campaign.role)
   const canSetGmContent = campaign.role === 'owner' || campaign.role === 'gm'
   const calendarConfig = campaign.calendarConfigJson ?? DEFAULT_CALENDAR_CONFIG
 
@@ -71,13 +75,15 @@ export function SessionFormPage() {
   const [tags, setTags] = useState<string[]>([])
   const [updatedAt, setUpdatedAt] = useState<string | null>(null)
   const [draftBanner, setDraftBanner] = useState<ResourceDraft | null>(null)
+  // Rich-text editors take their content only on mount: bumping this
+  // remounts them whenever their state is replaced (load, draft restore,
+  // loading the server's version) so what's shown is what will be saved.
+  const [formKey, setFormKey] = useState(0)
 
   const hydratedRef = useRef(false)
   const skipNextAutosaveRef = useRef(true)
 
-  useEffect(() => {
-    if (!sessionQuery.data || hydratedRef.current) return
-    const session = sessionQuery.data
+  function hydrate(session: CampaignSessionDetail) {
     setTitle(session.title)
     setVisibility(session.visibility)
     setScheduledAt(session.scheduledAt ? session.scheduledAt.slice(0, 16) : '')
@@ -96,6 +102,12 @@ export function SessionFormPage() {
     )
     setTags(session.tags)
     setUpdatedAt(session.updatedAt)
+    setFormKey((key) => key + 1)
+  }
+
+  useEffect(() => {
+    if (!sessionQuery.data || hydratedRef.current) return
+    hydrate(sessionQuery.data)
     hydratedRef.current = true
   }, [sessionQuery.data])
 
@@ -135,11 +147,41 @@ export function SessionFormPage() {
     }
   }
 
+  /** The save payload for the server's version — the new baseline when the
+   * user loads it, so showing it doesn't schedule a save. Mirrors
+   * `buildUpdateInput` (state round-trips through the same conversions). */
+  function inputFromServer(server: CampaignSessionDetail): UpdateSessionInput {
+    const worldStartDateJson = structuredToWorldDate(worldDateToStructured(server.worldStartDateJson))
+    const scheduled = server.scheduledAt ? server.scheduledAt.slice(0, 16) : ''
+    return {
+      updatedAt: server.updatedAt,
+      title: server.title,
+      visibility: server.visibility,
+      scheduledAt: scheduled ? new Date(scheduled).toISOString() : null,
+      worldStartDateJson: worldStartDateJson ?? null,
+      recapContentJson: server.recapContentJson ?? undefined,
+      ...(canSetGmContent
+        ? {
+            plannedContentJson: 'plannedContentJson' in server ? (server.plannedContentJson ?? null) : plannedContent,
+            gmContentJson: 'gmContentJson' in server ? (server.gmContentJson ?? null) : gmContent,
+          }
+        : {}),
+      participantIds: server.participants.map((p) => p.campaignMemberId),
+      featuredEntityIds: server.featuredEntities.map((e) => e.id),
+      locationEntityIds: server.locations.map((e) => e.id),
+      plotThreadChanges: server.plotThreadChanges.map((c) => ({
+        plotThreadId: c.plotThread.id,
+        action: c.action,
+      })),
+      tags: server.tags,
+    }
+  }
+
   const autosave = useAutosave({
     resourceType: 'session',
     campaignId: campaign.id,
     resourceId: sessionId ?? '',
-    enabled: hydratedRef.current,
+    enabled: hydratedRef.current && canEdit,
     save: (input: UpdateSessionInput) =>
       sessionsApi.updateSession(campaign.id, sessionId ?? '', input),
     onSaved: (session) => setUpdatedAt(session.updatedAt),
@@ -182,6 +224,28 @@ export function SessionFormPage() {
     return () => window.removeEventListener('beforeunload', handler)
   }, [autosave.status])
 
+  const sessionUrl = `/app/campaign/${campaign.id}/sessions/${sessionId}`
+  const editUrl = `${sessionUrl}/edit`
+
+  const safety = useEditorSafety({
+    autosave,
+    isWithinEditor: (pathname) => pathname === editUrl,
+    fetchServer: useCallback(
+      () => sessionsApi.getSession(campaign.id, sessionId ?? ''),
+      [campaign.id, sessionId],
+    ),
+    applyKeepMine: (server: CampaignSessionDetail) => {
+      skipNextAutosaveRef.current = true
+      setUpdatedAt(server.updatedAt)
+      autosave.scheduleSave(buildUpdateInput(server.updatedAt))
+    },
+    applyServer: (server: CampaignSessionDetail) => {
+      hydrate(server)
+      setDraftBanner(null)
+      return inputFromServer(server)
+    },
+  })
+
   function applyDraft(draft: ResourceDraft) {
     const data = draft.data as Partial<UpdateSessionInput>
     if (typeof data.title === 'string') setTitle(data.title)
@@ -197,6 +261,7 @@ export function SessionFormPage() {
     if (Array.isArray(data.locationEntityIds)) setLocationEntityIds(data.locationEntityIds)
     if (Array.isArray(data.plotThreadChanges)) setPlotThreadChanges(data.plotThreadChanges)
     if (Array.isArray(data.tags)) setTags(data.tags)
+    setFormKey((key) => key + 1)
     setDraftBanner(null)
   }
 
@@ -209,10 +274,49 @@ export function SessionFormPage() {
       />
     )
   }
+  if (!canEdit) {
+    return (
+      <EmptyState
+        message="You don’t have permission to edit this session."
+        action={
+          <Link className="wb-button wb-button--secondary" to={sessionUrl}>
+            View the session
+          </Link>
+        }
+      />
+    )
+  }
+
+  const local = {
+    title,
+    visibility,
+    scheduledAt: scheduledAt ? new Date(scheduledAt).toISOString() : null,
+    worldStartDate: structuredToWorldDate(worldStartDate) ?? null,
+    recapContent,
+    participantIds,
+    featuredEntityIds,
+    locationEntityIds,
+    plotThreadChanges,
+    tags,
+    ...(canSetGmContent ? { plannedContent, gmContent } : {}),
+  }
 
   return (
-    <section>
-      <h1>Edit session</h1>
+    <section className="wb-record-editor">
+      <header className="wb-record-editor__header">
+        <div>
+          <h1>Edit session</h1>
+          <SaveStatusIndicator
+            status={autosave.status}
+            onRetry={() => void autosave.retry()}
+            onReview={safety.conflict.openConflict}
+          />
+        </div>
+        <Button variant="secondary" disabled={safety.guard.busy} onClick={() => navigate(sessionUrl)}>
+          <ArrowLeft size={16} aria-hidden="true" />
+          View session
+        </Button>
+      </header>
 
       {draftBanner && (
         <div className="wb-banner">
@@ -232,40 +336,20 @@ export function SessionFormPage() {
         </div>
       )}
 
-      {autosave.status !== 'idle' && autosave.status !== 'conflict' && (
-        <FormMessage
-          tone={autosave.status === 'saved' ? 'success' : 'error'}
-          message={SAVE_STATUS_TEXT[autosave.status] ?? null}
-        />
-      )}
-
-      {autosave.status === 'conflict' && (
-        <div className="wb-banner wb-banner--warning">
-          <p>This session was changed elsewhere.</p>
-          <Button
-            onClick={() => {
-              hydratedRef.current = false
-              autosave.resolveConflict()
-              void sessionQuery.refetch()
-            }}
-          >
-            Reload
-          </Button>
-          <Button
-            variant="secondary"
-            onClick={() => {
-              const fresh = autosave.conflictUpdatedAt
-              if (fresh) {
-                setUpdatedAt(fresh)
-                autosave.scheduleSave(buildUpdateInput(fresh))
-              }
-              autosave.resolveConflict()
-            }}
-          >
-            Keep my changes
-          </Button>
-        </div>
-      )}
+      <EditorSafetyPanels
+        safety={safety}
+        status={autosave.status}
+        campaignId={campaign.id}
+        recordNoun="session"
+        describe={(server: CampaignSessionDetail) => ({
+          name: server.title,
+          updatedAt: server.updatedAt,
+          differences: sessionDifferences(local, server, {
+            members: new Map((membersQuery.data ?? []).map((m) => [m.id, m.displayName])),
+            threads: new Map((threadsQuery.data ?? []).map((t) => [t.id, t.title])),
+          }),
+        })}
+      />
 
       <form className="wb-form wb-form--wide" onSubmit={(e) => e.preventDefault()} noValidate>
         <TextField
@@ -303,6 +387,7 @@ export function SessionFormPage() {
         {canSetGmContent && (
           <div className="wb-gm-content">
             <RichTextEditor
+              key={`planned-${formKey}`}
               label="Planned content (GM only)"
               content={plannedContent}
               onChange={setPlannedContent}
@@ -312,6 +397,7 @@ export function SessionFormPage() {
         )}
 
         <RichTextEditor
+          key={`recap-${formKey}`}
           label="Recap (public)"
           content={recapContent}
           onChange={setRecapContent}
@@ -321,6 +407,7 @@ export function SessionFormPage() {
         {canSetGmContent && (
           <div className="wb-gm-content">
             <RichTextEditor
+              key={`gm-${formKey}`}
               label="GM-only notes"
               content={gmContent}
               onChange={setGmContent}

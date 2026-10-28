@@ -7,7 +7,7 @@ import {
   LoaderCircle,
 } from 'lucide-react'
 import type { ReactNode } from 'react'
-import type { SaveStatus } from '../../../../lib/useAutosave'
+import type { SaveStatus } from '../../lib/useAutosave'
 
 const LABELS: Record<SaveStatus, string> = {
   idle: '',

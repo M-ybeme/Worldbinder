@@ -55,7 +55,6 @@ vi.mock('../../plot-threads/components/QuickCreateThreadDialog', () => ({
 
 // --- Fixtures --------------------------------------------------------------
 
-const DAY = 86_400_000
 const STAMP = '2026-10-01T12:00:00.000Z'
 
 function makeCampaign(role: CampaignRole, overrides: Partial<CampaignDetail> = {}): CampaignDetail {
@@ -145,7 +144,12 @@ const blackwall = entity('e4', 'Blackwall', 'location')
 
 function populatedDashboard(): CampaignDashboard {
   const upcoming = session('s6', 6, 'Into Stonewater Pass', {
-    scheduledAt: new Date(Date.now() + 6 * DAY).toISOString(),
+    // Six *calendar* days ahead at noon local time — adding 6×24h would
+    // cross a daylight-saving change on some dates and land on day 5.
+    scheduledAt: (() => {
+      const d = new Date()
+      return new Date(d.getFullYear(), d.getMonth(), d.getDate() + 6, 12).toISOString()
+    })(),
   })
   const last = session('s5', 5, 'The Siege of Blackwall', {
     status: 'completed',

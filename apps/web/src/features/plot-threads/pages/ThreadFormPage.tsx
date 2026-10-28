@@ -1,18 +1,27 @@
-import type { EntityVisibility, PlotThreadImportance, TiptapDoc } from '@worldbinder/contracts'
+import type {
+  EntityVisibility,
+  PlotThreadDetail,
+  PlotThreadImportance,
+  TiptapDoc,
+} from '@worldbinder/contracts'
 import type { UpdatePlotThreadInput } from '@worldbinder/validation'
 import {
   Button,
+  EmptyState,
   ErrorState,
-  FormMessage,
   LoadingState,
   Select,
   TagInput,
   TextField,
   Textarea,
 } from '@worldbinder/ui'
-import { useEffect, useRef, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { ArrowLeft } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useCampaignOutletContext } from '../../campaigns/hooks/useCampaignContext'
+import { EditorSafetyPanels } from '../../editing/EditorSafetyPanels'
+import { SaveStatusIndicator } from '../../editing/SaveStatusIndicator'
+import { useEditorSafety } from '../../editing/useEditorSafety'
 import { clearDraft, loadDraft, type ResourceDraft } from '../../../lib/draftDb'
 import { useAutosave } from '../../../lib/useAutosave'
 import { EntityMultiPicker } from '../../entities/components/EntityMultiPicker'
@@ -20,6 +29,7 @@ import { RichTextEditor } from '../../entities/components/RichTextEditor'
 import { useCampaignTagsQuery } from '../../tags/hooks/useTags'
 import * as plotThreadsApi from '../api/plotThreadsApi'
 import { usePlotThreadQuery } from '../hooks/usePlotThreads'
+import { threadDifferences } from '../lib/threadConflict'
 
 const VISIBILITY_OPTIONS = [
   { value: 'public', label: 'Public — visible to all campaign members' },
@@ -33,21 +43,18 @@ const IMPORTANCE_OPTIONS = [
   { value: 'critical', label: 'Critical' },
 ]
 
-const SAVE_STATUS_TEXT: Record<string, string> = {
-  pending: 'Waiting to save…',
-  saving: 'Saving…',
-  saved: 'Saved',
-  offline: 'Offline — changes saved locally',
-  error: 'Save failed — changes saved locally',
-}
+// Same role set as the thread page's Edit link; the API enforces it.
+const EDIT_ROLES = new Set(['owner', 'gm', 'editor'])
 
 export function ThreadFormPage() {
   const { threadId } = useParams<{ threadId: string }>()
   const { campaign } = useCampaignOutletContext()
+  const navigate = useNavigate()
 
   const threadQuery = usePlotThreadQuery(campaign.id, threadId)
   const campaignTagsQuery = useCampaignTagsQuery(campaign.id)
 
+  const canEdit = EDIT_ROLES.has(campaign.role)
   const canSetGmContent = campaign.role === 'owner' || campaign.role === 'gm'
 
   const [title, setTitle] = useState('')
@@ -60,13 +67,15 @@ export function ThreadFormPage() {
   const [tags, setTags] = useState<string[]>([])
   const [updatedAt, setUpdatedAt] = useState<string | null>(null)
   const [draftBanner, setDraftBanner] = useState<ResourceDraft | null>(null)
+  // Rich-text editors take their content only on mount: bumping this
+  // remounts them whenever their state is replaced (load, draft restore,
+  // loading the server's version) so what's shown is what will be saved.
+  const [formKey, setFormKey] = useState(0)
 
   const hydratedRef = useRef(false)
   const skipNextAutosaveRef = useRef(true)
 
-  useEffect(() => {
-    if (!threadQuery.data || hydratedRef.current) return
-    const thread = threadQuery.data
+  function hydrate(thread: PlotThreadDetail) {
     setTitle(thread.title)
     setSummary(thread.summary ?? '')
     setVisibility(thread.visibility)
@@ -76,6 +85,12 @@ export function ThreadFormPage() {
     setEntityIds(thread.entities.map((e) => e.id))
     setTags(thread.tags)
     setUpdatedAt(thread.updatedAt)
+    setFormKey((key) => key + 1)
+  }
+
+  useEffect(() => {
+    if (!threadQuery.data || hydratedRef.current) return
+    hydrate(threadQuery.data)
     hydratedRef.current = true
   }, [threadQuery.data])
 
@@ -103,11 +118,30 @@ export function ThreadFormPage() {
     }
   }
 
+  /** The save payload for the server's version — the new baseline when the
+   * user loads it, so showing it doesn't schedule a save. Mirrors
+   * `buildUpdateInput`. */
+  function inputFromServer(server: PlotThreadDetail): UpdatePlotThreadInput {
+    return {
+      updatedAt: server.updatedAt,
+      title: server.title,
+      summary: server.summary || null,
+      visibility: server.visibility,
+      importance: server.importance ?? importance,
+      publicContentJson: server.publicContentJson ?? undefined,
+      ...(canSetGmContent
+        ? { gmContentJson: 'gmContentJson' in server ? (server.gmContentJson ?? null) : gmContent }
+        : {}),
+      entityIds: server.entities.map((e) => e.id),
+      tags: server.tags,
+    }
+  }
+
   const autosave = useAutosave({
     resourceType: 'plot_thread',
     campaignId: campaign.id,
     resourceId: threadId ?? '',
-    enabled: hydratedRef.current,
+    enabled: hydratedRef.current && canEdit,
     save: (input: UpdatePlotThreadInput) =>
       plotThreadsApi.updatePlotThread(campaign.id, threadId ?? '', input),
     onSaved: (thread) => setUpdatedAt(thread.updatedAt),
@@ -146,8 +180,31 @@ export function ThreadFormPage() {
     if ('gmContentJson' in data) setGmContent((data.gmContentJson as TiptapDoc) ?? null)
     if (Array.isArray(data.entityIds)) setEntityIds(data.entityIds)
     if (Array.isArray(data.tags)) setTags(data.tags)
+    setFormKey((key) => key + 1)
     setDraftBanner(null)
   }
+
+  const threadUrl = `/app/campaign/${campaign.id}/threads/${threadId}`
+  const editUrl = `${threadUrl}/edit`
+
+  const safety = useEditorSafety({
+    autosave,
+    isWithinEditor: (pathname) => pathname === editUrl,
+    fetchServer: useCallback(
+      () => plotThreadsApi.getPlotThread(campaign.id, threadId ?? ''),
+      [campaign.id, threadId],
+    ),
+    applyKeepMine: (server: PlotThreadDetail) => {
+      skipNextAutosaveRef.current = true
+      setUpdatedAt(server.updatedAt)
+      autosave.scheduleSave(buildUpdateInput(server.updatedAt))
+    },
+    applyServer: (server: PlotThreadDetail) => {
+      hydrate(server)
+      setDraftBanner(null)
+      return inputFromServer(server)
+    },
+  })
 
   if (threadQuery.isLoading) return <LoadingState label="Loading plot thread…" />
   if (threadQuery.isError) {
@@ -158,10 +215,35 @@ export function ThreadFormPage() {
       />
     )
   }
+  if (!canEdit) {
+    return (
+      <EmptyState
+        message="You don’t have permission to edit this plot thread."
+        action={
+          <Link className="wb-button wb-button--secondary" to={threadUrl}>
+            View the plot thread
+          </Link>
+        }
+      />
+    )
+  }
 
   return (
-    <section>
-      <h1>Edit plot thread</h1>
+    <section className="wb-record-editor">
+      <header className="wb-record-editor__header">
+        <div>
+          <h1>Edit plot thread</h1>
+          <SaveStatusIndicator
+            status={autosave.status}
+            onRetry={() => void autosave.retry()}
+            onReview={safety.conflict.openConflict}
+          />
+        </div>
+        <Button variant="secondary" disabled={safety.guard.busy} onClick={() => navigate(threadUrl)}>
+          <ArrowLeft size={16} aria-hidden="true" />
+          View plot thread
+        </Button>
+      </header>
 
       {draftBanner && (
         <div className="wb-banner">
@@ -181,40 +263,29 @@ export function ThreadFormPage() {
         </div>
       )}
 
-      {autosave.status !== 'idle' && autosave.status !== 'conflict' && (
-        <FormMessage
-          tone={autosave.status === 'saved' ? 'success' : 'error'}
-          message={SAVE_STATUS_TEXT[autosave.status] ?? null}
-        />
-      )}
-
-      {autosave.status === 'conflict' && (
-        <div className="wb-banner wb-banner--warning">
-          <p>This plot thread was changed elsewhere.</p>
-          <Button
-            onClick={() => {
-              hydratedRef.current = false
-              autosave.resolveConflict()
-              void threadQuery.refetch()
-            }}
-          >
-            Reload
-          </Button>
-          <Button
-            variant="secondary"
-            onClick={() => {
-              const fresh = autosave.conflictUpdatedAt
-              if (fresh) {
-                setUpdatedAt(fresh)
-                autosave.scheduleSave(buildUpdateInput(fresh))
-              }
-              autosave.resolveConflict()
-            }}
-          >
-            Keep my changes
-          </Button>
-        </div>
-      )}
+      <EditorSafetyPanels
+        safety={safety}
+        status={autosave.status}
+        campaignId={campaign.id}
+        recordNoun="plot thread"
+        describe={(server: PlotThreadDetail) => ({
+          name: server.title,
+          updatedAt: server.updatedAt,
+          differences: threadDifferences(
+            {
+              title,
+              summary,
+              visibility,
+              importance,
+              publicContent,
+              entityIds,
+              tags,
+              ...(canSetGmContent ? { gmContent } : {}),
+            },
+            server,
+          ),
+        })}
+      />
 
       <form className="wb-form wb-form--wide" onSubmit={(e) => e.preventDefault()} noValidate>
         <TextField
@@ -246,6 +317,7 @@ export function ThreadFormPage() {
         />
 
         <RichTextEditor
+          key={`public-${formKey}`}
           label="Public content"
           content={publicContent}
           onChange={setPublicContent}
@@ -255,6 +327,7 @@ export function ThreadFormPage() {
         {canSetGmContent && (
           <div className="wb-gm-content">
             <RichTextEditor
+              key={`gm-${formKey}`}
               label="GM-only content"
               content={gmContent}
               onChange={setGmContent}

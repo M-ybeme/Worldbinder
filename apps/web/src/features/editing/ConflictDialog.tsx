@@ -1,19 +1,22 @@
 import type { EntityDetail } from '@worldbinder/contracts'
 import { Button, Dialog } from '@worldbinder/ui'
 import { useState } from 'react'
-import { useReferencedEntities } from '../../hooks/useEntities'
-import {
-  entityDifferences,
-  type FieldDifference,
-  type LocalEntityVersion,
-} from '../../lib/entityConflict'
+import { useReferencedEntities } from '../entities/hooks/useEntities'
+import type { FieldDifference } from './compare'
 
-export type ServerVersionState =
+export type ServerVersionState<T> =
   | { status: 'loading' }
-  | { status: 'ready'; entity: EntityDetail }
+  | { status: 'ready'; record: T }
   /** 404/403: deleted, or no longer shared with this member. */
   | { status: 'unavailable' }
   | { status: 'error'; message: string }
+
+/** What the dialog needs to know about the server's version. */
+export interface ServerVersionSummary {
+  name: string
+  updatedAt: string
+  differences: FieldDifference[]
+}
 
 type Step = 'compare' | 'confirm-keep' | 'confirm-load'
 
@@ -55,11 +58,11 @@ function Difference({
       </li>
     )
   }
-  const render = (value: string | null) => {
-    if (item.kind === 'value') return value
-    if (!value) return '—'
-    // A referenced entry this member can't see shows no name.
-    return names.get(value)?.name ?? 'An entry you can’t view'
+  const render = (value: string | string[]) => {
+    if (typeof value === 'string') return value
+    if (value.length === 0) return '—'
+    // An entry this member can't see shows no name.
+    return value.map((id) => names.get(id)?.name ?? 'An entry you can’t view').join(', ')
   }
   return (
     <li className="wb-conflict__item">
@@ -85,16 +88,18 @@ function Difference({
  * explicit choices. Keeping theirs and loading the server version each need
  * a second confirmation; closing (Keep editing, Escape) changes nothing.
  *
- * The server version comes from the normal, permission-checked entity
- * endpoint, so GM-only content and hidden entries never appear for members
- * who can't see them; if the entry is no longer available, both overwrite
- * choices are withdrawn.
+ * Shared by the entity, session and plot-thread editors: each fetches the
+ * server version through its normal permission-checked endpoint (so
+ * GM-only content and hidden entries never appear for members who can't
+ * see them) and lists its own fields via `describe`. If the record is no
+ * longer available, both overwrite choices are withdrawn.
  */
-export function ConflictDialog({
+export function ConflictDialog<T>({
   open,
   campaignId,
-  local,
+  recordNoun,
   server,
+  describe,
   pending,
   changedAgain = false,
   onKeepEditing,
@@ -104,24 +109,27 @@ export function ConflictDialog({
 }: {
   open: boolean
   campaignId: string
-  local: LocalEntityVersion
-  server: ServerVersionState
+  /** "entry", "session", "plot thread". */
+  recordNoun: string
+  server: ServerVersionState<T>
+  describe: (record: T) => ServerVersionSummary
   /** A resolution is being applied. */
   pending: boolean
   /** The overwrite was refused because it changed yet again. */
   changedAgain?: boolean
   onKeepEditing: () => void
   onRetryLoad: () => void
-  onKeepMine: (server: EntityDetail) => void
-  onLoadServer: (server: EntityDetail) => void
+  onKeepMine: (record: T) => void
+  onLoadServer: (record: T) => void
 }) {
   const [step, setStep] = useState<Step>('compare')
-  const entity = server.status === 'ready' ? server.entity : null
-  const differences = entity ? entityDifferences(local, entity) : []
-  const referenceIds = differences.flatMap((item) =>
-    item.kind === 'reference' ? [item.mine, item.theirs].filter((id): id is string => !!id) : [],
+  const record = server.status === 'ready' ? server.record : null
+  const summary = record ? describe(record) : null
+  const differences = summary?.differences ?? []
+  const entityIds = differences.flatMap((item) =>
+    item.kind === 'entities' ? [...item.mine, ...item.theirs] : [],
   )
-  const names = useReferencedEntities(campaignId, referenceIds).entities
+  const names = useReferencedEntities(campaignId, [...new Set(entityIds)]).entities
 
   function close() {
     setStep('compare')
@@ -154,16 +162,16 @@ export function ConflictDialog({
         )}
         {server.status === 'unavailable' && (
           <p className="wb-conflict__notice" role="alert">
-            This entry is no longer available to you — it may have been deleted, or your access
-            changed. Your changes are kept on this device; nothing will be saved.
+            This {recordNoun} is no longer available to you — it may have been deleted, or your
+            access changed. Your changes are kept on this device; nothing will be saved.
           </p>
         )}
 
-        {entity && step === 'compare' && (
+        {summary && step === 'compare' && (
           <>
             <p>
-              Someone saved a newer version of <strong>{entity.name}</strong>
-              {formatWhen(entity.updatedAt)} while you were editing. Your changes haven’t been
+              Someone saved a newer version of <strong>{summary.name}</strong>
+              {formatWhen(summary.updatedAt)} while you were editing. Your changes haven’t been
               saved. Here’s what differs:
             </p>
             {differences.length === 0 ? (
@@ -181,24 +189,24 @@ export function ConflictDialog({
           </>
         )}
 
-        {entity && step === 'confirm-keep' && (
+        {summary && step === 'confirm-keep' && (
           <div className="wb-conflict__confirm">
             <h3>Overwrite the saved version with yours?</h3>
             <p>
               The {differences.length} difference{differences.length === 1 ? '' : 's'} listed will
-              be replaced by your version. Their version stays in this entry’s revision history. If
-              it changes again before your save lands, you’ll see the new differences instead of
-              overwriting them.
+              be replaced by your version. Their version stays in this {recordNoun}’s revision
+              history. If it changes again before your save lands, you’ll see the new differences
+              instead of overwriting them.
             </p>
           </div>
         )}
 
-        {entity && step === 'confirm-load' && (
+        {summary && step === 'confirm-load' && (
           <div className="wb-conflict__confirm">
             <h3>Discard your changes?</h3>
             <p>
-              Your unsaved edits to this entry will be removed from this device and the editor will
-              show the saved version. This can’t be undone.
+              Your unsaved edits to this {recordNoun} will be removed from this device and the
+              editor will show the saved version. This can’t be undone.
             </p>
           </div>
         )}
@@ -210,7 +218,7 @@ export function ConflictDialog({
             <Button variant="secondary" onClick={close}>
               Keep editing
             </Button>
-            {entity && (
+            {record && (
               <>
                 <Button variant="secondary" onClick={() => setStep('confirm-load')}>
                   Load saved version
@@ -220,22 +228,22 @@ export function ConflictDialog({
             )}
           </>
         )}
-        {entity && step === 'confirm-keep' && (
+        {record && step === 'confirm-keep' && (
           <>
             <Button variant="secondary" onClick={() => setStep('compare')}>
               Back to differences
             </Button>
-            <Button disabled={pending} onClick={() => onKeepMine(entity)}>
+            <Button disabled={pending} onClick={() => onKeepMine(record)}>
               {pending ? 'Saving…' : 'Overwrite with my version'}
             </Button>
           </>
         )}
-        {entity && step === 'confirm-load' && (
+        {record && step === 'confirm-load' && (
           <>
             <Button variant="secondary" onClick={() => setStep('compare')}>
               Back to differences
             </Button>
-            <Button variant="danger" disabled={pending} onClick={() => onLoadServer(entity)}>
+            <Button variant="danger" disabled={pending} onClick={() => onLoadServer(record)}>
               Discard my changes
             </Button>
           </>
