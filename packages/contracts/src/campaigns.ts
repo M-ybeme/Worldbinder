@@ -81,4 +81,9 @@ export interface CampaignDashboard {
    * has no favorites (same "always present" convention as the other
    * dashboard arrays). */
   favoriteEntities: EntitySummary[]
+  /** Whether the campaign has at least one entity / session this member
+   * can see — authoritative existence checks (not inferred from the
+   * truncated `recentActivity` feed), used by the setup checklist. */
+  hasEntities: boolean
+  hasSessions: boolean
 }

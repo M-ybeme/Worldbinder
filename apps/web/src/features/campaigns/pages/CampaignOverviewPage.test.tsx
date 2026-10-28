@@ -178,6 +178,8 @@ function populatedDashboard(): CampaignDashboard {
       { resourceType: 'session', id: 's6', title: 'Session 6: Into Stonewater Pass', updatedAt: STAMP },
     ],
     favoriteEntities: [blackwall],
+    hasEntities: true,
+    hasSessions: true,
   }
 }
 
@@ -191,6 +193,8 @@ function emptyDashboard(): CampaignDashboard {
     neglectedThreads: [],
     recentActivity: [],
     favoriteEntities: [],
+    hasEntities: false,
+    hasSessions: false,
   }
 }
 
@@ -421,6 +425,7 @@ describe('Dashboard E — new campaign', () => {
     dashboardResult = {
       data: {
         ...emptyDashboard(),
+        hasEntities: true,
         recentActivity: [
           { resourceType: 'entity', id: 'e1', title: 'Captain Mara Voss', updatedAt: STAMP, entityType: 'character' },
         ],
@@ -437,17 +442,41 @@ describe('Dashboard E — new campaign', () => {
     expect(titles).toEqual(['Plan your first session'])
   })
 
-  it('hides the checklist when every required step is done, even without a calendar', () => {
-    memberCount = 2
+  it('trusts the existence checks, not recent activity — older entries still count', () => {
+    // An established-but-unplayed campaign: lots of recent thread edits have
+    // pushed every entry and session out of the 10-item activity feed.
+    memberCount = 1
     dashboardResult = {
       data: {
         ...emptyDashboard(),
-        recentActivity: [
-          { resourceType: 'entity', id: 'e1', title: 'Mara', updatedAt: STAMP, entityType: 'character' },
-          { resourceType: 'session', id: 's1', title: 'Session 1: Smoke', updatedAt: STAMP },
-        ],
+        hasEntities: true,
+        hasSessions: true,
+        activeThreads: [caravan],
+        recentActivity: Array.from({ length: 10 }, (_, i) => ({
+          resourceType: 'plot_thread' as const,
+          id: `t${i}`,
+          title: `Thread ${i}`,
+          updatedAt: STAMP,
+        })),
       },
     }
+    renderDashboard(makeCampaign('owner'))
+    const titles = within(screen.getByRole('region', { name: 'Get the campaign ready' }))
+      .getAllByRole('heading', { level: 3 })
+      .map((heading) => heading.textContent)
+    expect(titles).toEqual(['Invite your players', 'Set up the calendar (optional)'])
+  })
+
+  it('treats a campaign with only older content as not empty', () => {
+    dashboardResult = { data: { ...emptyDashboard(), hasEntities: true } }
+    renderDashboard(makeCampaign('player'))
+    expect(screen.queryByText(/once your GM shares them/)).not.toBeInTheDocument()
+    expect(link('Browse the World')).toBeInTheDocument()
+  })
+
+  it('hides the checklist when every required step is done, even without a calendar', () => {
+    memberCount = 2
+    dashboardResult = { data: { ...emptyDashboard(), hasEntities: true, hasSessions: true } }
     renderDashboard(makeCampaign('owner'))
     expect(screen.queryByRole('heading', { name: 'Get the campaign ready' })).not.toBeInTheDocument()
   })

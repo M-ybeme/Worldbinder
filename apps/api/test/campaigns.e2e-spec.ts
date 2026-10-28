@@ -374,5 +374,74 @@ describe('Campaigns (e2e)', () => {
       ).toBe(false);
       expect(playerDashboard.lastPlayedSession?.id).not.toBe(hiddenSession.id);
     });
+
+    describe('content existence for the setup checklist', () => {
+      async function getDashboard(token: string, campaignId: string) {
+        const res = await request(app.getHttpServer())
+          .get(`/campaigns/${campaignId}/dashboard`)
+          .set('Authorization', `Bearer ${token}`);
+        expect(res.status).toBe(200);
+        return body<CampaignDashboard>(res);
+      }
+
+      async function createEntity(
+        token: string,
+        campaignId: string,
+        overrides: Record<string, unknown> = {},
+      ) {
+        const res = await request(app.getHttpServer())
+          .post(`/campaigns/${campaignId}/entities`)
+          .set('Authorization', `Bearer ${token}`)
+          .send({
+            entityType: 'character',
+            name: 'Fixture Entity',
+            ...overrides,
+          });
+        expect(res.status).toBe(201);
+        return body<{ id: string }>(res);
+      }
+
+      it('reports an empty campaign as having no entities or sessions', async () => {
+        const { token, campaign } = await createOwnerAndCampaign('Empty Setup');
+        const dashboard = await getDashboard(token, campaign.id);
+        expect(dashboard.hasEntities).toBe(false);
+        expect(dashboard.hasSessions).toBe(false);
+      });
+
+      it('finds an entity and a session that have fallen out of recent activity', async () => {
+        const { token, campaign } = await createOwnerAndCampaign('Busy Setup');
+        const entity = await createEntity(token, campaign.id);
+        const session = await createSession(token, campaign.id);
+        // Recent activity holds at most 10 items; push both out of it.
+        for (let i = 0; i < 11; i += 1) {
+          await createThread(token, campaign.id, { title: `Thread ${i}` });
+        }
+
+        const dashboard = await getDashboard(token, campaign.id);
+        expect(dashboard.recentActivity.some((a) => a.id === entity.id)).toBe(
+          false,
+        );
+        expect(dashboard.recentActivity.some((a) => a.id === session.id)).toBe(
+          false,
+        );
+        expect(dashboard.hasEntities).toBe(true);
+        expect(dashboard.hasSessions).toBe(true);
+      });
+
+      it('applies visibility: GM-only content does not count for a player', async () => {
+        const { token, campaign } =
+          await createOwnerAndCampaign('Hidden Setup');
+        const player = await addMember(campaign.id, 'setup-player', 'player');
+        await createEntity(token, campaign.id, { visibility: 'gm_only' });
+        await createSession(token, campaign.id, { visibility: 'gm_only' });
+
+        const owner = await getDashboard(token, campaign.id);
+        expect(owner.hasEntities).toBe(true);
+        expect(owner.hasSessions).toBe(true);
+        const forPlayer = await getDashboard(player.token, campaign.id);
+        expect(forPlayer.hasEntities).toBe(false);
+        expect(forPlayer.hasSessions).toBe(false);
+      });
+    });
   });
 });

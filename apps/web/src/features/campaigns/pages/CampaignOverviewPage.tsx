@@ -67,6 +67,8 @@ export function CampaignOverviewPage() {
   const worldDate = formatWorldDate(dashboard?.currentWorldDateJson)
   const isEmptyCampaign =
     dashboard !== undefined &&
+    !dashboard.hasEntities &&
+    !dashboard.hasSessions &&
     dashboard.upcomingSession === null &&
     dashboard.lastPlayedSession === null &&
     dashboard.activeThreads.length === 0 &&

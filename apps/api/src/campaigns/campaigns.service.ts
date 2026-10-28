@@ -460,6 +460,33 @@ export class CampaignsService {
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
       .slice(0, 10);
 
+    // Existence checks for the setup checklist: one indexed LIMIT 1 probe
+    // each, with the same visibility filters as everything above, rather
+    // than inferring from `recentActivity` (capped at 10 mixed items, so
+    // older entities or sessions can fall out of it).
+    const [anyEntity] = await this.db
+      .select({ id: entities.id })
+      .from(entities)
+      .where(
+        and(
+          eq(entities.campaignId, campaignId),
+          isNull(entities.deletedAt),
+          ...entityVisibility,
+        ),
+      )
+      .limit(1);
+    const [anySession] = await this.db
+      .select({ id: sessions.id })
+      .from(sessions)
+      .where(
+        and(
+          eq(sessions.campaignId, campaignId),
+          isNull(sessions.deletedAt),
+          ...sessionVisibility,
+        ),
+      )
+      .limit(1);
+
     return {
       currentWorldDateJson: campaign.currentWorldDateJson as WorldDate | null,
       status: campaign.status,
@@ -471,6 +498,8 @@ export class CampaignsService {
       neglectedThreads,
       recentActivity,
       favoriteEntities,
+      hasEntities: anyEntity !== undefined,
+      hasSessions: anySession !== undefined,
     };
   }
 

@@ -13,8 +13,9 @@ interface Step {
 
 /**
  * "Get the campaign ready" — built only from actions the app already has,
- * with each step's completion read from the campaign's real state (never
- * stored flags), so a step disappears once it's actually done. The
+ * with each step's completion read from the campaign's real state (the
+ * dashboard's existence checks, the member list, the calendar config —
+ * never stored flags), so a step disappears once it's actually done. The
  * calendar step is optional and never keeps the checklist up on its own.
  */
 export function SetupChecklist({
@@ -31,12 +32,9 @@ export function SetupChecklist({
   const membersQuery = useMembersQuery(campaign.id)
   const base = `/app/campaign/${campaign.id}`
 
-  const hasEntities =
-    dashboard.recentActivity.some((item) => item.resourceType === 'entity') ||
-    dashboard.favoriteEntities.length > 0
-  const hasSessions =
-    dashboard.upcomingSession !== null ||
-    dashboard.recentActivity.some((item) => item.resourceType === 'session')
+  // Authoritative, visibility-filtered existence checks from the API — not
+  // inferred from recent activity, which only holds the latest 10 items.
+  const { hasEntities, hasSessions } = dashboard
   // Unknown until the members list loads — treated as done meanwhile so
   // the step doesn't flash in and out.
   const hasPlayers = membersQuery.data ? membersQuery.data.length > 1 : true

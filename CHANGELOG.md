@@ -4,6 +4,19 @@ All notable changes to this project are documented here. Format follows [Keep a 
 
 Every push to `main` should add an entry here. This is meant to be an honest record of what actually shipped, not a restatement of the roadmap's aspirations — if something was attempted and reverted, or shipped partially, say so.
 
+## [1.3.1] - 2026-10-28
+
+**Dashboard setup checklist now uses authoritative content checks.** It used to decide whether a campaign had entries or sessions from `recentActivity`, which holds only the 10 most recent mixed items. A campaign whose entries had all been pushed out by newer sessions or threads could wrongly show "Add the first people and places".
+
+### Fixed
+
+- `GET /campaigns/:id/dashboard` returns `hasEntities` and `hasSessions`: one `LIMIT 1` probe each, with the same per-viewer visibility filters as the rest of the endpoint (so GM-only content never counts for a player). No collections are loaded to answer them.
+- The checklist and the "empty campaign" state use those flags instead of scanning recent activity.
+
+### Verification
+
+API integration tests (`campaigns.e2e-spec`, 14/14) add three regression cases: an empty campaign, an entity and session pushed out of recent activity by 11 newer threads (both still detected), and GM-only content not counting for a player. Web unit tests cover empty, partly set up (entries exist but none are in recent activity) and established states. `dashboard.spec.ts` passes in Chromium, Firefox and WebKit; API unit tests 99/99; typecheck and lint clean.
+
 ## [1.3.0] - 2026-10-28
 
 **Campaign Dashboard E.** The Dashboard is rebuilt around running the next session: the upcoming session leads, the last session's recap and the plot threads that need attention sit beneath it, and recent changes and favorites move to a narrow secondary column. New campaigns get a setup checklist. No backend changes — everything comes from the existing dashboard endpoint plus each session's existing detail endpoint, both of which already apply visibility rules server-side.
