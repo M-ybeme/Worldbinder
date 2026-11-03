@@ -228,7 +228,7 @@ export function ConnectionsManager({
 
       <section className="wb-connections__card" aria-labelledby={headingId}>
         <div className="wb-connections__head">
-          <h2 id={headingId} className="wb-connections__title">
+          <h2 id={headingId} className="wb-connections__title" tabIndex={-1}>
             Relationships{' '}
             {relationships.length > 0 && (
               <span className="wb-connections__count">{relationships.length}</span>
@@ -439,6 +439,7 @@ export function ConnectionsManager({
 
       {notice?.kind === 'removed' && (
         <Toast
+          restoreFocusTo={() => document.getElementById(headingId)}
           message={
             <>
               Removed: <strong>{notice.removed.phrase}</strong>
@@ -453,6 +454,7 @@ export function ConnectionsManager({
       )}
       {notice?.kind === 'restoring' && (
         <Toast
+          restoreFocusTo={() => document.getElementById(headingId)}
           message={`Restoring: ${notice.removed.phrase}…`}
           action={{ label: 'Restoring…', onClick: () => {}, disabled: true }}
           onDismiss={() => setNotice(null)}
@@ -460,6 +462,7 @@ export function ConnectionsManager({
       )}
       {notice?.kind === 'restored' && (
         <Toast
+          restoreFocusTo={() => document.getElementById(headingId)}
           tone="success"
           message={`Restored: ${notice.phrase}`}
           durationMs={4000}
@@ -467,7 +470,7 @@ export function ConnectionsManager({
         />
       )}
       {notice?.kind === 'error' && (
-        <Toast tone="error" message={notice.message} onDismiss={() => setNotice(null)} />
+        <Toast restoreFocusTo={() => document.getElementById(headingId)} tone="error" message={notice.message} onDismiss={() => setNotice(null)} />
       )}
     </div>
   )

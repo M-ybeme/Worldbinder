@@ -55,4 +55,37 @@ describe('Toast', () => {
     render(<Toast tone="error" message="Couldn’t restore" onDismiss={() => {}} />)
     expect(screen.getByRole('alert')).toHaveTextContent('Couldn’t restore')
   })
+
+  it('hands focus to a fallback when it closes while holding focus', () => {
+    const heading = document.createElement('h2')
+    heading.tabIndex = -1
+    document.body.append(heading)
+    const { unmount } = render(
+      <Toast
+        message="Removed"
+        action={{ label: 'Undo', onClick: () => {} }}
+        focusAction
+        restoreFocusTo={() => heading}
+        onDismiss={() => {}}
+      />,
+    )
+    expect(screen.getByRole('button', { name: 'Undo' })).toHaveFocus()
+    unmount()
+    expect(heading).toHaveFocus()
+    heading.remove()
+  })
+
+  it('leaves focus alone when it didn’t hold it', () => {
+    const heading = document.createElement('h2')
+    heading.tabIndex = -1
+    document.body.append(heading)
+    const outside = document.createElement('button')
+    document.body.append(outside)
+    outside.focus()
+    const { unmount } = render(<Toast message="Removed" restoreFocusTo={() => heading} onDismiss={() => {}} />)
+    unmount()
+    expect(outside).toHaveFocus()
+    heading.remove()
+    outside.remove()
+  })
 })

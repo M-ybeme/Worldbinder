@@ -20,6 +20,10 @@ export interface ToastProps {
   /** Move focus to the action as it appears, for keyboard users whose
    * focused control just disappeared (e.g. a removed row's button). */
   focusAction?: boolean
+  /** Where focus goes if the toast closes while it holds focus (e.g. after
+   * Undo, Escape, or expiring) — otherwise it would fall to the page body.
+   * Typically the heading of the list the action affected. */
+  restoreFocusTo?: () => HTMLElement | null
 }
 
 /**
@@ -36,8 +40,14 @@ export function Toast({
   onDismiss,
   durationMs,
   focusAction = false,
+  restoreFocusTo,
 }: ToastProps) {
   const actionRef = useRef<HTMLButtonElement>(null)
+  // Whether focus is inside the toast — tracked, not read at unmount, since
+  // by then its DOM (and the focused button) is already gone.
+  const hasFocusRef = useRef(false)
+  const restoreFocusRef = useRef(restoreFocusTo)
+  restoreFocusRef.current = restoreFocusTo
   const [paused, setPaused] = useState(false)
   const [spoken, setSpoken] = useState('')
   const remainingRef = useRef(durationMs)
@@ -54,6 +64,13 @@ export function Toast({
   useEffect(() => {
     if (focusAction) actionRef.current?.focus()
   }, [focusAction])
+
+  useEffect(
+    () => () => {
+      if (hasFocusRef.current) restoreFocusRef.current?.()?.focus()
+    },
+    [],
+  )
 
   useEffect(() => {
     remainingRef.current = durationMs
@@ -77,9 +94,15 @@ export function Toast({
       className={`wb-toast wb-toast--${tone}`}
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
-      onFocus={() => setPaused(true)}
+      onFocus={() => {
+        hasFocusRef.current = true
+        setPaused(true)
+      }}
       onBlur={(event) => {
-        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setPaused(false)
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+          hasFocusRef.current = false
+          setPaused(false)
+        }
       }}
       onKeyDown={(event) => {
         if (event.key === 'Escape') {

@@ -293,7 +293,7 @@ export function AttachmentsPanel({
         aria-labelledby={embedded ? undefined : headingId}
       >
         {!embedded && (
-          <h2 id={headingId} className="wb-files__title">
+          <h2 id={headingId} className="wb-files__title" tabIndex={-1}>
             Files{' '}
             {attachments.length > 0 && <span className="wb-files__count">{attachments.length}</span>}
           </h2>
@@ -536,6 +536,7 @@ export function AttachmentsPanel({
 
       {notice?.kind === 'removed' && (
         <Toast
+          restoreFocusTo={() => document.getElementById(headingId)}
           message={
             <>
               Removed <strong>{notice.removed.name}</strong> from {resourceName}
@@ -550,6 +551,7 @@ export function AttachmentsPanel({
       )}
       {notice?.kind === 'restoring' && (
         <Toast
+          restoreFocusTo={() => document.getElementById(headingId)}
           message={`Restoring ${notice.removed.name}…`}
           action={{ label: 'Restoring…', onClick: () => {}, disabled: true }}
           onDismiss={() => setNotice(null)}
@@ -557,6 +559,7 @@ export function AttachmentsPanel({
       )}
       {notice?.kind === 'done' && (
         <Toast
+          restoreFocusTo={() => document.getElementById(headingId)}
           tone="success"
           message={notice.message}
           durationMs={4000}
@@ -564,7 +567,7 @@ export function AttachmentsPanel({
         />
       )}
       {notice?.kind === 'error' && (
-        <Toast tone="error" message={notice.message} onDismiss={() => setNotice(null)} />
+        <Toast restoreFocusTo={() => document.getElementById(headingId)} tone="error" message={notice.message} onDismiss={() => setNotice(null)} />
       )}
     </div>
   )

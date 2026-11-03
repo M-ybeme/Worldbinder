@@ -103,6 +103,8 @@ test('add from either end, catch duplicates and detail overlaps, remove with Und
     await expect(undo).toBeFocused()
     await page.keyboard.press('Escape')
     await expect(undo).toHaveCount(0)
+    // Focus doesn't fall to the page body: it lands on the list's heading.
+    await expect(page.getByRole('heading', { level: 2, name: /^Relationships/ })).toBeFocused()
     await page.reload()
     await expect(table.getByRole('row', { name: new RegExp(guard) })).toHaveCount(0)
   })

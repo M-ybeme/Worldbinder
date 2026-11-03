@@ -4,6 +4,35 @@ All notable changes to this project are documented here. Format follows [Keep a 
 
 Every push to `main` should add an entry here. This is meant to be an honest record of what actually shipped, not a restatement of the roadmap's aspirations — if something was attempted and reverted, or shipped partially, say so.
 
+## [1.11.1] - 2026-11-03
+
+**Entity Design D stabilization.** This entry records a full integration review of the finished Entity Design D work (1.8.0 to 1.11.0), plus the two fixes it turned up. Entity Design D is now functionally complete.
+
+### Fixed
+
+- **Keyboard focus fell to the page body after an Undo notification closed.** Removing a relationship or file with the keyboard moves focus to Undo, because the row's button is gone. When the notification then closed (Undo done, Escape, or expiry), focus had nowhere to go. `Toast` gains `restoreFocusTo`. Focus is tracked while the toast holds it, rather than read at unmount when its DOM is already gone. The Connections and Files workspaces send it to their list's heading (`tabIndex={-1}`).
+- Stale comments in `RevisionHistoryPanel` referred to the removed `RelatedContentPanel`.
+
+### Tests
+
+- `test/Toast.test.tsx`: focus is handed to the fallback when the toast closes while holding focus, and left alone when it didn't hold it (6 tests).
+- `e2e/connections.spec.ts`: after a keyboard removal and Escape, the Relationships heading has focus (all three browsers).
+
+### Verification (integrated, with nothing else running alongside)
+
+- **Build** and **typecheck** clean. **Lint** clean apart from the same 2 existing warnings.
+- **Unit tests:** web 228, API 99, worker and config all passing.
+- **API integration:** **218/218** across 22 suites, run with the dev server stopped (its worker races the attachment specs).
+- **Full Playwright:** **177/177 across Chromium, Firefox and WebKit** (25.7 min, run before this entry's two fixes). After the fixes, connections and files: 12/12. The suite covers:
+  - **Reading and editing:** entity article reading (several types: Location, Character, Faction, Item), entity editing and metadata fields, rich-text mentions, GM-only content and role permissions.
+  - **Connections:** relationships (either end, duplicates, detail overlap, Undo), backlinks and derived connections, session appearances and plot-thread links.
+  - **Files and history:** file attachments (shared-file protection, Undo), revision history.
+  - **Editing safety:** autosave, offline drafts, conflict resolution, navigation guards, browser Back/Forward.
+  - **Layout:** the reference panel, phone editing, phone navigation, quick-create, search and the shell.
+- **Screenshots:** light and dark at desktop, tablet and phone sizes, recorded per milestone above.
+
+**Limits:** phone behaviour is verified in browser emulation (WebKit/Chromium/Firefox at 360 and 390px, with a simulated keyboard), not on physical devices. Contrast relies on the existing token set, whose values are documented as WCAG AA-verified. New surfaces reuse those tokens; no new colour pairs were introduced except the toast's inverse surface (text-primary on bg-surface, a reversal of an already-verified pair).
+
 ## [1.11.0] - 2026-11-03
 
 **Entity Design D: editing on a phone.** The editor is now practical on a phone. All four tabs fit, the toolbar is a single row of touch-sized controls, and while you type it rides just above the on-screen keyboard with the caret kept in view. Menus and @-mentions open where you can see them. The rich-text editor is shared, so session and plot-thread editing get the same treatment.

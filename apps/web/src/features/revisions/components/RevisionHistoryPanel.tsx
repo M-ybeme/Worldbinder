@@ -22,13 +22,13 @@ export interface RevisionHistoryPanelProps {
   /** Called after a successful restore so the parent detail page can
    * refetch its own resource query — this panel is reused identically
    * across entity/session/thread detail pages and deliberately doesn't
-   * know any of their specific query keys (matches `RelatedContentPanel`'s
+   * know any of their specific query keys (matches `AttachmentsPanel`'s
    * self-contained shape otherwise). */
   onRestored?: () => void
 }
 
 /**
- * Self-contained revision history panel (matches `RelatedContentPanel`'s
+ * Self-contained revision history panel (matches `AttachmentsPanel`'s
  * shape: owns its own data fetching, dropped as a JSX sibling on entity/
  * session/thread detail pages) — lists immutable revisions newest-first,
  * an expandable field-level diff against the next-older revision, and a
