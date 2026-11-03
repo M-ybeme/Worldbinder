@@ -8,6 +8,7 @@ import {
   Param,
   ParseUUIDPipe,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import type {
@@ -16,9 +17,11 @@ import type {
 } from '@worldbinder/contracts';
 import {
   attachmentResourceTypeSchema,
+  deleteAttachmentContextSchema,
   linkAttachmentSchema,
   presignAttachmentSchema,
   type AttachmentResourceType,
+  type DeleteAttachmentContext,
   type LinkAttachmentInput,
   type PresignAttachmentInput,
 } from '@worldbinder/validation';
@@ -138,9 +141,17 @@ export class AttachmentsController {
     @Param('campaignId', ParseUUIDPipe) campaignId: string,
     @Param('attachmentId', ParseUUIDPipe) attachmentId: string,
     @CurrentMembership() membership: CampaignMembership,
+    // The resource the delete is requested from, so its own link doesn't
+    // count as "used elsewhere". Optional for older callers.
+    @Query(new ZodValidationPipe(deleteAttachmentContextSchema))
+    query: DeleteAttachmentContext,
   ): Promise<{ message: string }> {
+    const context =
+      query.resourceType && query.resourceId
+        ? { resourceType: query.resourceType, resourceId: query.resourceId }
+        : undefined;
     return this.attachments
-      .delete(campaignId, attachmentId, membership)
+      .delete(campaignId, attachmentId, membership, context)
       .then(() => ({ message: 'Attachment deleted' }));
   }
 }

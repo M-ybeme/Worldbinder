@@ -8,6 +8,9 @@
   padding: var(--wb-space-2) var(--wb-space-4);
   border-radius: var(--wb-radius-sm);
   border: 1px solid transparent;
+  /* Real <button>s otherwise get the browser's default font, unlike the
+     links styled as buttons beside them. */
+  font-family: inherit;
   font-size: var(--wb-text-md);
   font-weight: 500;
   text-decoration: none;

@@ -113,8 +113,8 @@ test('Connections and Files tabs manage relationships and files', async ({ page 
   await expect(page.getByRole('table').getByRole('link', { name: marchName })).toBeVisible()
 
   await openEditorTab(page, 'Files')
-  await expect(page.getByRole('heading', { name: 'Attachments' })).toBeVisible()
-  await expect(page.getByText('Upload a new attachment')).toBeVisible()
+  await expect(page.getByRole('heading', { level: 2, name: /^Files/ })).toBeVisible()
+  await expect(page.getByText('Add files', { exact: true })).toBeVisible()
 
   await page.goto(articleUrl)
   await expect(

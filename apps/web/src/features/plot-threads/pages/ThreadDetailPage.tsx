@@ -132,6 +132,7 @@ export function ThreadDetailPage() {
         campaignId={campaign.id}
         resourceType="plot_thread"
         resourceId={thread.id}
+        resourceName={thread.title}
         canManage={canManage}
       />
 

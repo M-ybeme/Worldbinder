@@ -62,7 +62,14 @@ export const unlinkAttachment = (
     `/campaigns/${campaignId}/attachments/${attachmentId}/link/${resourceType}/${resourceId}`,
   )
 
+/** Permanently deletes the stored file. `context` is the resource it's being
+ * deleted from: the API refuses (409) if anything else still uses the file. */
 export const deleteAttachment = (
   campaignId: string,
   attachmentId: string,
-): Promise<{ message: string }> => apiDelete(`/campaigns/${campaignId}/attachments/${attachmentId}`)
+  context?: { resourceType: AttachmentResourceType; resourceId: string },
+): Promise<{ message: string }> =>
+  apiDelete(
+    `/campaigns/${campaignId}/attachments/${attachmentId}` +
+      (context ? `?resourceType=${context.resourceType}&resourceId=${context.resourceId}` : ''),
+  )

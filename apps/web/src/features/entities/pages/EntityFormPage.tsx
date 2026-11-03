@@ -511,12 +511,14 @@ export function EntityFormPage() {
       )}
 
       {tab === 'files' && (
-        <section className="wb-edit-panel" aria-label="Files">
+        <section className="wb-edit-panel wb-edit-panel--wide" aria-label="Files">
           <AttachmentsPanel
             campaignId={campaign.id}
             resourceType="entity"
             resourceId={entityQuery.data.id}
+            resourceName={displayName}
             canManage={canEdit}
+            compact={isPhone}
           />
         </section>
       )}

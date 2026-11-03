@@ -4,6 +4,69 @@ All notable changes to this project are documented here. Format follows [Keep a 
 
 Every push to `main` should add an entry here. This is meant to be an honest record of what actually shipped, not a restatement of the roadmap's aspirations — if something was attempted and reverted, or shipped partially, say so.
 
+## [1.9.0] - 2026-11-02
+
+**Entity Design D: Files management, and deleting a file can no longer take it from somewhere else.** The Files workspace (editor Files tab, sessions and plot threads) separates **Remove** (unlink from this record, with Undo) from **Delete file…** (permanent, confirmed, no Undo). A stored file can be shared: linked to several entries, sessions or threads, used as a map's image, or used as the campaign cover. Deleting it from one place used to silently break all the others. The API now refuses that.
+
+### Fixed
+
+- **Deleting a shared file broke every other place that used it.** `DELETE /attachments/:id` marked the file deleted and removed the stored object without checking for other uses. Other entries, sessions and threads, a map's background or the campaign cover lost it with no warning. It's now refused with **409** (`code: ATTACHMENT_IN_USE`, `usedElsewhereCount`) while anything else uses the file.
+  - Requests can pass their context (`?resourceType=&resourceId=`) so their own link doesn't count. A request without a context treats a single use as the caller's own, so existing callers keep working.
+  - Only live records count; soft-deleted entries, sessions and threads can't be restored.
+  - The usage check and the soft delete happen under a row lock, so a link added concurrently can't slip in between.
+  - Design D's dialog proposed deleting "from every other entry it's attached to". That was the data-loss case, so the design was adapted: shared files can only be removed from here.
+
+### Added
+
+- **Files workspace** (`AttachmentsPanel`, rewritten in place; it's still the one implementation used by entities, sessions and plot threads):
+  - **Upload:** drag and drop or browse, several files at a time, uploaded one after another with per-file progress and failures. Unsupported types and files over 20 MB are explained before uploading.
+  - **Each file shows:** a thumbnail or icon, its name (opens in a new tab), type, size, image dimensions, when it was added and by whom, an editable caption (saved through the existing link upsert, keeping its order), and "Also used in N other places" for managers.
+  - **Actions:** Download, **Remove**, **Delete file…**. Accessible names include each file's name and contain the visible text (WCAG 2.5.3).
+  - **States:** loading, empty and error.
+  - **Attach a file already uploaded** is kept.
+- **Remove** unlinks only. The stored file stays in the campaign and wherever else it's used.
+  - A 10-second **Undo** re-links it with its caption and order, and says "Restored" only after the server confirms.
+  - Failures are explained: 409 means the file was deleted meanwhile; 400/404 means the record is gone; 403 means permission changed.
+  - A keyboard removal moves focus to Undo.
+- **Delete file…** asks first and says plainly that it's permanent and has no Undo. Initial focus is never on the destructive button.
+  - For a file used elsewhere, the dialog explains why it can't be deleted and offers "Remove from Blackwall" instead.
+  - A refusal from the server (the file became shared meanwhile) is shown in the dialog.
+- **Phones (360–390px):** actions sit under each file in two equal 44px columns, with no sideways scrolling to reach Delete. The dialogs fit.
+- **Entity article:** the Files side panel is read-only (open and download, with compact actions) and has a **Manage** link to the Files tab. This is the same pattern as Connections, and the side panel's old "until Stage 2" management is gone.
+- `FileDropzone` gains `multiple`, a custom `prompt`, and a `hint`.
+
+### Changed
+
+- **Buttons now use the design font.** `.wb-button` didn't set `font-family`, so `<button>`s fell back to the browser default (Arial or Helvetica) while links styled as buttons used Inter. It's now inherited everywhere, which is an app-wide visual change. Also added the `.wb-field__hint` style.
+- `AttachmentSummary` gains an optional **`usedElsewhereCount`**. It appears only on a record's file list and only for members who can manage attachments, and it's a count only, never which places.
+
+### Tests
+
+- API, new `attachment-deletion.e2e-spec.ts` (4). It's a separate file because the attachments spec is at the per-spec login limit.
+  - A file linked to two entries: refused (409) with and without context; nothing deleted; both still list it and it's still downloadable; after removing it from the other entry, it can be deleted.
+  - A campaign cover and a map image each count as a use.
+  - Uses on deleted entries don't count, and players never get the count.
+  - Remove followed by re-link keeps the caption and order (Undo).
+  - Against the previous code, the two "in use" tests fail because the deletes went through.
+- `AttachmentsPanel.test.tsx` (10):
+  - **Display:** listing details.
+  - **Remove:** unlinks only; Undo re-links with caption and order; a refused Undo isn't shown as restored.
+  - **Delete:** confirm with context and no Undo; a shared file offers Remove only; the server's 409 race is shown in the dialog.
+  - **Captions and uploads:** caption edit keeps the order; oversized and unsupported files are rejected up front; upload failures are reported.
+  - **Permissions and empty state:** players get no controls; the empty state.
+- `e2e/files.spec.ts` (2 × 3 browsers), with real storage and the worker:
+  - **Desktop:** upload two files at once (processed and attached); caption; Remove → Undo restores the caption after a reload; a file linked to another entry via the API can't be deleted and Remove leaves it on that entry, still downloadable (HTTP 200); Delete → Cancel → Delete removes it for good with no Undo.
+  - **360px:** no horizontal overflow; Remove, Delete and Download are within the viewport and at least 44px tall; the dialog fits.
+- Updated, stale against the new UI: the entity-editor spec's Files check, and the article tests (Files side panel is read-only, with a Manage link for editors only).
+
+### Verification
+
+Typecheck, lint (the same 2 existing warnings) and build clean; web vitest 219/219. API integration: attachment-deletion, attachments, maps and campaigns 53/53, run with the dev server stopped (its worker races these specs' manual "mark ready"). Browser: files, connections, entity-editor, entity-detail, sessions, plot-threads and quick-create, 60/60 across Chromium, Firefox and WebKit.
+
+During this run, `pnpm build` while `pnpm dev` was running deleted `apps/api/dist` under the API's watch process. Every test then failed at registration until the dev server was restarted. That's an environment hazard, not a code issue: don't build while the dev server runs.
+
+Screenshots were checked in a separate review campaign ("Review — The Ashen Frontier (files)"): desktop light and dark, the delete and in-use dialogs, the Undo toast, tablet 820, phone 390 light and dark, the 360 in-use dialog, and the article's read-only panel.
+
 ## [1.8.0] - 2026-11-02
 
 **Entity Design D: Connections management.** The editor's Connections tab is now a focused workspace for an entry's relationships. You can add from either end, duplicates and facts already stated by a detail field are explained before anything is sent, and removal has a server-confirmed Undo. It replaces the old "+ Relationship" panel. The article's **Manage** now opens this tab instead of embedding a second, older editor.

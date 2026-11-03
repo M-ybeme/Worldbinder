@@ -20,6 +20,11 @@ export interface AttachmentSummary {
    * never a separate "renew" round trip; refetch the list instead. Null
    * while status isn't `ready` (nothing to download yet). */
   downloadUrl: string | null
+  /** How many *other* places in the campaign use this file (other entries,
+   * sessions or threads, a map's image, a campaign's cover). Only on a
+   * resource's list, and only for members who can manage attachments — a
+   * count, never which places. A file used elsewhere can't be deleted. */
+  usedElsewhereCount?: number
 }
 
 export interface PresignedUploadResponse {

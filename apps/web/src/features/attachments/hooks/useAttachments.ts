@@ -127,8 +127,23 @@ export function useLinkExistingAttachmentMutation(
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (attachmentId: string) =>
-      attachmentsApi.linkAttachment(campaignId, attachmentId, { resourceType, resourceId }),
+    /** Links (or re-links, e.g. to undo a removal, or to change the
+     * caption) — the API upserts the link's caption and order. */
+    mutationFn: ({
+      attachmentId,
+      caption,
+      displayOrder,
+    }: {
+      attachmentId: string
+      caption?: string | null
+      displayOrder?: number
+    }) =>
+      attachmentsApi.linkAttachment(campaignId, attachmentId, {
+        resourceType,
+        resourceId,
+        caption,
+        displayOrder,
+      }),
     onSuccess: () => {
       void queryClient.invalidateQueries({
         queryKey: attachmentsForResourceKey(campaignId, resourceType, resourceId),
@@ -148,10 +163,13 @@ export function useUnlinkAttachmentMutation(
   return useMutation({
     mutationFn: (attachmentId: string) =>
       attachmentsApi.unlinkAttachment(campaignId, attachmentId, resourceType, resourceId),
-    onSuccess: () =>
-      queryClient.invalidateQueries({
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
         queryKey: attachmentsForResourceKey(campaignId, resourceType, resourceId),
-      }),
+      })
+      // It may now be an unlinked upload, offered by "attach an existing file".
+      void queryClient.invalidateQueries({ queryKey: unlinkedAttachmentsKey(campaignId) })
+    },
   })
 }
 
@@ -163,7 +181,8 @@ export function useDeleteAttachmentMutation(
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: (attachmentId: string) => attachmentsApi.deleteAttachment(campaignId, attachmentId),
+    mutationFn: (attachmentId: string) =>
+      attachmentsApi.deleteAttachment(campaignId, attachmentId, { resourceType, resourceId }),
     onSuccess: () =>
       queryClient.invalidateQueries({
         queryKey: attachmentsForResourceKey(campaignId, resourceType, resourceId),

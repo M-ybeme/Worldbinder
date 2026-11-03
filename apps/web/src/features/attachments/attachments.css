@@ -1,6 +1,250 @@
-.wb-attachment-list img {
-  max-width: 120px;
-  max-height: 120px;
+.wb-files {
+  display: flex;
+  flex-direction: column;
+  gap: var(--wb-space-5);
+}
+
+.wb-files .wb-dropzone {
+  min-height: 112px;
+  display: grid;
+  place-items: center;
+}
+
+.wb-files__card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--wb-space-3);
+  padding: var(--wb-space-4);
+  background: var(--wb-bg-surface);
+  border: 1px solid var(--wb-border-subtle);
+  border-radius: var(--wb-radius-md);
+}
+
+.wb-files__title {
+  margin: 0;
+  font-size: var(--wb-text-lg);
+  font-weight: 600;
+}
+
+.wb-files__count {
+  display: inline-block;
+  min-width: 1.5em;
+  padding: 0 var(--wb-space-2);
+  border-radius: var(--wb-radius-full);
+  background: var(--wb-bg-surface-hover);
+  color: var(--wb-text-secondary);
+  font-size: var(--wb-text-xs);
+  font-weight: 600;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.wb-files__muted,
+.wb-files__meta {
+  color: var(--wb-text-muted);
+  font-size: var(--wb-text-sm);
+}
+
+.wb-files__legend {
+  margin: 0;
+  padding-top: var(--wb-space-3);
+  border-top: 1px solid var(--wb-border-subtle);
+}
+
+/* --- Upload progress --- */
+
+.wb-files__uploads {
+  display: grid;
+  gap: var(--wb-space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.wb-files__upload {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--wb-space-2);
+  padding: var(--wb-space-2) var(--wb-space-3);
   border-radius: var(--wb-radius-sm);
-  display: block;
+  background: var(--wb-bg-surface-hover);
+  font-size: var(--wb-text-sm);
+}
+
+.wb-files__upload--failed {
+  border-left: 3px solid var(--wb-danger);
+  color: var(--wb-text-primary);
+}
+
+/* --- File list --- */
+
+.wb-files__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.wb-files__item {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--wb-space-3);
+  padding: var(--wb-space-3) 0;
+  border-bottom: 1px solid var(--wb-border-subtle);
+}
+
+.wb-files__item:last-child {
+  border-bottom: 0;
+}
+
+.wb-files__thumb {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  overflow: hidden;
+  border-radius: var(--wb-radius-sm);
+  background: var(--wb-bg-surface-hover);
+  color: var(--wb-text-muted);
+}
+
+.wb-files__thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.wb-files__body {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.wb-files__name {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.wb-files__caption {
+  display: flex;
+  align-items: center;
+  gap: var(--wb-space-1);
+  overflow-wrap: anywhere;
+}
+
+.wb-files__caption-edit {
+  flex: none;
+}
+
+.wb-files__caption-form {
+  display: grid;
+  gap: var(--wb-space-2);
+  max-width: 480px;
+  margin-top: var(--wb-space-2);
+}
+
+.wb-files__caption-actions,
+.wb-files__actions,
+.wb-files__dialog-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--wb-space-2);
+}
+
+.wb-files__actions {
+  justify-content: flex-end;
+}
+
+.wb-files__dialog-actions {
+  justify-content: flex-end;
+  margin-top: var(--wb-space-4);
+}
+
+.wb-files__dialog p {
+  margin: 0 0 var(--wb-space-3);
+}
+
+.wb-files__delete {
+  color: var(--wb-danger);
+}
+
+/* Phones (and the narrow article side panel): actions drop under the file,
+   two equal touch-sized columns, no horizontal scrolling to reach Delete. */
+.wb-files__list--compact .wb-files__item {
+  grid-template-columns: 48px minmax(0, 1fr);
+}
+
+.wb-files__list--compact .wb-files__actions {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.wb-files__list--compact .wb-files__actions > :first-child:nth-last-child(3) {
+  grid-column: 1 / -1;
+}
+
+.wb-files__list--compact .wb-button,
+.wb-files__list--compact .wb-files__caption-edit {
+  min-height: 44px;
+}
+
+.wb-files__list--compact .wb-files__caption-edit {
+  min-width: 44px;
+}
+
+/* --- Attach an existing upload --- */
+
+.wb-files__existing {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--wb-space-3);
+}
+
+.wb-files__picker {
+  display: grid;
+  gap: var(--wb-space-2);
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.wb-files__picker li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--wb-space-2) var(--wb-space-3);
+}
+
+.wb-files__picker .wb-button {
+  margin-left: auto;
+}
+
+@media (max-width: 768px) {
+  .wb-files__existing .wb-button {
+    min-height: 44px;
+  }
+}
+
+.wb-files__embedded {
+  display: flex;
+  flex-direction: column;
+  gap: var(--wb-space-2);
+}
+
+/* Read-only side panel: a small Download beside the details, not a
+   full-width control per file. */
+.wb-files__embedded .wb-files__list--compact .wb-files__actions {
+  grid-column: 2;
+  display: flex;
+}
+
+.wb-files__embedded .wb-files__list--compact .wb-button {
+  min-height: 36px;
+  padding: var(--wb-space-1) var(--wb-space-3);
+  font-size: var(--wb-text-sm);
 }

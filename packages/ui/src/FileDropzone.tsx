@@ -1,4 +1,4 @@
-import { useId, useState, type DragEvent } from 'react'
+import { useId, useState, type DragEvent, type ReactNode } from 'react'
 import './Field.css'
 import './FileDropzone.css'
 
@@ -8,6 +8,12 @@ export interface FileDropzoneProps {
   disabled?: boolean
   onFilesSelected: (files: File[]) => void
   error?: string
+  /** Accept several files at once (browse and drop). */
+  multiple?: boolean
+  /** The prompt inside the drop target. */
+  prompt?: ReactNode
+  /** Help text under the drop target. */
+  hint?: ReactNode
 }
 
 /** Click-to-browse + drag-and-drop, following TextField's wb-field/
@@ -21,7 +27,16 @@ export interface FileDropzoneProps {
  * each other, plus the input having no accessible name. A native label+
  * input pairing gets click-to-open, keyboard Enter/Space-to-open, and a
  * real accessible name for free, with no custom key handler needed. */
-export function FileDropzone({ label, accept, disabled, onFilesSelected, error }: FileDropzoneProps) {
+export function FileDropzone({
+  label,
+  accept,
+  disabled,
+  onFilesSelected,
+  error,
+  multiple,
+  prompt = 'Drag a file here, or click to browse.',
+  hint,
+}: FileDropzoneProps) {
   const [isDragActive, setIsDragActive] = useState(false)
   const labelId = useId()
 
@@ -58,10 +73,11 @@ export function FileDropzone({ label, accept, disabled, onFilesSelected, error }
         onDragLeave={() => setIsDragActive(false)}
         onDrop={handleDrop}
       >
-        <p>Drag a file here, or click to browse.</p>
+        <p>{prompt}</p>
         <input
           type="file"
           accept={accept}
+          multiple={multiple}
           disabled={disabled}
           className="wb-dropzone__input"
           aria-labelledby={labelId}
@@ -71,6 +87,7 @@ export function FileDropzone({ label, accept, disabled, onFilesSelected, error }
           }}
         />
       </label>
+      {hint && <p className="wb-field__hint">{hint}</p>}
       {error && (
         <p className="wb-field__error" role="alert">
           {error}

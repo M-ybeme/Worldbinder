@@ -149,11 +149,13 @@ export type { AllowedAttachmentMimeType } from './attachment-detection.js'
 
 export {
   attachmentResourceTypeSchema,
+  deleteAttachmentContextSchema,
   linkAttachmentSchema,
   presignAttachmentSchema,
 } from './attachments.js'
 export type {
   AttachmentResourceType,
+  DeleteAttachmentContext,
   LinkAttachmentInput,
   PresignAttachmentInput,
 } from './attachments.js'

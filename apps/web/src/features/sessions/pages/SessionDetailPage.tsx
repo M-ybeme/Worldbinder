@@ -340,6 +340,7 @@ export function SessionDetailPage() {
         campaignId={campaign.id}
         resourceType="session"
         resourceId={session.id}
+        resourceName={session.title}
         canManage={canManage}
       />
 

@@ -17,12 +17,14 @@ import type {
   LinkAttachmentInput,
   PresignAttachmentInput,
 } from '@worldbinder/validation';
-import { and, desc, eq, isNull } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { CampaignAuditService } from '../audit/campaign-audit.service';
 import { DRIZZLE, type Database } from '../database/database.module';
 import {
   attachments,
+  campaigns,
   entities,
+  maps,
   plotThreads,
   resourceAttachments,
   sessions,
@@ -184,17 +186,34 @@ export class AttachmentsService {
         desc(resourceAttachments.createdAt),
       );
 
+    // Only for members who can delete: it's what tells them a file is
+    // shared before they try. A count, never which resources.
+    const uses = this.policy.canManageAttachments(membership.role)
+      ? await this.findUses(
+          this.db,
+          rows.map((row) => row.attachment.id),
+        )
+      : null;
+
     return Promise.all(
-      rows.map((row) =>
-        this.toSummaryWithDownloadUrl(
+      rows.map(async (row) => {
+        const summary = await this.toSummaryWithDownloadUrl(
           row.attachment,
           row.uploadedByDisplayName,
           {
             caption: row.link.caption,
             displayOrder: row.link.displayOrder,
           },
-        ),
-      ),
+        );
+        if (!uses) return summary;
+        return {
+          ...summary,
+          usedElsewhereCount: countOtherUses(uses.get(row.attachment.id), {
+            resourceType,
+            resourceId,
+          }),
+        };
+      }),
     );
   }
 
@@ -309,26 +328,59 @@ export class AttachmentsService {
       );
   }
 
+  /** Permanently deletes the stored file — but only while nothing else
+   * uses it. A file can be linked to several entries/sessions/threads and be
+   * a map's image or a campaign's cover; deleting it from one place would
+   * silently break the others, so that's refused (409) with how many other
+   * places use it. `context` is the resource the request comes from (its own
+   * link doesn't count; see countOtherUses for requests without one). The
+   * usage check and the soft delete happen under a lock on the attachment
+   * row, so a link added concurrently either lands first (and blocks the
+   * delete) or waits. */
   async delete(
     campaignId: string,
     attachmentId: string,
     membership: CampaignMembership,
+    context?: { resourceType: AttachmentResourceType; resourceId: string },
   ): Promise<void> {
     this.assertCanManage(membership);
-    const attachment = await this.requireOwnAttachment(
-      campaignId,
-      attachmentId,
-    );
 
-    await this.db
-      .update(attachments)
-      .set({ status: 'deleted', deletedAt: new Date() })
-      .where(
-        and(
-          eq(attachments.id, attachmentId),
-          eq(attachments.campaignId, campaignId),
-        ),
-      );
+    const attachment = await this.db.transaction(async (tx) => {
+      const [row] = await tx
+        .select()
+        .from(attachments)
+        .where(
+          and(
+            eq(attachments.id, attachmentId),
+            eq(attachments.campaignId, campaignId),
+          ),
+        )
+        .for('update');
+      if (!row) throw new NotFoundException('Attachment not found');
+
+      const uses = await this.findUses(tx, [attachmentId]);
+      const elsewhere = countOtherUses(uses.get(attachmentId), context);
+      if (elsewhere > 0) {
+        throw new ConflictException({
+          code: 'ATTACHMENT_IN_USE',
+          usedElsewhereCount: elsewhere,
+          message: `This file is also used in ${elsewhere} other ${
+            elsewhere === 1 ? 'place' : 'places'
+          } in this campaign, so it can't be deleted. Remove it from here instead, or remove it everywhere else first.`,
+        });
+      }
+
+      await tx
+        .update(attachments)
+        .set({ status: 'deleted', deletedAt: new Date() })
+        .where(
+          and(
+            eq(attachments.id, attachmentId),
+            eq(attachments.campaignId, campaignId),
+          ),
+        );
+      return row;
+    });
 
     await this.storage.deleteObject(attachment.storageKey);
 
@@ -340,6 +392,86 @@ export class AttachmentsService {
       targetResourceId: attachmentId,
       metadata: { action: 'delete' },
     });
+  }
+
+  /** Every live use of each attachment: links to entries, sessions and
+   * threads that still exist, maps using it as their image, and campaigns
+   * using it as their cover. */
+  private async findUses(
+    db: Database,
+    attachmentIds: string[],
+  ): Promise<Map<string, AttachmentUses>> {
+    const result = new Map<string, AttachmentUses>();
+    if (attachmentIds.length === 0) return result;
+    const usesOf = (id: string) => {
+      let uses = result.get(id);
+      if (!uses) {
+        uses = { links: [], others: 0 };
+        result.set(id, uses);
+      }
+      return uses;
+    };
+
+    const links = await db
+      .select({
+        attachmentId: resourceAttachments.attachmentId,
+        resourceType: resourceAttachments.resourceType,
+        resourceId: resourceAttachments.resourceId,
+      })
+      .from(resourceAttachments)
+      .leftJoin(
+        entities,
+        and(
+          eq(resourceAttachments.resourceType, 'entity'),
+          eq(entities.id, resourceAttachments.resourceId),
+        ),
+      )
+      .leftJoin(
+        sessions,
+        and(
+          eq(resourceAttachments.resourceType, 'session'),
+          eq(sessions.id, resourceAttachments.resourceId),
+        ),
+      )
+      .leftJoin(
+        plotThreads,
+        and(
+          eq(resourceAttachments.resourceType, 'plot_thread'),
+          eq(plotThreads.id, resourceAttachments.resourceId),
+        ),
+      )
+      .where(
+        and(
+          inArray(resourceAttachments.attachmentId, attachmentIds),
+          sql`coalesce(${entities.id}, ${sessions.id}, ${plotThreads.id}) is not null`,
+          sql`coalesce(${entities.deletedAt}, ${sessions.deletedAt}, ${plotThreads.deletedAt}) is null`,
+        ),
+      );
+    for (const link of links) {
+      usesOf(link.attachmentId).links.push({
+        // A text column holding attachmentResourceTypeSchema's values.
+        resourceType: link.resourceType as AttachmentResourceType,
+        resourceId: link.resourceId,
+      });
+    }
+
+    const mapImages = await db
+      .select({ attachmentId: maps.imageAttachmentId })
+      .from(maps)
+      .where(inArray(maps.imageAttachmentId, attachmentIds));
+    const covers = await db
+      .select({ attachmentId: campaigns.coverAttachmentId })
+      .from(campaigns)
+      .where(
+        and(
+          inArray(campaigns.coverAttachmentId, attachmentIds),
+          isNull(campaigns.deletedAt),
+        ),
+      );
+    for (const use of [...mapImages, ...covers]) {
+      if (use.attachmentId) usesOf(use.attachmentId).others += 1;
+    }
+    return result;
   }
 
   private assertCanManage(membership: CampaignMembership): void {
@@ -435,6 +567,31 @@ export class AttachmentsService {
       }
     }
   }
+}
+
+interface AttachmentUses {
+  links: { resourceType: AttachmentResourceType; resourceId: string }[];
+  /** Map images and campaign covers. */
+  others: number;
+}
+
+/** Uses other than the requester's own. With a `context`, that's every use
+ * except its link. Without one (older callers), a single use is taken to be
+ * the caller's, so only a second use counts — a file used in two places is
+ * never deleted from one of them either way. */
+function countOtherUses(
+  uses: AttachmentUses | undefined,
+  context?: { resourceType: AttachmentResourceType; resourceId: string },
+): number {
+  if (!uses) return 0;
+  const total = uses.links.length + uses.others;
+  if (!context) return Math.max(0, total - 1);
+  const ownLink = uses.links.some(
+    (link) =>
+      link.resourceType === context.resourceType &&
+      link.resourceId === context.resourceId,
+  );
+  return total - (ownLink ? 1 : 0);
 }
 
 /** Strips path separators/control characters — display-only sanitization,

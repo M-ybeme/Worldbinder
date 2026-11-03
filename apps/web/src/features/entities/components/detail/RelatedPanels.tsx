@@ -109,11 +109,10 @@ function editedAgo(iso: string): string {
 }
 
 /**
- * Files and revision history — the existing AttachmentsPanel (upload,
- * link, unlink for editors) and RevisionHistoryPanel (diffs, restore for
- * editors), each behind a disclosure at every width since both panels are
- * tall. They stay fully functional here until Stage 2 gives files their
- * own edit tab.
+ * Files and revision history, each behind a disclosure at every width
+ * since both panels are tall. Files are read-only here (open, download);
+ * they're managed on the editor's Files tab ("Manage"). Revision history
+ * keeps its restore for editors.
  */
 export function FilesAndHistoryPanels({
   campaignId,
@@ -129,12 +128,30 @@ export function FilesAndHistoryPanels({
   const attachmentsQuery = useAttachmentsForResourceQuery(campaignId, 'entity', entity.id)
   return (
     <>
-      <SidePanel title="Files" count={attachmentsQuery.data?.length} collapsible>
+      <SidePanel
+        title="Files"
+        count={attachmentsQuery.data?.length}
+        collapsible
+        action={
+          canManage && (
+            <Link
+              className="wb-ed-link-button"
+              to={`/app/campaign/${campaignId}/world/${entity.id}/edit/files`}
+              aria-label="Manage files"
+            >
+              Manage
+            </Link>
+          )
+        }
+      >
         <AttachmentsPanel
           campaignId={campaignId}
           resourceType="entity"
           resourceId={entity.id}
-          canManage={canManage}
+          resourceName={entity.name}
+          canManage={false}
+          compact
+          embedded
         />
       </SidePanel>
       <SidePanel title="Revision history" meta={editedAgo(entity.updatedAt)} collapsible>

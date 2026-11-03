@@ -39,3 +39,10 @@
   font-size: var(--wb-text-xs);
   color: var(--wb-danger);
 }
+
+/* Help text under a field. */
+.wb-field__hint {
+  margin: 0;
+  color: var(--wb-text-muted);
+  font-size: var(--wb-text-sm);
+}

@@ -451,7 +451,12 @@ describe('Entity article — threads, sessions, files and history', () => {
     fireEvent.click(within(files).getByText('Files'))
     files.open = true
     fireEvent(files, new Event('toggle'))
-    expect(screen.getByTestId('attachments')).toHaveTextContent('canManage=true')
+    // Read-only here; files are managed on the editor's Files tab.
+    expect(screen.getByTestId('attachments')).toHaveTextContent('canManage=false')
+    expect(within(files).getByRole('link', { name: 'Manage files' })).toHaveAttribute(
+      'href',
+      expect.stringMatching(/\/edit\/files$/),
+    )
 
     const history = within(aside()).getByText('Revision history').closest('details')!
     expect(within(history).getByText('edited 4d ago')).toBeInTheDocument()
@@ -466,6 +471,7 @@ describe('Entity article — threads, sessions, files and history', () => {
     files.open = true
     fireEvent(files, new Event('toggle'))
     expect(screen.getByTestId('attachments')).toHaveTextContent('canManage=false')
+    expect(within(files).queryByRole('link', { name: 'Manage files' })).not.toBeInTheDocument()
     const history = within(aside()).getByText('Revision history').closest('details')!
     history.open = true
     fireEvent(history, new Event('toggle'))

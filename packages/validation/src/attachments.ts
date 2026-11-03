@@ -20,3 +20,15 @@ export const linkAttachmentSchema = z.object({
   displayOrder: z.coerce.number().int().min(0).optional(),
 })
 export type LinkAttachmentInput = z.infer<typeof linkAttachmentSchema>
+
+/** Optional context for deleting an attachment: the resource the request
+ * comes from, whose own link doesn't count as "used elsewhere". */
+export const deleteAttachmentContextSchema = z
+  .object({
+    resourceType: attachmentResourceTypeSchema.optional(),
+    resourceId: z.string().uuid().optional(),
+  })
+  .refine((value) => Boolean(value.resourceType) === Boolean(value.resourceId), {
+    message: 'resourceType and resourceId go together',
+  })
+export type DeleteAttachmentContext = z.infer<typeof deleteAttachmentContextSchema>
