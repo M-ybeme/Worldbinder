@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 import {
+  addRelationship,
   clearRateLimits,
   findEmailLink,
   login,
@@ -53,15 +54,12 @@ test('relationship creation projects the reverse label on the target entity', as
 
   await test.step('add a "Controls" relationship from Duke Renald to Westvale', async () => {
     await page.goto(dukeUrl)
-    // Relationship management sits behind the Connections panel's
-    // "Manage" toggle (Entity Detail D, 1.4.0).
-    await page.getByRole('button', { name: 'Manage' }).click()
-    await page.getByRole('button', { name: '+ Relationship' }).click()
-    await page.getByLabel('Relationship type').selectOption({ label: 'Controls' })
-    await page.getByLabel('Target entity').fill(westvaleName)
-    await page.locator('.wb-combobox__option', { hasText: westvaleName }).first().click()
-    await page.getByRole('button', { name: 'Save' }).click()
+    // The article's "Manage" opens the editor's Connections tab.
+    await page.getByRole('link', { name: 'Manage connections' }).click()
+    await addRelationship(page, 'Controls', westvaleName)
+    await expect(page.getByRole('table').getByRole('link', { name: westvaleName })).toBeVisible()
 
+    await page.goto(dukeUrl)
     const relationships = page.getByRole('list', { name: 'Relationships', exact: true })
     await expect(relationships.getByText('Controls')).toBeVisible()
     await expect(relationships.getByRole('link', { name: westvaleName })).toBeVisible()
@@ -149,14 +147,9 @@ test('a player cannot see a GM-only relationship', async ({ browser }) => {
   await ownerPage.getByRole('button', { name: 'Create', exact: true }).click()
   await expect(ownerPage.getByRole('heading', { name: bName })).toBeVisible()
 
+  await ownerPage.goto(`${aUrl}/edit/connections`)
+  await addRelationship(ownerPage, 'Ally of', bName, { visibleTo: 'GM only' })
   await ownerPage.goto(aUrl)
-  await ownerPage.getByRole('button', { name: 'Manage' }).click()
-  await ownerPage.getByRole('button', { name: '+ Relationship' }).click()
-  await ownerPage.getByLabel('Relationship type').selectOption({ label: 'Ally of' })
-  await ownerPage.getByLabel('Target entity').fill(bName)
-  await ownerPage.locator('.wb-combobox__option', { hasText: bName }).first().click()
-  await ownerPage.getByLabel('Visibility').selectOption('gm_only')
-  await ownerPage.getByRole('button', { name: 'Save' }).click()
   await expect(
     ownerPage
       .getByRole('list', { name: 'Relationships', exact: true })

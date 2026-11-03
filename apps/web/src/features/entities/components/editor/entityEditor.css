@@ -69,8 +69,10 @@
   min-height: 200px;
 }
 
-.wb-edit-panel .wb-related-content {
-  margin-top: 0;
+/* Management tabs (Connections, Files) are tables and forms, not prose:
+   they get the page width the reading measure would waste. */
+.wb-edit-panel--wide {
+  max-width: 1100px;
 }
 
 .wb-edit-hint {

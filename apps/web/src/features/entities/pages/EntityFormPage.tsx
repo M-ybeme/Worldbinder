@@ -21,9 +21,10 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link, NavLink, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { AttachmentsPanel } from '../../attachments/components/AttachmentsPanel'
 import { useCampaignOutletContext } from '../../campaigns/hooks/useCampaignContext'
-import { RelatedContentPanel } from '../../relationships/components/RelatedContentPanel'
+import { ConnectionsManager } from '../../relationships/components/ConnectionsManager'
 import { clearDraft, loadDraft, type ResourceDraft } from '../../../lib/draftDb'
 import { useAutosave } from '../../../lib/useAutosave'
+import { useMediaQuery } from '../../../lib/useMediaQuery'
 import * as entitiesApi from '../api/entitiesApi'
 import { EntityBreadcrumbs } from '../components/detail/EntityBreadcrumbs'
 import { EditorSafetyPanels } from '../../editing/EditorSafetyPanels'
@@ -49,6 +50,8 @@ const TAB_LABELS: Record<EditorTab, string> = {
 
 // Same role set as the article page's Edit action; the API enforces it.
 const EDIT_ROLES = new Set(['owner', 'gm', 'editor'])
+// Matches the shell's phone breakpoint (bottom tabs).
+const PHONE_QUERY = '(max-width: 768px)'
 
 const ENTITY_TYPE_OPTIONS = (Object.keys(ENTITY_TYPE_LABELS) as EntityType[]).map((value) => ({
   value,
@@ -89,6 +92,7 @@ export function EntityFormPage() {
   const { campaign } = useCampaignOutletContext()
   const navigate = useNavigate()
   const canEdit = EDIT_ROLES.has(campaign.role)
+  const isPhone = useMediaQuery(PHONE_QUERY)
   const tab = (EDITOR_TABS as readonly string[]).includes(tabParam ?? '')
     ? (tabParam as EditorTab)
     : null
@@ -493,16 +497,15 @@ export function EntityFormPage() {
       </form>
 
       {tab === 'connections' && (
-        <section className="wb-edit-panel" aria-label="Connections">
-          <p className="wb-ed-muted">
-            Relationships save as soon as you add or remove them. Connections from details (like
-            a parent location) are edited on the Details tab.
-          </p>
-          <RelatedContentPanel
+        <section className="wb-edit-panel wb-edit-panel--wide" aria-label="Connections">
+          <ConnectionsManager
             campaignId={campaign.id}
-            entityId={entityQuery.data.id}
+            entity={entityQuery.data}
+            metadata={metadata}
             canEdit={canEdit}
             campaignRole={campaign.role}
+            detailsUrl={`${articleUrl}/edit/details`}
+            compact={isPhone}
           />
         </section>
       )}

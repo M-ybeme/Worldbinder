@@ -48,8 +48,8 @@ vi.mock('../components/RichTextEditor', () => ({
 vi.mock('../components/EntityPicker', () => ({
   EntityPicker: ({ label }: { label: string }) => <span>{label} picker</span>,
 }))
-vi.mock('../../relationships/components/RelatedContentPanel', () => ({
-  RelatedContentPanel: () => <div>relationship manager</div>,
+vi.mock('../../relationships/components/ConnectionsManager', () => ({
+  ConnectionsManager: () => <div>relationship manager</div>,
 }))
 vi.mock('../../attachments/components/AttachmentsPanel', () => ({
   AttachmentsPanel: () => <div>attachment manager</div>,

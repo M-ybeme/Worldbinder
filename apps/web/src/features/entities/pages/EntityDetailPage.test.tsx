@@ -40,11 +40,6 @@ vi.mock('../../attachments/hooks/useAttachments', () => ({
 }))
 // Self-contained panels with their own tests/e2e coverage — here only
 // where they're mounted (and with which permissions) matters.
-vi.mock('../../relationships/components/RelatedContentPanel', () => ({
-  RelatedContentPanel: ({ canEdit }: { canEdit: boolean }) => (
-    <div data-testid="relationship-manager">manage canEdit={String(canEdit)}</div>
-  ),
-}))
 vi.mock('../../attachments/components/AttachmentsPanel', () => ({
   AttachmentsPanel: ({ canManage }: { canManage: boolean }) => (
     <div data-testid="attachments">attachments canManage={String(canManage)}</div>
@@ -124,6 +119,7 @@ function summary(id: string, name: string, extra: Partial<EntitySummary> = {}): 
 function relationship(id: string, label: string, name: string, extra: Partial<EntityRelationshipView> = {}): EntityRelationshipView {
   return {
     relationshipId: id,
+    relationshipTypeId: `type-${label}`,
     direction: 'outgoing',
     label,
     otherEntity: summary(`o-${id}`, name),
@@ -405,17 +401,17 @@ describe('Entity article — connections', () => {
     expect(within(mentions).getAllByRole('link')).toHaveLength(8)
   })
 
-  it('reveals the relationship manager for editors only', () => {
+  it('links editors to the Connections tab to manage relationships', () => {
     renderPage('editor')
-    const manage = screen.getByRole('button', { name: 'Manage' })
-    expect(manage).toHaveAttribute('aria-expanded', 'false')
-    fireEvent.click(manage)
-    expect(screen.getByTestId('relationship-manager')).toHaveTextContent('canEdit=true')
+    expect(screen.getByRole('link', { name: 'Manage connections' })).toHaveAttribute(
+      'href',
+      expect.stringMatching(/\/world\/[^/]+\/edit\/connections$/),
+    )
   })
 
   it('has no Manage control for players', () => {
     renderPage('player')
-    expect(screen.queryByRole('button', { name: 'Manage' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Manage connections' })).not.toBeInTheDocument()
   })
 
   it('says so when there are no connections', () => {

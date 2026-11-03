@@ -179,6 +179,8 @@ describe('Relationships (e2e)', () => {
         (r) => r.direction === 'outgoing' && r.otherEntity.id === westvale.id,
       );
       expect(dukeOutgoing?.label).toBe('Controls');
+      // Both ends carry the type, so a client can re-create it exactly.
+      expect(dukeOutgoing?.relationshipTypeId).toBe(controls.id);
 
       const westvaleView = await request(app.getHttpServer())
         .get(`/campaigns/${campaign.id}/entities/${westvale.id}/relationships`)
@@ -189,6 +191,7 @@ describe('Relationships (e2e)', () => {
         (r) => r.direction === 'incoming' && r.otherEntity.id === duke.id,
       );
       expect(westvaleIncoming?.label).toBe('Controlled by');
+      expect(westvaleIncoming?.relationshipTypeId).toBe(controls.id);
     });
   });
 

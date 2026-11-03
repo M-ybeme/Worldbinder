@@ -103,7 +103,6 @@ export function EntityDetailPage() {
       references={references}
       resolved={referenced.entities}
       canEdit={canManage}
-      campaignRole={campaign.role}
       compact={isPhone}
     />
   )

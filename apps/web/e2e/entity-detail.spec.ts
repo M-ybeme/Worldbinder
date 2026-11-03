@@ -139,7 +139,7 @@ test('GM sees facts, derived connections and GM notes; a player sees none of the
     await expect(playerPage.getByRole('region', { name: 'GM-only notes' })).toHaveCount(0)
     await expect(playerPage.getByText('Has GM-only notes')).toHaveCount(0)
     await expect(playerPage.getByRole('link', { name: 'Edit' })).toHaveCount(0)
-    await expect(playerPage.getByRole('button', { name: 'Manage' })).toHaveCount(0)
+    await expect(playerPage.getByRole('link', { name: 'Manage connections' })).toHaveCount(0)
     await expect(playerPage.getByRole('button', { name: 'Add to favorites' })).toBeVisible()
   })
 

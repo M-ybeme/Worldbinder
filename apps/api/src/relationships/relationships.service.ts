@@ -252,6 +252,7 @@ export class RelationshipsService {
   ): EntityRelationshipView {
     return {
       relationshipId: relationship.id,
+      relationshipTypeId: relationship.relationshipTypeId,
       direction,
       label,
       otherEntity: toEntitySummary(other),

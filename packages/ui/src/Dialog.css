@@ -72,3 +72,32 @@
   flex-direction: column;
   overflow: hidden;
 }
+
+/* Bottom sheet (placement="sheet", phones). Sits above the on-screen
+   keyboard via --wb-keyboard-inset (set from visualViewport in Dialog.tsx)
+   and never taller than what's visible, so the focused field and the
+   submit button stay reachable while typing. */
+.wb-dialog__backdrop--sheet {
+  align-items: flex-end;
+  padding: 0;
+  padding-bottom: var(--wb-keyboard-inset, 0px);
+}
+
+.wb-dialog__panel--sheet {
+  max-width: none;
+  max-height: calc(100dvh - var(--wb-keyboard-inset, 0px) - var(--wb-space-6));
+  border-bottom: 0;
+  border-radius: var(--wb-radius-lg) var(--wb-radius-lg) 0 0;
+  padding-bottom: env(safe-area-inset-bottom);
+  animation-name: wb-dialog-sheet-in;
+}
+
+.wb-dialog__panel--sheet .wb-dialog__body {
+  overscroll-behavior: contain;
+}
+
+@keyframes wb-dialog-sheet-in {
+  from {
+    transform: translateY(24px);
+  }
+}

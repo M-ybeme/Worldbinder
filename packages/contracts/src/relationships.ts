@@ -30,6 +30,9 @@ export interface EntityRelationship {
  * and "other" entity for whichever direction it is. */
 export interface EntityRelationshipView {
   relationshipId: string
+  /** Lets a client re-create the exact relationship (e.g. to undo a
+   * removal) and tell apart types that happen to share a label. */
+  relationshipTypeId: string
   direction: 'outgoing' | 'incoming'
   label: string
   otherEntity: EntitySummary

@@ -1,7 +1,10 @@
 import {
+  useEffect,
   useId,
   useLayoutEffect,
   useRef,
+  useState,
+  type CSSProperties,
   type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
 } from 'react'
@@ -30,6 +33,9 @@ export interface DialogProps {
    * padding — for dialogs (like search) that manage their own internal
    * spacing/scrolling. */
   flush?: boolean
+  /** `sheet` presents the panel as a bottom sheet (for phones): full width,
+   * anchored to the bottom and kept above the on-screen keyboard. */
+  placement?: 'center' | 'sheet'
 }
 
 /**
@@ -48,8 +54,10 @@ export function Dialog({
   className,
   hideCloseButton,
   flush,
+  placement = 'center',
 }: DialogProps) {
   const panelRef = useRef<HTMLDivElement>(null)
+  const keyboardInset = useKeyboardInset(open && placement === 'sheet')
   const previouslyFocusedRef = useRef<HTMLElement | null>(null)
   const titleId = useId()
 
@@ -133,14 +141,30 @@ export function Dialog({
     // div, not a button — giving it a role/tabindex would make it a
     // spurious tab stop inside the dialog's own focus trap.
     // eslint-disable-next-line jsx-a11y/no-static-element-interactions
-    <div className="wb-dialog__backdrop" onMouseDown={onClose}>
+    <div
+      className={['wb-dialog__backdrop', placement === 'sheet' ? 'wb-dialog__backdrop--sheet' : '']
+        .filter(Boolean)
+        .join(' ')}
+      style={
+        placement === 'sheet'
+          ? ({ '--wb-keyboard-inset': `${keyboardInset}px` } as CSSProperties)
+          : undefined
+      }
+      onMouseDown={onClose}
+    >
       {/* This dialog owns its own Tab-trap/Escape handling directly, the
           standard pattern for a real modal — jsx-a11y's interactive-role
           allowlist doesn't include role="dialog" itself. */}
       {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions */}
       <div
         ref={panelRef}
-        className={['wb-dialog__panel', className].filter(Boolean).join(' ')}
+        className={[
+          'wb-dialog__panel',
+          placement === 'sheet' ? 'wb-dialog__panel--sheet' : '',
+          className,
+        ]
+          .filter(Boolean)
+          .join(' ')}
         role="dialog"
         aria-modal="true"
         aria-label={title ? undefined : label}
@@ -173,4 +197,27 @@ export function Dialog({
     </div>,
     document.body,
   )
+}
+
+/** How much of the layout viewport the on-screen keyboard covers. iOS
+ * Safari and Android Chrome shrink only the *visual* viewport when the
+ * keyboard opens, so a `position: fixed; bottom: 0` sheet would sit behind
+ * it; this offset lifts it back into view. 0 without `visualViewport`. */
+function useKeyboardInset(active: boolean): number {
+  const [inset, setInset] = useState(0)
+  useEffect(() => {
+    const viewport = typeof window !== 'undefined' ? window.visualViewport : null
+    if (!active || !viewport) return
+    const update = () =>
+      setInset(Math.max(0, Math.round(window.innerHeight - viewport.height - viewport.offsetTop)))
+    update()
+    viewport.addEventListener('resize', update)
+    viewport.addEventListener('scroll', update)
+    return () => {
+      viewport.removeEventListener('resize', update)
+      viewport.removeEventListener('scroll', update)
+      setInset(0)
+    }
+  }, [active])
+  return inset
 }

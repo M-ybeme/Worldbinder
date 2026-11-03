@@ -114,3 +114,21 @@ export async function openEditorTab(
 ): Promise<void> {
   await page.getByRole('navigation', { name: 'Editor sections' }).getByRole('link', { name: tab }).click()
 }
+
+/** Adds a relationship on the editor's Connections tab (desktop form).
+ * `relationship` is the label as read from this entry, forward or reverse
+ * ("Controls", "Contains"). */
+export async function addRelationship(
+  page: Page,
+  relationship: string,
+  entry: string,
+  options: { visibleTo?: 'Everyone' | 'GM only'; note?: string } = {},
+): Promise<void> {
+  const form = page.getByRole('form', { name: 'Add a relationship' })
+  await form.getByLabel(/…$/).selectOption({ label: relationship })
+  await form.getByLabel('Entry').fill(entry)
+  await page.locator('.wb-combobox__option', { hasText: entry }).first().click()
+  if (options.note) await form.getByLabel('Note (optional)').fill(options.note)
+  if (options.visibleTo) await form.getByLabel('Visible to').selectOption({ label: options.visibleTo })
+  await form.getByRole('button', { name: 'Add', exact: true }).click()
+}

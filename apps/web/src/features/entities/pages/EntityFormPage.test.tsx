@@ -58,8 +58,8 @@ vi.mock('../components/RichTextEditor', () => ({
 vi.mock('../components/EntityPicker', () => ({
   EntityPicker: ({ label }: { label: string }) => <span>{label} picker</span>,
 }))
-vi.mock('../../relationships/components/RelatedContentPanel', () => ({
-  RelatedContentPanel: ({ canEdit }: { canEdit: boolean }) => <div>relationship manager canEdit={String(canEdit)}</div>,
+vi.mock('../../relationships/components/ConnectionsManager', () => ({
+  ConnectionsManager: ({ canEdit }: { canEdit: boolean }) => <div>relationship manager canEdit={String(canEdit)}</div>,
 }))
 vi.mock('../../attachments/components/AttachmentsPanel', () => ({
   AttachmentsPanel: ({ canManage }: { canManage: boolean }) => <div>attachment manager canManage={String(canManage)}</div>,

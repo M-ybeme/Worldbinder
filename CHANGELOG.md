@@ -4,6 +4,77 @@ All notable changes to this project are documented here. Format follows [Keep a 
 
 Every push to `main` should add an entry here. This is meant to be an honest record of what actually shipped, not a restatement of the roadmap's aspirations — if something was attempted and reverted, or shipped partially, say so.
 
+## [1.8.0] - 2026-11-02
+
+**Entity Design D: Connections management.** The editor's Connections tab is now a focused workspace for an entry's relationships. You can add from either end, duplicates and facts already stated by a detail field are explained before anything is sent, and removal has a server-confirmed Undo. It replaces the old "+ Relationship" panel. The article's **Manage** now opens this tab instead of embedding a second, older editor.
+
+### Added
+
+- **`ConnectionsManager`** (`features/relationships/components/`):
+  - **Layout:**
+    - **Desktop:** an add form at the top that stays visible however long the list grows, then a table with the relationship as read from this entry, the other entry and its type, the note, and who can see it.
+    - **Below 1024px:** the table becomes a list.
+    - **Phones:** adding happens in a bottom sheet.
+  - **Filter:** appears once there are more than 6 relationships and matches label, name, type or note, with a "1 of 8" count.
+  - **Read-only sections:** "From details" (this entry's own reference fields, linked to the Details tab) and "Mentioned in" (@-links from other entries).
+  - **Permissions** are unchanged:
+    - Players and viewers see the list with no controls.
+    - Only owners and GMs get the GM-only visibility choice.
+    - The API enforces both.
+- **Adding from either end.** The "Blackwall…" picker is grouped into "Blackwall is the subject" (forward labels) and "Blackwall is the object" (reverse labels: Contains, Controlled by, Owned by…).
+  - The options come from the real relationship types and their allowed source/target types, so nothing is invented. A Character isn't offered "Contains" because "Located in" only targets locations.
+  - A symmetric type is offered once.
+  - A reverse choice swaps source and target in the existing create call. One row is stored and it shows correctly from both entries.
+  - The entry search is limited to the allowed type when there's only one. Otherwise a type mismatch is explained before sending.
+- **Duplicate protection before sending**, matching the API's own rule:
+  - the same type between the same entries;
+  - for symmetric types, either order;
+  - recorded from the other side ("This is already recorded from the other side: …").
+  - An entry related to itself.
+  - The API's 409 still has the final say, including for relationships hidden from this member.
+- **Detail fields stay authoritative.** If a field on either entry already states the fact, the relationship is refused with an explanation and a link to that entry's Details tab. This covers a location's Parent location, a character's Current location, a faction's or organization's Leader or Headquarters, an item's owner or location, an event's location, and the reverse of each (on the March, "Contains Blackwall" when Blackwall's Parent location is the March). It checks the Details tab's current values, including ones not yet saved. Nothing is overwritten and no redundant record is created. The reading view's de-duplication is unchanged.
+- **Removal with Undo.** Removing calls the existing delete, then shows a "Removed: Blackwall controlled by Duke Renald" notification with **Undo** for 10 seconds.
+  - Undo re-creates the same type, direction, note and visibility (including GM-only). It says "Restored" only after the server confirms.
+  - Failures are explained and never reported as restored:
+    - 409: it was added again meanwhile;
+    - 403: permission changed;
+    - 404: an entry was deleted or hidden;
+    - anything else: the server's message.
+  - A failed removal keeps the row.
+  - A new removal replaces the previous notification, whose Undo ends. The re-created relationship gets a new ID and creation time.
+  - **Keyboard:** removing with the keyboard moves focus to Undo, because the focused row is gone. The countdown pauses while the notification is hovered or focused (WCAG 2.2.1), and Escape dismisses it.
+- **Shared UI primitives** (`packages/ui`), reused by Files next:
+  - **`Toast`:** one transient notification with an action. It's announced through a live region that exists before its text (assertive for errors), sits above the phone tab bar, and uses an inverse surface that holds contrast in both themes.
+  - **`Dialog` `placement="sheet"`:** a bottom sheet for phones. It's lifted above the on-screen keyboard using `visualViewport` (iOS Safari and Android Chrome shrink only the visual viewport) and capped to the visible height so the focused field and submit button stay reachable. Escape, the close button and the backdrop all dismiss it, and focus returns to the opener.
+
+### Changed
+
+- `EntityRelationshipView` gains **`relationshipTypeId`**. This is additive and backward compatible. Undo needs the exact type, and labels aren't unique (custom types can share them).
+- Editor Connections panel: wide layout (1100px) instead of the 80-character prose measure.
+- The reading view's **Manage** is a link to `…/edit/connections` (one place to manage relationships). `RelatedContentPanel` was removed.
+
+### Tests
+
+- `relationships/lib/relationshipChoices.test.ts` (9): which forward and reverse choices each entity type gets; endpoint swapping; duplicates from either end; symmetric ordering; `allowDuplicates`; detail-field overlap on this entry and on the other (Parent location, Current location, Leader).
+- `ConnectionsManager.test.tsx` (14), against an in-memory API with the server's rules:
+  - **Listing:** direction-aware labels, entry type, note and visibility; the "From details" section; filtering a long list.
+  - **Adding:** reverse add swaps endpoints; duplicate and metadata-overlap explanations, including the other entry's field.
+  - **Undo:** re-creates the exact relationship, including GM-only visibility; a 409 on Undo is reported, not shown as restored; a failed remove keeps its row; keyboard focus moves to Undo, which expires after 10 seconds.
+  - **Permissions:** players get no controls; editors get no GM-only option.
+  - **Phones:** the list and the bottom-sheet add.
+- `test/Toast.test.tsx` (4): live region, pause on hover, Escape and close, assertive errors.
+- `e2e/connections.spec.ts` (2 × 3 browsers):
+  - **Desktop:** a Location, a Faction and a Character with a real Parent location. Add "Contains" from the location, with a note and GM-only, and see it as "Located in" on the faction. The faction-side duplicate is caught. The Parent-location overlap links to Details. Remove → Undo restores the note and GM-only (checked after a reload). A keyboard removal focuses Undo, and Escape lets it expire for real.
+  - **Phone (390px):** the sheet is anchored to the bottom at full width; it adds and closes; the remove buttons are 44px or larger; the Undo toast sits above the tab bar.
+- Stale browser steps updated to the new UI, since they drove the removed panel: `relationships.spec.ts`, `entity-editor.spec.ts` and `entity-detail.spec.ts` now go through the Connections tab via a shared `addRelationship` helper. Unit-test mocks were switched to `ConnectionsManager`, and the two reading-view tests now assert the Manage link.
+- API: `relationships.e2e-spec.ts` asserts `relationshipTypeId` on both ends.
+
+### Verification
+
+Typecheck, lint (the same 2 existing warnings) and build clean; web vitest 209/209; API relationships integration 11/11. Browser: connections, relationships, entity-editor, entity-detail and entity-editor-safety specs, 66/66 across Chromium, Firefox and WebKit. Screenshots were checked in a separate review campaign ("Review — The Ashen Frontier (connections)": a character with 11 relationships, a location, a faction with Leader and Headquarters) at 1280 (light and dark), 820, 390 (light and dark) and 360 px. That covered the table, the overlap explanation, the Undo toast, the tablet list, the phone list and the sheet.
+
+**Known, deferred to Milestone 5 (mobile editor):** at 360px the four editor tabs overflow horizontally ("Files" is clipped). That's pre-existing and not specific to Connections.
+
 ## hotfix - 2026-11-02
 
 **Concurrent session creation no longer collides on the session number.** Session numbers are allocated per campaign as `max(session_number) + 1` inside the create transaction. Under Postgres's READ COMMITTED isolation, two creations in the same campaign at the same moment (two tabs, two GMs, a retried request) both read the same max. The second then hit the existing `(campaign_id, session_number)` unique constraint and returned an unexplained **500**. 1.7.1's quick-create lock stopped one dialog sending duplicates, but not separate tabs, users or devices.

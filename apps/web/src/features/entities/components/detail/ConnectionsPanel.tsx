@@ -1,8 +1,7 @@
-import type { CampaignRole, EntityDetail } from '@worldbinder/contracts'
+import type { EntityDetail } from '@worldbinder/contracts'
 import { Badge, ErrorState } from '@worldbinder/ui'
 import { useId, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { RelatedContentPanel } from '../../../relationships/components/RelatedContentPanel'
 import {
   useEntityBacklinksQuery,
   useEntityRelationshipsQuery,
@@ -30,7 +29,8 @@ const PREVIEW_LIMIT = 3
  * listed once, under the detail (see `mergeConnections`).
  *
  * `compact` (phones) shows only a short preview until expanded, so a long
- * connection list doesn't push the article down the page.
+ * connection list doesn't push the article down the page. Relationships
+ * are managed on the editor's Connections tab ("Manage").
  */
 export function ConnectionsPanel({
   campaignId,
@@ -38,7 +38,6 @@ export function ConnectionsPanel({
   references,
   resolved,
   canEdit,
-  campaignRole,
   compact = false,
 }: {
   campaignId: string
@@ -46,12 +45,10 @@ export function ConnectionsPanel({
   references: EntityReference[]
   resolved: Map<string, EntityDetail | null>
   canEdit: boolean
-  campaignRole: CampaignRole
   compact?: boolean
 }) {
   const relationshipsQuery = useEntityRelationshipsQuery(campaignId, entity.id)
   const backlinksQuery = useEntityBacklinksQuery(campaignId, entity.id)
-  const [managing, setManaging] = useState(false)
   const [expanded, setExpanded] = useState(false)
   const bodyId = useId()
 
@@ -63,7 +60,7 @@ export function ConnectionsPanel({
     relationshipsQuery.data ?? [],
   )
   const connectionCount = derived.length + relationships.length
-  const showPreview = compact && !expanded && !managing
+  const showPreview = compact && !expanded
   const backlinks = backlinksQuery.data ?? []
   const worldUrl = (id: string) => `/app/campaign/${campaignId}/world/${id}`
   const loading = relationshipsQuery.isLoading || backlinksQuery.isLoading
@@ -77,14 +74,13 @@ export function ConnectionsPanel({
       collapsible={false}
       action={
         canEdit && (
-          <button
-            type="button"
+          <Link
             className="wb-ed-link-button"
-            aria-expanded={managing}
-            onClick={() => setManaging((value) => !value)}
+            to={`${worldUrl(entity.id)}/edit/connections`}
+            aria-label="Manage connections"
           >
-            {managing ? 'Done managing' : 'Manage'}
-          </button>
+            Manage
+          </Link>
         )
       }
     >
@@ -114,7 +110,7 @@ export function ConnectionsPanel({
             ))}
         </ul>
       )}
-      {compact && (connectionCount > PREVIEW_LIMIT || backlinks.length > 0) && !managing && (
+      {compact && (connectionCount > PREVIEW_LIMIT || backlinks.length > 0) && (
         <button
           type="button"
           className="wb-ed-more"
@@ -206,18 +202,8 @@ export function ConnectionsPanel({
       </div>
 
       {loading && <p className="wb-ed-muted">Loading connections…</p>}
-      {isEmpty && !managing && <p className="wb-ed-muted">No connections yet.</p>}
+      {isEmpty && <p className="wb-ed-muted">No connections yet.</p>}
 
-      {managing && (
-        <div className="wb-ed-manage">
-          <RelatedContentPanel
-            campaignId={campaignId}
-            entityId={entity.id}
-            canEdit={canEdit}
-            campaignRole={campaignRole}
-          />
-        </div>
-      )}
     </SidePanel>
   )
 }

@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import {
+  addRelationship,
   clearRateLimits,
   findEmailLink,
   login,
@@ -100,7 +101,7 @@ test('tabs keep pending edits, save once, persist, and follow browser history', 
   })
 })
 
-test('Connections and Files tabs reuse the working managers', async ({ page }) => {
+test('Connections and Files tabs manage relationships and files', async ({ page }) => {
   const id = stamp()
   await setUpOwnerWithCampaign(page, 'PW Editor Tabs Owner', `Editor Tabs ${id}`)
   const marchName = `Northern March ${id}`
@@ -108,12 +109,8 @@ test('Connections and Files tabs reuse the working managers', async ({ page }) =
   const articleUrl = await createLocation(page, `Blackwall ${id}`)
 
   await page.goto(`${articleUrl}/edit/connections`)
-  await page.getByRole('button', { name: '+ Relationship' }).click()
-  await page.getByLabel('Relationship type').selectOption({ label: 'Located in' })
-  await page.getByLabel('Target entity').fill(marchName)
-  await page.locator('.wb-combobox__option', { hasText: marchName }).first().click()
-  await page.getByRole('button', { name: 'Save' }).click()
-  await expect(page.getByRole('link', { name: marchName })).toBeVisible()
+  await addRelationship(page, 'Located in', marchName)
+  await expect(page.getByRole('table').getByRole('link', { name: marchName })).toBeVisible()
 
   await openEditorTab(page, 'Files')
   await expect(page.getByRole('heading', { name: 'Attachments' })).toBeVisible()
