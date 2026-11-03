@@ -24,6 +24,7 @@ import { useCampaignOutletContext } from '../../campaigns/hooks/useCampaignConte
 import { ConnectionsManager } from '../../relationships/components/ConnectionsManager'
 import { clearDraft, loadDraft, type ResourceDraft } from '../../../lib/draftDb'
 import { useAutosave } from '../../../lib/useAutosave'
+import { useElementWidth } from '../../../lib/useElementWidth'
 import { useMediaQuery } from '../../../lib/useMediaQuery'
 import * as entitiesApi from '../api/entitiesApi'
 import { EntityBreadcrumbs } from '../components/detail/EntityBreadcrumbs'
@@ -31,6 +32,7 @@ import { EditorSafetyPanels } from '../../editing/EditorSafetyPanels'
 import { SaveStatusIndicator } from '../../editing/SaveStatusIndicator'
 import { useEditorSafety } from '../../editing/useEditorSafety'
 import { EntityMetadataFields } from '../components/EntityMetadataFields'
+import { ReferencePanel } from '../components/editor/ReferencePanel'
 import { RichTextEditor } from '../components/RichTextEditor'
 import { useEntityQuery } from '../hooks/useEntities'
 import { entityDifferences } from '../lib/entityConflict'
@@ -52,6 +54,10 @@ const TAB_LABELS: Record<EditorTab, string> = {
 const EDIT_ROLES = new Set(['owner', 'gm', 'editor'])
 // Matches the shell's phone breakpoint (bottom tabs).
 const PHONE_QUERY = '(max-width: 768px)'
+// Content-tab width needed for a comfortable editor (~650px) plus the 280px
+// reference column and gap beside it (1280px window with the sidebar open);
+// narrower, the reference panel collapses to a rail.
+const REFERENCE_SIDE_MIN_WIDTH = 960
 
 const ENTITY_TYPE_OPTIONS = (Object.keys(ENTITY_TYPE_LABELS) as EntityType[]).map((value) => ({
   value,
@@ -93,6 +99,7 @@ export function EntityFormPage() {
   const navigate = useNavigate()
   const canEdit = EDIT_ROLES.has(campaign.role)
   const isPhone = useMediaQuery(PHONE_QUERY)
+  const [contentLayoutRef, contentWidth] = useElementWidth<HTMLDivElement>()
   const tab = (EDITOR_TABS as readonly string[]).includes(tabParam ?? '')
     ? (tabParam as EditorTab)
     : null
@@ -306,6 +313,13 @@ export function EntityFormPage() {
   }
 
   const displayName = name.trim() || entityQuery.data.name
+  // Unmeasured (0) counts as wide: no layout jump on wide screens, and
+  // narrow ones settle on the first measurement.
+  const referenceLayout = isPhone
+    ? 'sheet'
+    : contentWidth === 0 || contentWidth >= REFERENCE_SIDE_MIN_WIDTH
+      ? 'side'
+      : 'rail'
 
   return (
     <div className="wb-ed wb-edit">
@@ -421,30 +435,48 @@ export function EntityFormPage() {
           hidden={tab !== 'content'}
           aria-label="Content"
         >
-          <Textarea
-            id="summary"
-            label="Summary"
-            value={summary}
-            onChange={(e) => setSummary(e.target.value)}
-          />
-          <RichTextEditor
-            key={`public-${formKey}`}
-            label="Public content"
-            content={publicContent}
-            onChange={setPublicContent}
-            campaignId={campaign.id}
-          />
-          {hasGmAccess && (
-            <div className="wb-gm-content">
+          {/* The editors and the reference panel are siblings in a fixed
+              structure: toggling or resizing the panel only changes classes,
+              so the rich-text editors are never remounted. */}
+          <div
+            ref={contentLayoutRef}
+            className={`wb-content-layout wb-content-layout--${referenceLayout}`}
+          >
+            <div className="wb-content-layout__main">
+              <Textarea
+                id="summary"
+                label="Summary"
+                value={summary}
+                onChange={(e) => setSummary(e.target.value)}
+              />
               <RichTextEditor
-                key={`gm-${formKey}`}
-                label="GM-only content"
-                content={gmContent}
-                onChange={setGmContent}
+                key={`public-${formKey}`}
+                label="Public content"
+                content={publicContent}
+                onChange={setPublicContent}
                 campaignId={campaign.id}
               />
+              {hasGmAccess && (
+                <div className="wb-gm-content">
+                  <RichTextEditor
+                    key={`gm-${formKey}`}
+                    label="GM-only content"
+                    content={gmContent}
+                    onChange={setGmContent}
+                    campaignId={campaign.id}
+                  />
+                </div>
+              )}
             </div>
-          )}
+            <ReferencePanel
+              campaignId={campaign.id}
+              entity={entityQuery.data}
+              metadata={metadata}
+              layout={referenceLayout}
+              active={tab === 'content'}
+              connectionsUrl={`${articleUrl}/edit/connections`}
+            />
+          </div>
         </section>
 
         <section className="wb-edit-panel" hidden={tab !== 'details'} aria-label="Details">

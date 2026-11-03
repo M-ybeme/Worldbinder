@@ -48,6 +48,9 @@ vi.mock('../components/RichTextEditor', () => ({
 vi.mock('../components/EntityPicker', () => ({
   EntityPicker: ({ label }: { label: string }) => <span>{label} picker</span>,
 }))
+vi.mock('../components/editor/ReferencePanel', () => ({
+  ReferencePanel: ({ layout }: { layout: string }) => <aside aria-label="Reference">reference {layout}</aside>,
+}))
 vi.mock('../../relationships/components/ConnectionsManager', () => ({
   ConnectionsManager: () => <div>relationship manager</div>,
 }))

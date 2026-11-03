@@ -4,6 +4,51 @@ All notable changes to this project are documented here. Format follows [Keep a 
 
 Every push to `main` should add an entry here. This is meant to be an honest record of what actually shipped, not a restatement of the roadmap's aspirations — if something was attempted and reverted, or shipped partially, say so.
 
+## [1.10.0] - 2026-11-03
+
+**Entity Design D: a reference panel beside the Content editor.** While writing an entry you can see what it's connected to, where it's mentioned, its plot threads and the sessions it appears in, without leaving the editor. Toggling the panel never touches the editor: same instance, same focus, caret and selection, and no save.
+
+### Added
+
+- **`ReferencePanel`** (`entities/components/editor/`), on the Content tab:
+  - **Contents:**
+    - **Connected to:** detail-field connections and relationships, merged as on the article, with GM-only badges.
+    - **Manage connections →**, which opens the Connections tab.
+    - **Mentioned in**, **Plot threads** and **Appears in** (sessions).
+  - **Data:** everything comes from the existing endpoints, with no new API. Relationships are usually already cached. The rest is fetched only while the panel is open on the Content tab.
+  - **Links open in a new tab** (labelled "opens in a new tab"), so the editor and anything unsaved stay put. The autosave and leave guard aren't involved.
+- **Layout:**
+  - **Room beside the editor** (content width ≥ 960px, which is a 1280px window with the sidebar open): a 280px sticky column, collapsible to a 40px rail ("Reference · 4 connections"). The choice is remembered on this device (`localStorage`, with a safe fallback).
+  - **Not enough room** (narrower window, or the sidebar expanded): always the rail. Opening it **overlays** the panel, so the editor keeps its width. Escape or the chevron closes it, and the saved preference isn't touched. Width is measured with a `ResizeObserver` on the content area, so it follows window resizes and the sidebar collapsing or expanding.
+  - **Phones:** a **Reference** button above the editor opens the panel as a bottom sheet (`Dialog placement="sheet"`).
+- **The editor is never disturbed:**
+  - The editors and the panel are siblings in a fixed structure. Toggling and layout changes only change classes, so the rich-text editors never remount.
+  - The toggle buttons cancel `mousedown`, so a mouse click doesn't move focus. ProseMirror keeps its caret and selection, and typing continues where it was.
+
+### Fixed
+
+- `useEntityBacklinksQuery` now skips fetching without an entity ID, as the other entity queries do.
+
+### Tests
+
+- `ReferencePanel.test.tsx` (6):
+  - all four sections, the merged connections, and new-tab links;
+  - collapse to the rail, remembered across mounts;
+  - toggles cancel `mousedown`, so focus stays put;
+  - nothing extra is fetched while collapsed or on another tab;
+  - the overlay doesn't change the saved preference, and Escape closes it;
+  - the phone sheet.
+- `e2e/reference-panel.spec.ts` (2 × 3 browsers):
+  - **Editor safety:** with a word selected in a saved document, hide, show and hide the panel. Each time, the same editor DOM node is still there, focus is still in the editor, the selection is still "arrived", the status still reads Saved, and no PATCH is sent. Typing then replaces the selection. A link opens in a new tab while the editor stays on its URL with its text.
+  - **Layout:** 1440 → side column; 1100 → rail; collapsing the sidebar → column again; expanding → rail; the overlay leaves the editor's width unchanged; 390 → Reference sheet, Escape closes it, and the typed text is intact.
+- The editor page tests mock the panel, like the other self-contained panels.
+
+### Verification
+
+Typecheck and lint clean (the same 2 warnings); web vitest 225/225. Browser: reference-panel ×2 repeats plus entity-editor, entity-editor-safety and autosave, all passing across Chromium, Firefox and WebKit (56 + 12; then 21 and 6 after the final small fixes). Screenshots were checked in a separate review campaign ("Review — The Ashen Frontier (reference)", with real mentions, a thread and a session): 1280 open and collapsed (light and dark), the 1100 rail and overlay, and the 390 button and sheet (light and dark).
+
+**Noted for Milestone 5:** on phones the rich-text toolbar wraps to three rows above the editor.
+
 ## [1.9.0] - 2026-11-02
 
 **Entity Design D: Files management, and deleting a file can no longer take it from somewhere else.** The Files workspace (editor Files tab, sessions and plot threads) separates **Remove** (unlink from this record, with Undo) from **Delete file…** (permanent, confirmed, no Undo). A stored file can be shared: linked to several entries, sessions or threads, used as a map's image, or used as the campaign cover. Deleting it from one place used to silently break all the others. The API now refuses that.

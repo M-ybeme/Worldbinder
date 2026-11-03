@@ -36,6 +36,7 @@ export function useEntityBacklinksQuery(campaignId: string, entityId: string) {
   return useQuery({
     queryKey: entityBacklinksKey(campaignId, entityId),
     queryFn: () => relationshipsApi.getEntityBacklinks(campaignId, entityId),
+    enabled: !!entityId,
   })
 }
 
