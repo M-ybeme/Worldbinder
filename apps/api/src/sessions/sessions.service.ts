@@ -103,7 +103,7 @@ export class SessionsService {
       gmContentJson: null,
     });
 
-    const sessionId = await this.db.transaction(async (tx) => {
+    const creating = this.db.transaction(async (tx) => {
       const sessionNumber = await this.nextSessionNumber(tx, campaignId);
 
       const [row] = await tx
@@ -178,6 +178,17 @@ export class SessionsService {
       });
 
       return row.id;
+    });
+    // The campaign lock in nextSessionNumber prevents a collision for API
+    // creations; a writer that bypasses it (a script, a future code path) can
+    // still collide, and that's a conflict to retry, not a server error.
+    const sessionId = await creating.catch((error: unknown) => {
+      if (isSessionNumberCollision(error)) {
+        throw new ConflictException(
+          'Another session was created with the same session number at the same time. Please try again.',
+        );
+      }
+      throw error;
     });
 
     return this.getById(campaignId, sessionId, membership);
@@ -636,10 +647,23 @@ export class SessionsService {
     );
   }
 
+  /** Must run inside the creating transaction. Locks the campaign row first
+   * so concurrent creations in one campaign allocate one at a time: each
+   * reads the max only after the previous one has committed (READ
+   * COMMITTED re-reads per statement). `FOR NO KEY UPDATE` doesn't conflict
+   * with the key-share locks other inserts take through their foreign key
+   * to the campaign, so it serializes only session numbering, and other
+   * campaigns aren't affected. Deleted sessions keep their numbers (soft
+   * delete), so a number is never reused. */
   private async nextSessionNumber(
     tx: Database,
     campaignId: string,
   ): Promise<number> {
+    await tx
+      .select({ id: campaigns.id })
+      .from(campaigns)
+      .where(eq(campaigns.id, campaignId))
+      .for('no key update');
     const [row] = await tx
       .select({ max: sql<number>`coalesce(max(${sessions.sessionNumber}), 0)` })
       .from(sessions)
@@ -1179,6 +1203,21 @@ function assertAllValid(
   const validIds = new Set(validRows.map((row) => row.id));
   const invalid = requestedIds.filter((id) => !validIds.has(id));
   if (invalid.length > 0) throw new BadRequestException(message);
+}
+
+/** A unique violation on (campaign_id, session_number). Drizzle wraps the
+ * driver error, so the Postgres fields may be on `.cause`. */
+function isSessionNumberCollision(error: unknown): boolean {
+  if (typeof error !== 'object' || error === null) return false;
+  if (
+    'code' in error &&
+    error.code === '23505' &&
+    'constraint' in error &&
+    error.constraint === 'sessions_campaign_id_session_number_unique'
+  ) {
+    return true;
+  }
+  return 'cause' in error && isSessionNumberCollision(error.cause);
 }
 
 /** Tags aren't fetched here — session panels don't render them, same

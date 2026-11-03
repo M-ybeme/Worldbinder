@@ -4,6 +4,33 @@ All notable changes to this project are documented here. Format follows [Keep a 
 
 Every push to `main` should add an entry here. This is meant to be an honest record of what actually shipped, not a restatement of the roadmap's aspirations — if something was attempted and reverted, or shipped partially, say so.
 
+## hotfix - 2026-11-02
+
+**Concurrent session creation no longer collides on the session number.** Session numbers are allocated per campaign as `max(session_number) + 1` inside the create transaction. Under Postgres's READ COMMITTED isolation, two creations in the same campaign at the same moment (two tabs, two GMs, a retried request) both read the same max. The second then hit the existing `(campaign_id, session_number)` unique constraint and returned an unexplained **500**. 1.7.1's quick-create lock stopped one dialog sending duplicates, but not separate tabs, users or devices.
+
+### Fixed
+
+- **Allocation is serialized per campaign** (`SessionsService.nextSessionNumber`). The create transaction first locks the campaign row (`SELECT … FOR NO KEY UPDATE`), then reads the max. A concurrent creation waits for the lock and reads the max only after the first has committed, so every creation gets a distinct, contiguous number. Other campaigns aren't affected. The lock doesn't block other inserts that reference the campaign: their foreign-key check takes a key-share lock, which `NO KEY UPDATE` doesn't conflict with. A failed creation rolls back and releases the lock without consuming a number.
+- **A collision that bypasses the API's allocation returns 409, not 500**, with "Another session was created with the same session number at the same time. Please try again." That could happen with a direct database write or a future code path. The database's unique constraint stays the final guarantee.
+- No schema change or migration. Existing sessions keep their numbers. Deleted sessions are soft-deleted and still count toward the max, so a number is never reused, as before. No API accepts an explicitly chosen session number, so there were no explicit-number rules to preserve. Permissions are unchanged.
+
+### Tests
+
+New `test/sessions-concurrency.e2e-spec.ts` (6). It's a separate file because its bursts would push the main sessions spec past the per-IP global rate limit (300 requests/60s per spec run):
+
+- two simultaneous creations get 1 and 2;
+- 15 concurrent creations get exactly 1–15;
+- two campaigns creating at once are numbered independently;
+- existing numbers are untouched, and a deleted number isn't reused;
+- a creation that fails mid-transaction (a featured entity from another campaign, 400) leaves no row and no gap;
+- a deterministic collision returns 409. Another writer holds an uncommitted session with the next number; the test waits, via `pg_stat_activity`, until the API's insert is blocked on the unique index, then commits that writer.
+
+**Before the fix all 6 failed** (every concurrent request after the first got a 500; the collision test got 500 instead of 409). **After, 6/6**, and 6/6 on each of 5 repeat runs.
+
+### Verification
+
+API integration suite 214/214 across 21 suites, API unit tests 99/99, typecheck, lint (the same 2 existing web warnings) and build all clean. The integration suite must run with `pnpm dev` stopped. With it running, the dev worker processes the specs' test uploads and races their manual "mark ready" step: 4 attachment, map and export tests fail with the dev server running and pass without it. That's a test-environment caveat, unrelated to this change.
+
 ## [1.7.1] - 2026-11-02
 
 **Quick-create dialogs no longer lose what you type, and can't create twice.** These are fixes in the shared `Dialog` and `QuickCreateDialog` (`packages/ui`), so they apply to every quick-create (entity, session, plot thread, timeline event) and every other dialog. No backend changes.
@@ -26,6 +53,7 @@ Every push to `main` should add an entry here. This is meant to be an honest rec
 ### Verification
 
 Typecheck and lint clean (the 2 existing lint warnings are unchanged); web vitest 182/182. Browser runs:
+
 - `quick-create.spec.ts` ×3 in Chromium, Firefox and WebKit: 54/54 with the focus fix and submit lock.
 - The editor, autosave, session, plot-thread and entity suites ×2 in Firefox and WebKit (where the quick-create race used to fail them at setup): 123/124. There were no quick-create failures. The single failure was the Escape timing bug above (WebKit, session failed-save).
 - After the Escape fix: the three failed-save tests (entity, session, plot thread) ×5 in all three browsers, 45/45; `quick-create.spec.ts` ×2 again, 36/36.
