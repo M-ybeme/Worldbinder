@@ -23,6 +23,9 @@ export interface MenuButtonProps {
   /** Classes for the trigger, e.g. `wb-button wb-button--primary` or
    * `wb-icon-button`. */
   buttonClassName?: string
+  /** Where the menu opens: `above` for a trigger near the bottom of the
+   * screen (e.g. a toolbar above the on-screen keyboard). */
+  placement?: 'below' | 'above'
 }
 
 /**
@@ -37,6 +40,7 @@ export function MenuButton({
   menuLabel,
   items,
   buttonClassName = 'wb-button wb-button--secondary',
+  placement = 'below',
 }: MenuButtonProps) {
   const [open, setOpen] = useState(false)
   const [activeIndex, setActiveIndex] = useState(0)
@@ -127,7 +131,11 @@ export function MenuButton({
           role="menu"
           aria-label={menuLabel}
           tabIndex={-1}
-          className={['wb-menu__list', alignStart ? 'wb-menu__list--start' : '']
+          className={[
+            'wb-menu__list',
+            alignStart ? 'wb-menu__list--start' : '',
+            placement === 'above' ? 'wb-menu__list--above' : '',
+          ]
             .filter(Boolean)
             .join(' ')}
           onKeyDown={handleMenuKeyDown}

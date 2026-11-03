@@ -77,22 +77,37 @@ export function useAutosave<TInput extends Record<string, unknown>, TResult>({
     if (mountedRef.current) setStatusState(next)
   }, [])
 
+  // Local draft writes run one at a time, and only the newest waiting one is
+  // kept: each write replaces the whole draft, so the ones in between would
+  // be overwritten anyway. Chaining every keystroke's write instead built a
+  // backlog on slow storage (WebKit, phones) that a finished save had to
+  // wait out before reporting "Saved" or sending the next change.
+  const nextDraftOpRef = useRef<{ op: 'save' | 'clear'; input?: TInput } | null>(null)
+  const draftRunningRef = useRef(false)
+
   const queueDraft = useCallback((op: 'save' | 'clear', input?: TInput) => {
-    const { resourceType: type, campaignId: campaign, resourceId: id } = optionsRef.current
-    draftQueueRef.current = draftQueueRef.current
-      .then(() =>
-        op === 'save' && input
-          ? saveDraft(type, campaign, id, input)
-          : clearDraft(type, campaign, id),
-      )
-      .then(() => {
-        draftStateRef.current = op === 'save' ? 'stored' : 'none'
-      })
-      .catch(() => {
-        // Local storage unavailable (private mode, quota): the server save
-        // still runs; there's just no offline copy to fall back on.
-        if (op === 'save') draftStateRef.current = 'failed'
-      })
+    nextDraftOpRef.current = { op, input }
+    if (draftRunningRef.current) return draftQueueRef.current
+    draftRunningRef.current = true
+    draftQueueRef.current = (async () => {
+      try {
+        for (let next = nextDraftOpRef.current; next; next = nextDraftOpRef.current) {
+          nextDraftOpRef.current = null
+          const { resourceType: type, campaignId: campaign, resourceId: id } = optionsRef.current
+          try {
+            if (next.op === 'save' && next.input) await saveDraft(type, campaign, id, next.input)
+            else await clearDraft(type, campaign, id)
+            draftStateRef.current = next.op === 'save' ? 'stored' : 'none'
+          } catch {
+            // Local storage unavailable (private mode, quota): the server
+            // save still runs; there's just no offline copy to fall back on.
+            if (next.op === 'save') draftStateRef.current = 'failed'
+          }
+        }
+      } finally {
+        draftRunningRef.current = false
+      }
+    })()
     return draftQueueRef.current
   }, [])
 

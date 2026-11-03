@@ -1,9 +1,7 @@
 import {
-  useEffect,
   useId,
   useLayoutEffect,
   useRef,
-  useState,
   type CSSProperties,
   type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
@@ -11,6 +9,7 @@ import {
 import { createPortal } from 'react-dom'
 import { X } from 'lucide-react'
 import { IconButton } from './IconButton'
+import { useKeyboardInset } from './useKeyboardInset'
 import './Dialog.css'
 
 export interface DialogProps {
@@ -197,27 +196,4 @@ export function Dialog({
     </div>,
     document.body,
   )
-}
-
-/** How much of the layout viewport the on-screen keyboard covers. iOS
- * Safari and Android Chrome shrink only the *visual* viewport when the
- * keyboard opens, so a `position: fixed; bottom: 0` sheet would sit behind
- * it; this offset lifts it back into view. 0 without `visualViewport`. */
-function useKeyboardInset(active: boolean): number {
-  const [inset, setInset] = useState(0)
-  useEffect(() => {
-    const viewport = typeof window !== 'undefined' ? window.visualViewport : null
-    if (!active || !viewport) return
-    const update = () =>
-      setInset(Math.max(0, Math.round(window.innerHeight - viewport.height - viewport.offsetTop)))
-    update()
-    viewport.addEventListener('resize', update)
-    viewport.addEventListener('scroll', update)
-    return () => {
-      viewport.removeEventListener('resize', update)
-      viewport.removeEventListener('scroll', update)
-      setInset(0)
-    }
-  }, [active])
-  return inset
 }

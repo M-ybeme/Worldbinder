@@ -3,6 +3,11 @@ import { mergeAttributes, Node } from '@tiptap/core'
 import Suggestion, { type SuggestionKeyDownProps, type SuggestionProps } from '@tiptap/suggestion'
 import { getEntity, listEntities } from '../api/entitiesApi'
 import { ENTITY_TYPE_LABELS } from '../lib/entityTypeIcons'
+
+// Space below the visible viewport's bottom that a phone's floating
+// formatting toolbar can cover.
+const RESERVED_BELOW = 60
+const POPUP_ESTIMATED_HEIGHT = 240
 import '../entities.css'
 
 export interface EntityMentionOptions {
@@ -202,6 +207,7 @@ export const EntityMention = Node.create<EntityMentionOptions>({
           let requestId = 0
           let latestQuery = ''
           let latestCommand: SuggestionProps['command'] | null = null
+          let latestProps: SuggestionProps | null = null
 
           const campaignId = this.options.campaignId
 
@@ -223,6 +229,7 @@ export const EntityMention = Node.create<EntityMentionOptions>({
               empty.className = 'wb-combobox__status'
               empty.textContent = latestQuery.length > 0 ? 'No matching entities' : 'Type to search'
               popup.appendChild(empty)
+              if (latestProps) positionPopup(latestProps)
               return
             }
 
@@ -242,6 +249,8 @@ export const EntityMention = Node.create<EntityMentionOptions>({
               })
               popup?.appendChild(option)
             })
+            // Its height changed: re-fit it to the visible area.
+            if (latestProps) positionPopup(latestProps)
           }
 
           const search = (query: string) => {
@@ -275,17 +284,38 @@ export const EntityMention = Node.create<EntityMentionOptions>({
             }, SEARCH_DEBOUNCE_MS)
           }
 
+          // Kept inside what's actually visible: on phones the on-screen
+          // keyboard and the floating formatting toolbar take the bottom of
+          // the screen, so the list opens above the caret when it wouldn't
+          // fit below, and never runs off the side.
           const positionPopup = (props: SuggestionProps) => {
             if (!popup) return
             const rect = props.clientRect?.()
             if (!rect) return
+            const viewport = window.visualViewport
+            const top = viewport?.offsetTop ?? 0
+            const bottom = top + (viewport?.height ?? window.innerHeight) - RESERVED_BELOW
+            const width = viewport?.width ?? window.innerWidth
             popup.style.position = 'fixed'
-            popup.style.left = `${rect.left}px`
-            popup.style.top = `${rect.bottom + 4}px`
+            popup.style.maxHeight = ''
+            const height = popup.offsetHeight || POPUP_ESTIMATED_HEIGHT
+            const below = bottom - rect.bottom - 4
+            const above = rect.top - top - 4
+            if (height <= below || below >= above) {
+              popup.style.top = `${rect.bottom + 4}px`
+              popup.style.maxHeight = `${Math.max(below, 120)}px`
+            } else {
+              const shown = Math.min(height, above)
+              popup.style.top = `${rect.top - 4 - shown}px`
+              popup.style.maxHeight = `${above}px`
+            }
+            const popupWidth = popup.offsetWidth || 0
+            popup.style.left = `${Math.max(8, Math.min(rect.left, width - popupWidth - 8))}px`
           }
 
           return {
             onStart: (props: SuggestionProps) => {
+              latestProps = props
               popup = document.createElement('div')
               popup.className = 'wb-combobox__listbox wb-entity-mention-popup'
               document.body.appendChild(popup)
@@ -297,6 +327,7 @@ export const EntityMention = Node.create<EntityMentionOptions>({
               search(props.query)
             },
             onUpdate: (props: SuggestionProps) => {
+              latestProps = props
               positionPopup(props)
               latestQuery = props.query
               latestCommand = props.command

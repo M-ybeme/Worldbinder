@@ -78,6 +78,8 @@ beforeEach(() => {
   vi.useFakeTimers()
   vi.mocked(saveDraft).mockClear()
   vi.mocked(clearDraft).mockClear()
+  vi.mocked(saveDraft).mockImplementation(() => Promise.resolve())
+  vi.mocked(clearDraft).mockImplementation(() => Promise.resolve())
   setOnline(true)
 })
 
@@ -414,5 +416,30 @@ describe('useAutosave — retry, local draft confirmation, accepting the server 
     for (let i = 0; i < 5; i += 1) await advance(AUTOSAVE_DELAY_MS)
     expect(finished).toBe('saved')
     expect(server.saved.map((s) => s.summary)).toEqual(['first', 'second'])
+  })
+
+  it('doesn’t let a backlog of local draft writes hold up "Saved" (fast typing, slow storage)', async () => {
+    // Browser-found (WebKit, fast typing on a phone): each keystroke queued
+    // its own IndexedDB write, one after another, and a finished save waited
+    // for all of them before reporting "Saved" or sending the next change.
+    const DRAFT_WRITE_MS = 100
+    vi.mocked(saveDraft).mockImplementation(
+      () => new Promise((resolve) => setTimeout(resolve, DRAFT_WRITE_MS)),
+    )
+    vi.mocked(clearDraft).mockImplementation(
+      () => new Promise((resolve) => setTimeout(resolve, DRAFT_WRITE_MS)),
+    )
+    const server = fakeServer()
+    const { result } = renderHook(() => useEditorLike(server.save))
+    for (let i = 1; i <= 30; i += 1) {
+      act(() => result.current.setSummary(`typed ${i}`))
+      await advance(10)
+    }
+    await advance(AUTOSAVE_DELAY_MS + 3 * DRAFT_WRITE_MS)
+    expect(server.saved.map((s) => s.summary)).toEqual(['typed 30'])
+    expect(result.current.autosave.status).toBe('saved')
+    // Superseded drafts aren't written: only what's newest when storage is free.
+    expect(vi.mocked(saveDraft).mock.calls.length).toBeLessThanOrEqual(4)
+    expect(vi.mocked(saveDraft).mock.calls.at(-1)?.[3]).toMatchObject({ summary: 'typed 30' })
   })
 })

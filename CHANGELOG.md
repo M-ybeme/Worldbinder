@@ -4,6 +4,43 @@ All notable changes to this project are documented here. Format follows [Keep a 
 
 Every push to `main` should add an entry here. This is meant to be an honest record of what actually shipped, not a restatement of the roadmap's aspirations — if something was attempted and reverted, or shipped partially, say so.
 
+## [1.11.0] - 2026-11-03
+
+**Entity Design D: editing on a phone.** The editor is now practical on a phone. All four tabs fit, the toolbar is a single row of touch-sized controls, and while you type it rides just above the on-screen keyboard with the caret kept in view. Menus and @-mentions open where you can see them. The rich-text editor is shared, so session and plot-thread editing get the same treatment.
+
+### Added
+
+- **Tabs on narrow phones** (≤480px): Content, Details, Connections and Files become four equal segments, each at least 44px tall, with no sideways scrolling. At 360px "Files" was clipped before. Deep links and Back/Forward are unchanged.
+- **Compact formatting toolbar** (≤768px, every rich-text editor):
+  - **Buttons:** Bold, Italic, Heading, Bullet list, Link entity (@), and **More** (Heading 3, Numbered list, Quote, Strikethrough, Code block, Link, Table, Undo, Redo). That's one row of 44px icon buttons, each with an accessible name and pressed state.
+  - **While the editor or its toolbar has focus,** the toolbar is fixed just above the on-screen keyboard. Its position comes from `visualViewport`: iOS Safari and Android Chrome shrink only the visual viewport, so `bottom: 0` would sit behind the keyboard. With no keyboard it sits above the tab bar.
+  - A **Hide keyboard** button blurs the editor.
+  - A placeholder keeps the toolbar's slot, so the text doesn't jump when it floats.
+  - Pressing any toolbar control, More included, doesn't take focus from the editor, so the keyboard stays up. Safari doesn't focus buttons on click; before this fix the editor blurred and the toolbar moved out from under the tap.
+- **The caret stays visible.** ProseMirror's own scrolling uses scroll margins that clear the toolbar. On every selection change, edit and keyboard resize, the caret is also checked against the _visible_ viewport (which ProseMirror doesn't know about) and scrolled above the toolbar.
+- **Menus and mentions where you can see them:**
+  - `MenuButton` gains `placement="above"`, so More opens upward.
+  - The @-mention list opens above the caret when it wouldn't fit below the visible area (keyboard plus toolbar), is clamped to the screen width, scrolls within the space available, and is re-fitted once results arrive.
+- `useKeyboardInset` moved into `packages/ui` as a shared hook, used by the bottom sheet and the toolbar.
+
+### Fixed
+
+- **Fast typing could hold "Saved", and leaving the editor, behind a backlog of local draft writes.** `useAutosave` (shared by entities, sessions and plot threads) queued one IndexedDB draft write per keystroke, chained in order. A finished save awaited the whole chain before reporting "Saved" or sending the next change. Storage is slow in WebKit and on phones, so a few lines of quick typing left the status stuck on "Saving…" for tens of seconds. It was found by the new phone test in WebKit, where only one PATCH was sent. Draft writes now run one at a time and keep only the newest waiting write. Each write replaces the whole draft, so nothing is lost, and the latest content is always the one stored.
+
+### Tests
+
+- `useAutosave.test.tsx`: new regression test. With slow draft writes (100ms) and 30 quick edits, the status must reach "Saved" right after the save, one PATCH must carry the final text, and at most 4 draft writes may happen (the last being the final text). Before the fix the status stayed "saving"; after, 19/19.
+- `e2e/mobile-editor.spec.ts` (3 × 3 browsers). This is **browser emulation, not a real device**: a stand-in `visualViewport` shrinks by 300px and fires `resize`, the way iOS and Android report a keyboard.
+  - **360px tabs:** inside the viewport, at least 44px tall, no overflow; deep link to Files; Back/Forward.
+  - **390px editing:** the toolbar's bottom edge sits exactly on the simulated keyboard. After 19 lines, the caret is above the toolbar. Bold keeps focus and applies. More opens inside the visible area and Quote applies with focus kept. The @-mention list fits above the keyboard, and the mention is inserted. Hide keyboard works. The text survives a tab switch, saves, and shows on the article.
+  - **Editing safety at phone width:** a failed save pauses leaving with Try again and Keep editing, the dialog fits, and Try again saves and leaves.
+
+### Verification
+
+Typecheck and lint clean (the same 2 warnings); web vitest 226/226. Browser: mobile-editor, autosave, entity-editor-safety, record-editor-safety, entity-editor and reference-panel, **96/96 across Chromium, Firefox and WebKit**. Screenshots were checked in a separate review campaign ("Review — The Ashen Frontier (mobile)") at 390 (light and dark: resting, keyboard open, More menu) and 360.
+
+**Not verified on a physical device.** iOS Safari and Android Chrome keyboard behaviour is covered only by emulation: the `visualViewport` stand-in and WebKit/Chromium engines at phone sizes. Checking on a real phone is still recommended, especially iOS's handling of `position: fixed` while the keyboard animates.
+
 ## [1.10.0] - 2026-11-03
 
 **Entity Design D: a reference panel beside the Content editor.** While writing an entry you can see what it's connected to, where it's mentioned, its plot threads and the sessions it appears in, without leaving the editor. Toggling the panel never touches the editor: same instance, same focus, caret and selection, and no save.

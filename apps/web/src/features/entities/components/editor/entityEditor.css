@@ -284,3 +284,22 @@
   color: var(--wb-text-muted);
   font-size: var(--wb-text-sm);
 }
+
+/* Narrow phones: the four editor tabs as equal segments — all reachable,
+   no sideways scrolling. */
+@media (max-width: 480px) {
+  .wb-edit-tabs {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0;
+    overflow: visible;
+  }
+
+  .wb-edit-tabs__tab {
+    justify-content: center;
+    min-width: 0;
+    padding-left: var(--wb-space-1);
+    padding-right: var(--wb-space-1);
+    font-size: var(--wb-text-sm);
+  }
+}

@@ -391,6 +391,47 @@ a:focus-visible {
   color: var(--wb-accent-fg);
 }
 
+/* Phones: one row of 44px controls. The slot keeps the toolbar's place
+   while it floats, so the editor below doesn't jump. */
+.wb-richtext-toolbar-slot {
+  min-height: 54px;
+}
+
+.wb-richtext-toolbar--compact {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  flex-wrap: nowrap;
+}
+
+.wb-richtext-toolbar--compact .wb-richtext-toolbar__button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 44px;
+  padding: 0;
+}
+
+.wb-richtext-toolbar--compact .wb-menu {
+  display: flex;
+}
+
+/* While editing: fixed just above the on-screen keyboard (bottom is set
+   inline from visualViewport) or, with no keyboard, above the tab bar. */
+.wb-richtext-toolbar--floating {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: calc(72px + env(safe-area-inset-bottom));
+  z-index: var(--wb-z-overlay);
+  border: 0;
+  border-top: 1px solid var(--wb-border-default);
+  border-radius: 0;
+  padding: var(--wb-space-1) var(--wb-space-2);
+  box-shadow: 0 -4px 12px rgb(0 0 0 / 0.08);
+}
+
 .wb-richtext {
   border: 1px solid var(--wb-border-default);
   border-radius: 0 0 var(--wb-radius-md) var(--wb-radius-md);

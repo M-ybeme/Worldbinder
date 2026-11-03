@@ -21,3 +21,4 @@ export { QuickCreateDialog, type QuickCreateDialogProps } from './QuickCreateDia
 export { Tooltip, type TooltipProps } from './Tooltip'
 export { MenuButton, type MenuButtonItem, type MenuButtonProps } from './MenuButton'
 export { Toast, type ToastProps } from './Toast'
+export { useKeyboardInset } from './useKeyboardInset'
