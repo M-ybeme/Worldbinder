@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 import { Button } from './Button'
 import { Dialog } from './Dialog'
 import { FormMessage } from './FormMessage'
@@ -36,12 +36,26 @@ export function QuickCreateDialog({
   pending,
   error,
 }: QuickCreateDialogProps) {
+  // Set synchronously on submit, so a second Enter/click arriving before
+  // React re-renders with `pending` can't create a duplicate. Released
+  // when the request settles (pending → false, or an error) or the dialog
+  // is reopened.
+  const submittingRef = useRef(false)
+  useEffect(() => {
+    if (!pending) submittingRef.current = false
+  }, [pending, error, open])
+
   return (
     <Dialog open={open} onClose={onClose} title={title} className="wb-quick-create-dialog">
       <form
         className="wb-form"
         onSubmit={(event) => {
           event.preventDefault()
+          // Guarded here as well as by the disabled button: whatever submits
+          // the form, never create with an invalid value, or twice while a
+          // create is already in flight.
+          if (submitDisabled || pending || submittingRef.current) return
+          submittingRef.current = true
           onSubmit()
         }}
       >

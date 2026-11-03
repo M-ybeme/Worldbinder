@@ -1,6 +1,6 @@
 import {
-  useEffect,
   useId,
+  useLayoutEffect,
   useRef,
   type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
@@ -56,7 +56,9 @@ export function Dialog({
   // Focus-trap contract for role="dialog" aria-modal="true": capture what
   // had focus before opening and restore it on close, so keyboard/screen-
   // reader users land back where they started instead of at the top of body.
-  useEffect(() => {
+  // A layout effect, declared before the initial-focus one, so it captures
+  // the opener before focus moves into the dialog.
+  useLayoutEffect(() => {
     if (!open) return
     previouslyFocusedRef.current = document.activeElement as HTMLElement | null
     return () => {
@@ -64,19 +66,32 @@ export function Dialog({
     }
   }, [open])
 
-  useEffect(() => {
+  // Initial focus: the first form field (the point of a quick-create
+  // dialog), else the first focusable element. Done synchronously as the
+  // dialog opens. It used to wait an animation frame, and on a slow frame a
+  // user (or test) could already be typing in the field by then — focus
+  // jumped to the Close button mid-word, the rest of the keystrokes went to
+  // it, and a typed space "pressed" Close and cleared the form. Focus the
+  // user has already placed inside the dialog is never moved.
+  useLayoutEffect(() => {
     if (!open) return
-    const handle = requestAnimationFrame(() => {
-      panelRef.current
-        ?.querySelector<HTMLElement>(
-          'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])',
-        )
-        ?.focus()
-    })
-    return () => cancelAnimationFrame(handle)
+    const panel = panelRef.current
+    if (!panel || panel.contains(document.activeElement)) return
+    const target =
+      panel.querySelector<HTMLElement>(
+        'input:not([disabled]):not([type="hidden"]), textarea:not([disabled]), select:not([disabled])',
+      ) ??
+      panel.querySelector<HTMLElement>(
+        'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      )
+    target?.focus()
   }, [open])
 
-  useEffect(() => {
+  // Attached in the same commit that shows the dialog. As a passive effect
+  // it could run after the dialog was painted (dialogs opened by a
+  // non-urgent update, like a failed save), and an Escape pressed in that
+  // gap was dropped.
+  useLayoutEffect(() => {
     if (!open) return
     function handleDocumentKeyDown(event: globalThis.KeyboardEvent): void {
       if (event.key === 'Escape') {

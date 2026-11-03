@@ -4,6 +4,32 @@ All notable changes to this project are documented here. Format follows [Keep a 
 
 Every push to `main` should add an entry here. This is meant to be an honest record of what actually shipped, not a restatement of the roadmap's aspirations — if something was attempted and reverted, or shipped partially, say so.
 
+## [1.7.1] - 2026-11-02
+
+**Quick-create dialogs no longer lose what you type, and can't create twice.** These are fixes in the shared `Dialog` and `QuickCreateDialog` (`packages/ui`), so they apply to every quick-create (entity, session, plot thread, timeline event) and every other dialog. No backend changes.
+
+### Fixed
+
+- **Typing into a just-opened quick-create could be lost (the long-running "Create stays disabled" flake).** `Dialog` waited one animation frame and then focused its first focusable element, which is the header's Close button. If focus was already in the Name/Title field by then (a fast user, or Playwright's `fill`), it was moved to Close mid-word. The remaining keystrokes went to Close, and a typed space pressed it, which cleared and closed the form. That left the field empty and **Create** disabled. How often it happened depended on frame timing, so it showed up mostly in Firefox and WebKit. Initial focus is now set synchronously as the dialog opens, never moves focus the user has already placed inside the dialog, and goes to the first form field rather than to Close. The opener is still captured first and gets focus back on close.
+- **A fast double Enter (or Enter plus a click) could create two records.** The form checked `pending` from the last render, so a second submit landing before React re-rendered sent a second POST. For sessions this created "Session 1" and then hit a 500 from the API. `QuickCreateDialog` now holds a synchronous lock from submit until the request settles, the dialog reopens, or an error comes back. It also re-checks `submitDisabled` on every submit, not just through the disabled button.
+- **Escape could be ignored on a dialog that had just appeared.** `Dialog` attached its Escape listener in a passive effect. A dialog opened by a non-urgent update (for example the editor's "couldn't be saved" dialog after a failed save) is painted before passive effects run, so an Escape pressed in that gap did nothing. Found in this release's repeat runs as a 1-in-4 WebKit failure of the session failed-save test. The listener is now attached in the same commit that shows the dialog.
+
+### Tests
+
+- `src/test/Dialog.test.tsx` (7): focus is never pulled from a field the user already entered; initial focus is on the first field, falling back to Close when there's no field; reopening starts empty and focused; one submit for a double submit; no submit while disabled; Escape pressed the moment the dialog appears closes it. Before the fixes: the four focus tests failed, the double-submit test failed ("called 1 times, but got 2 times"), and the Escape test failed (0 calls). All pass after.
+- `e2e/quick-create.spec.ts` (2 × entity, session, plot thread). The first test types character by character across a deliberately slowed animation frame and requires every keystroke to land; this reproduces the race on demand, and before the fix it failed in all 9 browser/flow combinations ("Received: ''"). The second test covers rapid open/Escape, focus on open, validation (Create disabled when empty), Cancel clearing, reopen, a keyboard-only create with a double Enter, exactly one POST, and navigation to the new record. Before the lock, the double Enter created two records in Chromium (entity and session).
+
+### Not fixed (backend, noted)
+
+- Two concurrent `POST /sessions` for the same campaign return a 500 instead of a numbered session or a clean 409, because session-number assignment collides. The client no longer sends duplicates, but the API should handle it. Left for a separate change.
+
+### Verification
+
+Typecheck and lint clean (the 2 existing lint warnings are unchanged); web vitest 182/182. Browser runs:
+- `quick-create.spec.ts` ×3 in Chromium, Firefox and WebKit: 54/54 with the focus fix and submit lock.
+- The editor, autosave, session, plot-thread and entity suites ×2 in Firefox and WebKit (where the quick-create race used to fail them at setup): 123/124. There were no quick-create failures. The single failure was the Escape timing bug above (WebKit, session failed-save).
+- After the Escape fix: the three failed-save tests (entity, session, plot thread) ×5 in all three browsers, 45/45; `quick-create.spec.ts` ×2 again, 36/36.
+
 ## [1.7.0] - 2026-10-28
 
 **Editing safety for Sessions and Plot Threads.** The session and plot-thread editors now have the entity editor's guarantees: guarded navigation, honest save states, failure/offline handling, and field-level conflict comparison. They're built from one shared implementation, not copies.
