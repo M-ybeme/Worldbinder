@@ -121,6 +121,8 @@ for (const width of [390, 360]) {
     expect(back.width).toBeGreaterThanOrEqual(44)
     expect(back.height).toBeGreaterThanOrEqual(44)
     await expect(page.getByRole('note')).toContainText('Players’ view')
+    // Shortened on screen; still read out in full.
+    await expect(page.getByRole('note')).toContainText('GM-only pins and layers are hidden')
     await pinButton(page, 'Velis').tap()
     const panel = page.locator('.wb-table__panel')
     await expect(panel.getByRole('heading', { level: 2, name: 'Velis' })).toBeVisible()

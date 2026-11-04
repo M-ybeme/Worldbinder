@@ -499,10 +499,7 @@ export class MapsService {
     const image =
       attachment && attachment.status === 'ready'
         ? {
-            url: await this.storage.presignDownload(
-              attachment.storageKey,
-              attachment.originalFilename,
-            ),
+            url: await this.storage.presignInlineImage(attachment.storageKey),
             width: attachment.width,
             height: attachment.height,
           }

@@ -4,6 +4,53 @@ All notable changes to this project are documented here. Format follows [Keep a 
 
 Every push to `main` should add an entry here. This is meant to be an honest record of what actually shipped, not a restatement of the roadmap's aspirations — if something was attempted and reverted, or shipped partially, say so.
 
+## [1.14.1] - 2026-11-04
+
+**Maps workspace, Stage 4: stabilization.** This covers a performance review with a realistically large map, an accessibility pass, and a full regression run. It brings one performance fix and one accessibility fix. There are no schema or data changes.
+
+### Fixed
+
+- **Map images are no longer downloaded again on every visit.**
+  - **Before:** every map request signed a new image URL, because a presigned URL carries the time it was signed. The browser saw each visit's image as a new file. Measured on a 5000×3500 map (17.3 MB, with 240 pins), the first visit, returning to the map in the app, a reload and At the Table each downloaded all 17.3 MB again: 69 MB for four views.
+  - **Now:** map images use `StorageService.presignInlineImage`. The signing time is rounded down to a 30-minute window, so everyone asking within a window gets the same URL. Storage serves it with `Cache-Control: private, max-age=1800, immutable`; attachments never change once uploaded.
+  - **Measured again:** the first visit downloads 17.3 MB. Returning in the app, a reload, and At the Table (the player view gets the same URL) download 0 bytes, until the next window.
+  - **Validity:** a map image URL is now valid for 30 to 60 minutes after it's handed out, instead of 15.
+  - Other attachment downloads (files, exports, avatars) are unchanged.
+- **At the Table on phones:** the "GM-only pins and layers are hidden" part of the players' view indicator was removed with `display: none` to save space, so screen readers didn't get it either. It's now hidden only visually.
+
+### Reviewed, no change needed
+
+- **Rendering and tiling.** With 240 pins on the 17.5-megapixel map, zooming and panning ran at a steady 60 fps (median and 95th-percentile frame 16.7 ms, worst 16.8 ms; Chromium, 1440×900). Decoding took about 0.5 s on first view (`decoding="async"`, so off the main thread). Tiling isn't justified by these numbers, so the single-image renderer stays.
+- **Accessibility** (reviewed from the accessibility tree in each state: workspace, chooser, edit form, phone sheet, At the Table):
+  - every control has a name and state (pressed, expanded, checked);
+  - the map area is an `application` with keyboard instructions;
+  - overlapping pins announce how many and which;
+  - the chooser is a named dialog with a heading;
+  - At the Table exposes only player-visible pins and no navigation landmarks;
+  - tab order follows the visual order.
+  - No automated axe run: it isn't a project dependency, and none was added.
+
+### Tests
+
+- API unit: `storage.service.spec.ts` (4):
+  - one URL throughout a window, and a new one in the next;
+  - `X-Amz-Date` at the window start, and `X-Amz-Expires` of two windows;
+  - the cache header is present;
+  - different objects never share a URL.
+- API integration: the map image test now also checks that a second request and the player view get the same URL, with the cache header.
+- `maps-table.spec.ts` (phones): the indicator's full text is still read out.
+
+### Verification
+
+Full regression:
+
+- Typecheck and lint clean, apart from the same 2 existing warnings.
+- Web vitest 248/248; API unit 103/103.
+- API integration 220/220 (23 suites), run with the dev worker stopped.
+- **Full Playwright suite 222/222 across Chromium, Firefox and WebKit** (all 21 specs, not only maps).
+
+The performance measurements used a disposable review campaign through the real app, worker and MinIO, before and after the fix.
+
 ## [1.14.0] - 2026-11-04
 
 **Maps workspace, Stage 3: At the Table.** This is a presentation mode for a screen the players can see: the map alone, in the player view, with minimal controls. The server decides what's in it, not the page. Even with a GM signed in, nothing GM-only reaches the browser in this mode. There are no schema or data changes.

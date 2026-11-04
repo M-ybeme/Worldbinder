@@ -15,6 +15,10 @@ import { createS3Client } from './s3-client';
 
 const UPLOAD_URL_TTL_SECONDS = 10 * 60;
 const DOWNLOAD_URL_TTL_SECONDS = 15 * 60;
+// Inline images (presignInlineImage): one URL per window, so a browser
+// downloads a map image at most once per window. A URL handed out stays
+// valid for between one and two windows.
+const INLINE_IMAGE_WINDOW_SECONDS = 30 * 60;
 
 export interface PresignedUpload {
   uploadUrl: string;
@@ -99,6 +103,35 @@ export class StorageService implements OnModuleInit {
         ResponseContentDisposition: `attachment; filename="${sanitizeForHeader(originalFilename)}"`,
       }),
       { expiresIn: DOWNLOAD_URL_TTL_SECONDS },
+    );
+  }
+
+  /**
+   * A signed URL for showing an image inline (map images) that stays the
+   * same for a while, so the browser can reuse what it already downloaded.
+   * A plain presigned URL carries the time it was signed, so every request
+   * produced a new URL and a full re-download (17 MB a visit for a large
+   * map). Here the signing time is rounded down to the start of a window:
+   * everyone asking within the same window gets the same URL, valid for
+   * one more window after it ends, and storage serves it with a matching
+   * `Cache-Control` (attachments never change once uploaded).
+   */
+  async presignInlineImage(
+    storageKey: string,
+    now = new Date(),
+  ): Promise<string> {
+    const windowMs = INLINE_IMAGE_WINDOW_SECONDS * 1000;
+    const windowStart = new Date(
+      Math.floor(now.getTime() / windowMs) * windowMs,
+    );
+    return getSignedUrl(
+      this.client,
+      new GetObjectCommand({
+        Bucket: this.bucket,
+        Key: storageKey,
+        ResponseCacheControl: `private, max-age=${INLINE_IMAGE_WINDOW_SECONDS}, immutable`,
+      }),
+      { expiresIn: 2 * INLINE_IMAGE_WINDOW_SECONDS, signingDate: windowStart },
     );
   }
 

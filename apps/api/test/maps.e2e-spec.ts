@@ -615,6 +615,20 @@ describe('Maps (e2e)', () => {
       expect(updated.imageUrl).toBeTruthy();
       expect(updated.imageWidth).toBe(800);
       expect(updated.imageHeight).toBe(600);
+
+      // The same URL on the next request (and for the player view), so the
+      // browser reuses the image instead of downloading it again.
+      const again = await request(app.getHttpServer())
+        .get(`/campaigns/${campaign.id}/maps/${map.id}`)
+        .set('Authorization', `Bearer ${token}`);
+      const players = await request(app.getHttpServer())
+        .get(`/campaigns/${campaign.id}/maps/${map.id}?audience=players`)
+        .set('Authorization', `Bearer ${token}`);
+      expect(body<MapDetail>(again).imageUrl).toBe(updated.imageUrl);
+      expect(body<MapDetail>(players).imageUrl).toBe(updated.imageUrl);
+      expect(updated.imageUrl).toContain(
+        'response-cache-control=private%2C%20max-age%3D1800%2C%20immutable',
+      );
     });
   });
 });
