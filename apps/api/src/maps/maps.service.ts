@@ -128,13 +128,32 @@ export class MapsService {
     );
   }
 
+  /**
+   * `audience: 'players'` returns the map exactly as a player would get it,
+   * whoever asks: no GM-only layers, pins, or pins linked to GM-only or
+   * deleted entries — for At the Table, where a GM's screen is shown to
+   * the players. A GM-only map has no player view at all.
+   */
   async getById(
     campaignId: string,
     mapId: string,
     membership: CampaignMembership,
+    audience: 'viewer' | 'players' = 'viewer',
   ): Promise<MapDetail> {
     const map = await this.requireVisibleMap(campaignId, mapId, membership);
-    return this.toDetail(map, membership);
+    if (audience === 'players') {
+      if (map.visibility !== 'public') {
+        throw new NotFoundException('This map is not visible to players');
+      }
+      return this.toDetail(map, false);
+    }
+    return this.toDetail(
+      map,
+      this.policy.canViewGmContent(
+        membership.role,
+        membership.editorSecretAccess,
+      ),
+    );
   }
 
   async update(
@@ -382,15 +401,7 @@ export class MapsService {
     if (!deleted) throw new NotFoundException('Map pin not found');
   }
 
-  private async toDetail(
-    map: MapRow,
-    membership: CampaignMembership,
-  ): Promise<MapDetail> {
-    const canViewGm = this.policy.canViewGmContent(
-      membership.role,
-      membership.editorSecretAccess,
-    );
-
+  private async toDetail(map: MapRow, canViewGm: boolean): Promise<MapDetail> {
     const [attachmentRow, layerRows, pinRows] = await Promise.all([
       map.imageAttachmentId
         ? this.getAttachment(map.imageAttachmentId)

@@ -181,17 +181,20 @@ export function CampaignLayout() {
   // A map (not the list, its settings or a new one) gets the whole content
   // area: no page padding or width cap — the map is the page.
   const fullBleed = new RegExp(`^${base}/maps/(?!new$)[^/]+(/table)?$`).test(pathname)
+  // At the Table: the map alone on a screen the players can see — no
+  // navigation, search or anything else from the GM's own view.
+  const presenting = new RegExp(`^${base}/maps/[^/]+/table$`).test(pathname)
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent): void {
       const isSearchShortcut = (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k'
-      if (!isSearchShortcut) return
+      if (!isSearchShortcut || presenting) return
       event.preventDefault()
       openSearch()
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [openSearch])
+  }, [openSearch, presenting])
 
   useEffect(() => {
     document.title =
@@ -289,6 +292,16 @@ export function CampaignLayout() {
     { to: '/help', label: 'Help', icon: <HelpCircle size={18} aria-hidden="true" /> },
     { to: '/account/profile', label: 'Account', icon: <User size={18} aria-hidden="true" /> },
   ]
+
+  if (presenting) {
+    return (
+      <div className="wb-campaign-layout wb-campaign-layout--presenting">
+        <main className="wb-campaign-layout__content wb-campaign-layout__content--present">
+          <Outlet context={{ campaign }} />
+        </main>
+      </div>
+    )
+  }
 
   return (
     <div

@@ -16,6 +16,13 @@ export const updateMapSchema = z.object({
 })
 export type UpdateMapInput = z.infer<typeof updateMapSchema>
 
+/** `?audience=players`: the map exactly as a player would get it, whoever
+ * asks — for showing it at the table (a GM's screen shared with players). */
+export const getMapQuerySchema = z.object({
+  audience: z.enum(['players']).optional(),
+})
+export type GetMapQuery = z.infer<typeof getMapQuerySchema>
+
 export const createMapLayerSchema = z.object({
   name: z.string().trim().min(1).max(200),
   displayOrder: z.coerce.number().int().min(0).optional(),

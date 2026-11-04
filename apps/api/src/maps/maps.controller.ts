@@ -9,6 +9,7 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import type {
@@ -21,6 +22,7 @@ import {
   createMapLayerSchema,
   createMapPinSchema,
   createMapSchema,
+  getMapQuerySchema,
   repositionMapPinSchema,
   updateMapLayerSchema,
   updateMapPinSchema,
@@ -28,6 +30,7 @@ import {
   type CreateMapLayerInput,
   type CreateMapPinInput,
   type CreateMapInput,
+  type GetMapQuery,
   type RepositionMapPinInput,
   type UpdateMapLayerInput,
   type UpdateMapPinInput,
@@ -72,9 +75,15 @@ export class MapsController {
   getById(
     @Param('campaignId', ParseUUIDPipe) campaignId: string,
     @Param('mapId', ParseUUIDPipe) mapId: string,
+    @Query(new ZodValidationPipe(getMapQuerySchema)) query: GetMapQuery,
     @CurrentMembership() membership: CampaignMembership,
   ): Promise<MapDetail> {
-    return this.maps.getById(campaignId, mapId, membership);
+    return this.maps.getById(
+      campaignId,
+      mapId,
+      membership,
+      query.audience ?? 'viewer',
+    );
   }
 
   @RequireCampaignRole('owner', 'gm', 'editor')

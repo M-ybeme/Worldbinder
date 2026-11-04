@@ -304,6 +304,13 @@ export const router = createBrowserRouter([
                       })),
                   },
                   {
+                    path: 'maps/:mapId/table',
+                    lazy: () =>
+                      import('../features/maps/pages/MapTablePage').then((m) => ({
+                        Component: m.MapTablePage,
+                      })),
+                  },
+                  {
                     path: 'maps/:mapId/edit',
                     lazy: () =>
                       import('../features/maps/pages/MapFormPage').then((m) => ({

@@ -1,6 +1,6 @@
 import type { MapLayerSummary, MapPinSummary } from '@worldbinder/contracts'
 import { Badge, IconButton } from '@worldbinder/ui'
-import { ExternalLink, X } from 'lucide-react'
+import { X } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { EntityTypeIcon, ENTITY_TYPE_LABELS } from '../../entities/lib/entityTypeIcons'
 import { useEntityRelationshipsQuery } from '../../relationships/hooks/useRelationships'
@@ -15,8 +15,8 @@ const RELATIONSHIP_LIMIT = 4
  * own fields in edit mode. The entry itself is never edited here.
  *
  * `presentation` (At the Table): only what the server's player-safe map
- * returned — no relationship lookups, which would run with the GM's own
- * access, and no edit links.
+ * returned. No relationship lookups and no links to the article: both
+ * would use the GM's own access, on a screen the players can see.
  */
 export function PinDetails({
   campaignId,
@@ -63,7 +63,7 @@ export function PinDetails({
       )}
       {pin.locationEntitySummary && <p className="wb-pin-details__summary">{pin.locationEntitySummary}</p>}
       {!presentation && entityId && <PinConnections campaignId={campaignId} entityId={entityId} />}
-      {!entityId && <p className="wb-pin-details__muted">Not linked to an entry.</p>}
+      {!entityId && !presentation && <p className="wb-pin-details__muted">Not linked to an entry.</p>}
       {!presentation && (
         <div className="wb-pin-details__actions">
           {worldUrl && (
@@ -82,12 +82,6 @@ export function PinDetails({
             </button>
           )}
         </div>
-      )}
-      {presentation && worldUrl && (
-        <a className="wb-pin-details__open" href={worldUrl} target="_blank" rel="noreferrer">
-          Open article <ExternalLink size={14} aria-hidden="true" />
-          <span className="wb-visually-hidden"> (opens in a new tab)</span>
-        </a>
       )}
     </section>
   )

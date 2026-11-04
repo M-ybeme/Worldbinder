@@ -393,7 +393,9 @@ export const MapViewport = forwardRef<MapViewportHandle, MapViewportProps>(funct
       '=': () => zoomAround(BUTTON_ZOOM_STEP),
       '-': () => zoomAround(1 / BUTTON_ZOOM_STEP),
       '0': fit,
-      Escape: () => onEscape?.(),
+      // Only claimed when there's a handler: otherwise the page's own
+      // Escape (e.g. leaving At the Table) still gets it.
+      ...(onEscape ? { Escape: onEscape } : {}),
     }
     const handler = handlers[event.key]
     if (!handler) return

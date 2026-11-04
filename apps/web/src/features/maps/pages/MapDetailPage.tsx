@@ -11,9 +11,17 @@ import {
   MenuButton,
   TextField,
 } from '@worldbinder/ui'
-import { ChevronDown, ChevronUp, MoreHorizontal, PanelRightClose, PanelRightOpen, Plus } from 'lucide-react'
+import {
+  ChevronDown,
+  ChevronUp,
+  MoreHorizontal,
+  PanelRightClose,
+  PanelRightOpen,
+  Plus,
+  Presentation,
+} from 'lucide-react'
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
-import { Link, useBlocker, useNavigate, useParams } from 'react-router-dom'
+import { Link, useBlocker, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { useCampaignOutletContext } from '../../campaigns/hooks/useCampaignContext'
 import { useMediaQuery } from '../../../lib/useMediaQuery'
 import '../maps.css'
@@ -25,6 +33,7 @@ import { PinBrowser } from '../components/PinBrowser'
 import { PinChooser } from '../components/PinChooser'
 import { PinDetails } from '../components/PinDetails'
 import { matchesFilter, NO_FILTER, type PinFilter } from '../lib/pins'
+import type { MapViewState } from './MapTablePage'
 import {
   useCreateMapLayerMutation,
   useCreateMapPinMutation,
@@ -69,6 +78,8 @@ export function MapDetailPage() {
   const { mapId } = useParams<{ mapId: string }>()
   const { campaign } = useCampaignOutletContext()
   const navigate = useNavigate()
+  // Back from At the Table: the map where it was left there.
+  const returnedView = (useLocation().state as MapViewState)?.view
   const canManage = MANAGEMENT_ROLES.has(campaign.role)
   const isPhone = useMediaQuery(PHONE_QUERY)
   const viewportRef = useRef<MapViewportHandle>(null)
@@ -366,6 +377,17 @@ export function MapDetailPage() {
             <Plus size={16} aria-hidden="true" /> Add pin
           </Button>
         )}
+        <IconButton
+          label={map.visibility === 'public' ? 'At the table' : 'At the table (not for GM-only maps)'}
+          disabled={map.visibility !== 'public' || !map.imageUrl}
+          onClick={() =>
+            navigate(`/app/campaign/${campaign.id}/maps/${map.id}/table`, {
+              state: { view: viewportRef.current?.getView() } satisfies MapViewState,
+            })
+          }
+        >
+          <Presentation size={18} aria-hidden="true" />
+        </IconButton>
         {!isPhone && (
           <IconButton
             label={inspectorOpen ? 'Hide pins panel' : 'Show pins panel'}
@@ -416,6 +438,7 @@ export function MapDetailPage() {
             ref={viewportRef}
             fill
             fitMode={isPhone ? 'cover' : 'contain'}
+            initialView={returnedView}
             label={`Map: ${map.name}`}
             imageUrl={map.imageUrl}
             imageWidth={map.imageWidth}

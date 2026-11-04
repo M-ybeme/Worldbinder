@@ -244,6 +244,18 @@
 /* Map workspace: the content area is exactly the window's height (the
    sidebar is a full-height column beside it), with no padding or width
    cap — the page fills it and nothing scrolls but the inspector. */
+/* At the Table: the content is the whole window, nothing else. */
+.wb-campaign-layout__content--present {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  max-width: none;
+  height: 100svh;
+  min-height: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
 .wb-campaign-layout__content--bleed {
   display: flex;
   /* A fixed height, not flex-grow: growing would let a long pins list
@@ -349,6 +361,10 @@
      border + safe area): the map fills exactly what's visible. */
   .wb-campaign-layout__content--bleed {
     height: calc(100svh - 57px - 57px - env(safe-area-inset-bottom));
+    padding: 0;
+  }
+
+  .wb-campaign-layout__content--present {
     padding: 0;
   }
 

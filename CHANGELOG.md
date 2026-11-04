@@ -4,6 +4,59 @@ All notable changes to this project are documented here. Format follows [Keep a 
 
 Every push to `main` should add an entry here. This is meant to be an honest record of what actually shipped, not a restatement of the roadmap's aspirations — if something was attempted and reverted, or shipped partially, say so.
 
+## [1.14.0] - 2026-11-04
+
+**Maps workspace, Stage 3: At the Table.** This is a presentation mode for a screen the players can see: the map alone, in the player view, with minimal controls. The server decides what's in it, not the page. Even with a GM signed in, nothing GM-only reaches the browser in this mode. There are no schema or data changes.
+
+### Added
+
+- **Player view of a map (API).** `GET /campaigns/:id/maps/:mapId?audience=players` returns the map exactly as a player gets it, whoever asks: no GM-only layers, no GM-only pins, and no pins linked to GM-only or deleted entries. It's the same filter players already get (`isPinVisible` with GM access off).
+  - A GM-only map has no player view (404).
+  - Any other `audience` value is rejected (400).
+  - The validation schema is `getMapQuerySchema`.
+- **At the Table** (`/maps/:mapId/table`; the new **At the table** button in the workspace header):
+  - **Only the player view is requested.** The page never fetches the full map, so GM-only names, layers, counts and summaries are not in the page at all, not just hidden.
+  - **Nothing else from the GM's view:**
+    - The campaign layout drops its chrome on this route: no sidebar, top bar or bottom tabs, and the Ctrl/Cmd+K search shortcut is off.
+    - No edit controls, layers panel or pin list.
+    - Selecting a pin shows its type, layer, name and summary in a small panel, with **no links to the article and no connections**. Both would use the GM's own access on a shared screen, so `PinDetails` presentation mode drops its new-tab article link.
+  - **A constant "Players' view" indicator** reads "GM-only pins and layers are hidden" (shortened to "Players' view" on phones).
+  - **Map interactions:** pan, zoom (wheel, pinch, buttons, keyboard), and the overlapping-pin chooser, which lists only player-visible pins and shows no visibility badges.
+  - **Quick return:** "Back to the map" (a 44px button on phones) or Escape. Escape first closes the chooser or selection, then leaves. Full screen uses the browser's own Fullscreen API where it's available.
+  - **The view travels both ways.** Centre and zoom go from the workspace to the table and back. **The selection never travels**: a pin selected in the GM's view isn't selected or shown at the table.
+  - **GM-only maps:** the button is disabled and labelled "not for GM-only maps". Opening the route directly says there's no players' view and links back.
+  - Phones: the map fills the screen. Safe areas are respected. The info panel sits at the top, clear of the zoom controls.
+
+### Changed
+
+- The map area only claims Escape when the page gives it something to do, so table mode's Escape works with the map focused.
+
+### Tests
+
+- API: `test/maps-audience.e2e-spec.ts` (2), in its own file to stay under the per-spec login limit.
+  - Owner, GM, editor with secret access and player all get exactly the player's own response from `?audience=players`, checked with deep equality.
+  - The serialized response contains none of the GM-only names, the GM-only layer, or `gm_only`.
+  - A GM-only map gives 404 for owner and player; `audience=gm` gives 400.
+- `e2e/maps-table.spec.ts` (4 × 3 browsers):
+  - **The GM's journey**, with a GM-only pin overlapping a public one, a public pin on a GM-only layer, and a pin linked to a GM-only entry:
+    - every map request the page makes carries `audience=players`, and the page HTML contains none of the GM-only names;
+    - there are no navigation landmarks, mode switch or edit buttons, and Ctrl+K opens nothing;
+    - the GM's selection isn't carried over, but the zoom is;
+    - the panel shows the summary with no links or connections;
+    - Escape steps back and keeps the view.
+  - **A GM-only map:** the button is disabled and the route explains why.
+  - **Phones at 390 and 360, with touch:** no sideways scroll, the map taller than 600px, a 44px back button, and the panel clear of the zoom controls.
+- One bug found and fixed: on phones the back button's text is hidden, which left it without an accessible name. It now has an `aria-label`.
+
+### Verification
+
+Typecheck clean; lint clean (the same 2 existing warnings); web vitest 248/248. Browser tests: maps-table, maps-pins, maps-workspace and shell, 51/51 across Chromium, Firefox and WebKit. API maps integration 18/18, run with the dev worker stopped, which the attachment specs need. Screenshots were taken in a disposable review campaign:
+
+- the workspace before entering;
+- the table in light and dark;
+- a pin selected in light and dark;
+- phones at 390 and 360, with and without a selection.
+
 ## [1.13.0] - 2026-11-03
 
 **Maps workspace, Stage 2: finding, choosing and editing pins.** The inspector's pin list can now be searched and filtered, and the filter narrows the map too. Pins that overlap become one marker that offers a choice. Edit mode has keyboard moves and never drops unsaved pin changes silently. On phones the inspector is a bottom sheet. Frontend only: no API, schema or data changes.

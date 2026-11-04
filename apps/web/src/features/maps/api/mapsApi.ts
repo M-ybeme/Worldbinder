@@ -24,6 +24,10 @@ export const createMap = (campaignId: string, input: CreateMapInput): Promise<Ma
 export const getMap = (campaignId: string, mapId: string): Promise<MapDetail> =>
   apiGet(`/campaigns/${campaignId}/maps/${mapId}`)
 
+/** The map exactly as a player gets it, whoever asks (At the Table). */
+export const getPlayerMap = (campaignId: string, mapId: string): Promise<MapDetail> =>
+  apiGet(`/campaigns/${campaignId}/maps/${mapId}?audience=players`)
+
 export const updateMap = (
   campaignId: string,
   mapId: string,

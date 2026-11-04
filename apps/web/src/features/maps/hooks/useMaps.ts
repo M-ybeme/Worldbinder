@@ -30,6 +30,18 @@ export function useMapQuery(campaignId: string, mapId: string | undefined) {
   })
 }
 
+/** The player view of a map, for At the Table: the server leaves out
+ * everything GM-only, whoever is signed in. Kept under the map's own key,
+ * so pin and layer changes refresh it too. */
+export function usePlayerMapQuery(campaignId: string, mapId: string | undefined) {
+  return useQuery({
+    queryKey: [...mapQueryKey(campaignId, mapId ?? ''), 'players'] as const,
+    queryFn: () => mapsApi.getPlayerMap(campaignId, mapId as string),
+    enabled: !!mapId,
+    retry: false,
+  })
+}
+
 export function useCreateMapMutation(campaignId: string) {
   const queryClient = useQueryClient()
   return useMutation({
