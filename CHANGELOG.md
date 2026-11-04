@@ -4,6 +4,22 @@ All notable changes to this project are documented here. Format follows [Keep a 
 
 Every push to `main` should add an entry here. This is meant to be an honest record of what actually shipped, not a restatement of the roadmap's aspirations — if something was attempted and reverted, or shipped partially, say so.
 
+## [1.15.1] - 2026-11-04
+
+**App atmosphere: a full-page backdrop, not a banner.** In 1.15.0 the artwork sat in a band at the top and faded to the flat background a few hundred pixels down. Now it fills the window.
+
+### Changed
+
+- **Coverage:** the backdrop layer covers the whole window. The artwork keeps its own proportions (`background-size: cover`, centred): it's scaled to the window's height and the sides are cropped, never stretched. It's still fixed, so content scrolls over it.
+- **No early fade:** the short fade-out is gone. Instead there's a long, gentle easing over the lower 60% of the window, down to 70% strength at the bottom, so there's no visible edge between artwork and flat colour.
+- **Opacity:** 0.3 in both themes (was 0.4 light, 0.35 dark), to make up for the much larger area.
+- **Unchanged:** the same two image files, and the opaque surfaces (navigation, cards, forms, dialogs, the map workspace).
+- **Tradeoff:** the artwork is a 1672×470 band, so covering a 1080px-tall window enlarges it about 2.3 times. At 30% opacity that softness reads as atmosphere. Sharper linework at large sizes would need a larger export of the same artwork.
+
+### Verification
+
+Screenshots of the Dashboard, World list, entity article and map workspace at 1440×900, 1920×1080 and 390×844, light and dark, in a disposable campaign with little content. Shell and dashboard e2e 5/5.
+
 ## [1.15.0] - 2026-11-04
 
 **App atmosphere: the starfield/orbit backdrop.** The artwork arrived at in earlier design iterations is now a faint, theme-aware backdrop behind the top of every page. It's visible in a page's open space and covered by everything else.

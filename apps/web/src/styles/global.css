@@ -41,41 +41,38 @@ body {
 }
 
 /* The app's atmosphere: the starfield/orbit artwork, one image per theme,
-   faint behind the top of every page. It sits under everything (z-index
-   -1 above the body's own background), so it only shows where a page is
-   open: the sidebar, top bar, tabs, cards, forms and the map workspace
-   all have their own opaque backgrounds and cover it. It stays put while
-   the page scrolls and fades out downwards, so long pages end on the
-   plain background. Tune it here, not per page. */
+   faint behind the whole window. It sits under everything (z-index -1,
+   above the body's own background), so it only shows where a page is
+   open: the sidebar, top bar, tabs, cards, forms, dialogs and the map
+   workspace all have their own opaque backgrounds and cover it. It's
+   fixed to the window, so content scrolls over it. Tune it here, not per
+   page. */
 :root {
   --wb-backdrop-image: url('../assets/backdrop/atmosphere-light.webp');
-  --wb-backdrop-opacity: 0.4;
+  --wb-backdrop-opacity: 0.3;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
     --wb-backdrop-image: url('../assets/backdrop/atmosphere-dark.webp');
-    --wb-backdrop-opacity: 0.35;
+    --wb-backdrop-opacity: 0.3;
   }
 }
 
 body::before {
   content: '';
   position: fixed;
-  top: 0;
-  left: 50%;
+  inset: 0;
   z-index: -1;
-  /* The artwork is a wide band (about 3.56:1): full width, but never
-     narrower than 1400px, so a phone shows its middle at a readable scale
-     rather than a thin strip. The box is exactly the image, so the fade
-     below always ends before the artwork's own edge. */
-  width: max(100%, 1400px);
-  aspect-ratio: 1672 / 470;
-  translate: -50% 0;
   pointer-events: none;
+  /* Covers the window at the artwork's own proportions (a wide band, about
+     3.56:1): its height fills the window and the sides are cropped,
+     centred. Never stretched. */
   background: var(--wb-backdrop-image) center / cover no-repeat;
   opacity: var(--wb-backdrop-opacity);
-  mask-image: linear-gradient(to bottom, #000 0%, rgb(0 0 0 / 0.6) 45%, transparent 92%);
+  /* A long, gentle easing towards the bottom, not a fade-out: the artwork
+     reaches the bottom of the window. */
+  mask-image: linear-gradient(to bottom, #000 0%, #000 40%, rgb(0 0 0 / 0.7) 100%);
 }
 
 @media print {
