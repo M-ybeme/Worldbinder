@@ -353,7 +353,10 @@ describe('Maps (e2e)', () => {
       const { token, campaign } =
         await createOwnerAndCampaign('Pin CRUD Campaign');
       const map = await createMap(token, campaign.id);
-      const npc = await createEntity(token, campaign.id, { name: 'Cedric' });
+      const npc = await createEntity(token, campaign.id, {
+        name: 'Cedric',
+        summary: 'Keeper of the north gate.',
+      });
 
       const linkedPin = await createPin(token, campaign.id, map.id, {
         locationEntityId: npc.id,
@@ -362,6 +365,8 @@ describe('Maps (e2e)', () => {
       });
       expect(linkedPin.locationEntityId).toBe(npc.id);
       expect(linkedPin.locationEntityName).toBe('Cedric');
+      // The entry's summary travels with the pin, for the map's pin details.
+      expect(linkedPin.locationEntitySummary).toBe('Keeper of the north gate.');
 
       const freestandingPin = await createPin(token, campaign.id, map.id, {
         label: 'Here be dragons',

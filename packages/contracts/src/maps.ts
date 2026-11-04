@@ -35,6 +35,10 @@ export interface MapPinSummary {
    * follow-up fetch — same reasoning as PlotThreadSummary.lastReferencedSession. */
   locationEntityName: string | null
   locationEntityType: EntityType | null
+  /** The linked entry's one-line summary, for the map's pin details —
+   * present only when the entry itself is visible to this viewer (pins
+   * whose entry isn't are never returned to them). */
+  locationEntitySummary: string | null
   label: string | null
   xNormalized: number
   yNormalized: number

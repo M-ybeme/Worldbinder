@@ -21,14 +21,9 @@ export interface MapPinPanelProps {
   error?: string | null
 }
 
-/** Docked side panel opened by selecting a pin — replaces both the old
- * "navigate straight to the entity page" view-mode behavior and the old
- * "inline form below the canvas" manage-mode behavior, so checking or
- * editing a pin no longer loses the map's pan/zoom context. Holds only the
- * pin's own fields (label/layer/visibility/position/delete) — the linked
- * entity's actual title/body renders separately, full-width below the map
- * (MapPinEntityContent, rendered by MapDetailPage), since that content
- * wants the map's own width rather than a 320px rail. */
+/** A pin's own fields (label, linked entry, layer, visibility, position)
+ * in the map inspector's edit mode — for a new pin or the selected one.
+ * The linked entry itself is edited in its own editor, never here. */
 export function MapPinPanel({
   campaignId,
   layers,

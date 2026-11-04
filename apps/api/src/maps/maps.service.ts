@@ -471,6 +471,7 @@ export class MapsService {
       locationEntityId: pin.locationEntityId,
       locationEntityName: linkedEntity?.name ?? null,
       locationEntityType: linkedEntity?.entityType ?? null,
+      locationEntitySummary: linkedEntity?.summary ?? null,
       label: pin.label,
       xNormalized: pin.xNormalized,
       yNormalized: pin.yNormalized,

@@ -178,6 +178,9 @@ export function CampaignLayout() {
   const drawerVisible = isNarrow && drawerOpen
   const base = `/app/campaign/${campaign.id}`
   const sectionLabel = sectionLabelFor(pathname, base)
+  // A map (not the list, its settings or a new one) gets the whole content
+  // area: no page padding or width cap — the map is the page.
+  const fullBleed = new RegExp(`^${base}/maps/(?!new$)[^/]+(/table)?$`).test(pathname)
 
   useEffect(() => {
     function handleKeyDown(event: KeyboardEvent): void {
@@ -406,7 +409,14 @@ export function CampaignLayout() {
       </aside>
 
       <div className="wb-campaign-layout__main" inert={drawerVisible}>
-        <main className="wb-campaign-layout__content">
+        <main
+          className={[
+            'wb-campaign-layout__content',
+            fullBleed ? 'wb-campaign-layout__content--bleed' : '',
+          ]
+            .filter(Boolean)
+            .join(' ')}
+        >
           <Outlet context={{ campaign }} />
         </main>
       </div>

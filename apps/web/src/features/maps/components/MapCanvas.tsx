@@ -23,6 +23,12 @@ export interface MapCanvasProps {
   onCanvasPlace?: (x: number, y: number) => void
   /** Manage mode only — fired once a drag ends with a real position change. */
   onPinReposition?: (pinId: string, x: number, y: number) => void
+  /** A click on the map that isn't on a pin (handled by MapViewport, which
+   * also sees clicks around the image). */
+  onBackgroundClick?: () => void
+  selectedPinId?: string | null
+  /** The image's natural size, once loaded (when the API didn't store it). */
+  onImageLoad?: (width: number, height: number) => void
 }
 
 // A pointer that moved less than this is treated as a click, not a drag —
@@ -42,6 +48,8 @@ export function MapCanvas({
   onPinActivate,
   onCanvasPlace,
   onPinReposition,
+  selectedPinId,
+  onImageLoad,
 }: MapCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const dragStart = useRef<{ pinId: string; clientX: number; clientY: number } | null>(null)
@@ -106,6 +114,8 @@ export function MapCanvas({
   function handleCanvasClick(event: ReactMouseEvent<HTMLDivElement>) {
     if (!manageMode || !onCanvasPlace) return
     if (event.target !== event.currentTarget) return // a pin, not the background
+    // Placing a pin: this click is the placement, not a background click.
+    event.stopPropagation()
     const position = positionFromEvent(event.clientX, event.clientY)
     if (position) onCanvasPlace(position.x, position.y)
   }
@@ -122,9 +132,17 @@ export function MapCanvas({
       style={
         imageWidth && imageHeight ? { aspectRatio: `${imageWidth} / ${imageHeight}` } : undefined
       }
+      data-has-pins={pins.length > 0 || undefined}
       onClick={handleCanvasClick}
     >
-      <img src={imageUrl} alt="" className="wb-map-canvas__image" draggable={false} />
+      <img
+        src={imageUrl}
+        alt=""
+        className="wb-map-canvas__image"
+        draggable={false}
+        decoding="async"
+        onLoad={(event) => onImageLoad?.(event.currentTarget.naturalWidth, event.currentTarget.naturalHeight)}
+      />
       {pins.map((pin) => {
         const position =
           dragPosition?.pinId === pin.id ? dragPosition : { x: pin.xNormalized, y: pin.yNormalized }
@@ -135,6 +153,7 @@ export function MapCanvas({
             x={position.x}
             y={position.y}
             manageMode={manageMode}
+            selected={pin.id === selectedPinId}
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}

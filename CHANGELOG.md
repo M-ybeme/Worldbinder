@@ -4,6 +4,57 @@ All notable changes to this project are documented here. Format follows [Keep a 
 
 Every push to `main` should add an entry here. This is meant to be an honest record of what actually shipped, not a restatement of the roadmap's aspirations — if something was attempted and reverted, or shipped partially, say so.
 
+## [1.12.0] - 2026-11-03
+
+**Maps workspace, Stage 1: the map is the page.** A map now fills the content area, with a compact header and a collapsible inspector beside it. Before, it sat in a fixed half-width box under header buttons, an Add-pin box and a layers panel. Existing maps, pins, positions, layers, permissions and images are untouched. There's no schema change and no new rendering library.
+
+### Architecture (from the audit)
+
+- **Kept.** The renderer works and was kept: an `<img>` with pins positioned by 0–1 coordinates, inside a CSS translate/scale stage with wheel, drag and pinch. Map data and permissions are unchanged. The API already filters pins per viewer, by map, layer, pin and linked-entry visibility.
+- **Frontend changes:** layout, controls, the inspector, fitting, resizing and keyboard handling.
+- **Backend change:** one additive field, `MapPinSummary.locationEntitySummary`. It's set only when the entry is visible to the viewer, since pins whose entry isn't visible are never returned to them.
+
+### Added
+
+- **Workspace layout.** On map routes the shell's content area becomes full-bleed: exactly the window's height, no padding or width cap, and between the top bar and bottom tabs on phones. Only the inspector scrolls.
+  - **Header:** breadcrumb, **map switcher** (the campaign's other maps that you can see), View / Edit, Add pin (edit mode), a pins-panel toggle, and a Map actions menu (Map settings, Delete map…). Delete map is no longer a top-level button.
+  - **Inspector** (collapsible, remembered on this device, and an overlay on phones until Stage 2):
+    - the **selected pin**: type, layer, the entry's summary, a few of its connections, **Open article**, **Edit entry** and **Edit pin**;
+    - **Layers**, each with a show/hide toggle;
+    - **Pins**, grouped by layer. Choosing a pin there selects it and brings it to the middle of the map.
+- **Viewport** (`MapViewport`, reworked):
+  - The map is **fitted** inside the area. On phones it fills the area edge to edge; "Show the whole map" fits it whole.
+  - The **view is kept when the area resizes** (inspector, sidebar, window): the same map point stays in the middle at the same on-screen scale. Until you've zoomed or panned, it simply stays fitted.
+  - **Pins stay the same size at any zoom.**
+  - **Keyboard:** the map area is a focusable widget. Arrow keys pan (Shift for bigger steps), + and − zoom, 0 shows the whole map, Escape clears the selection.
+  - Zooming can go up to twice the image's own resolution on large maps.
+  - Clicking empty map, inside or around the image, clears the selection.
+  - An imperative handle (fit, zoom, centre on a point, get/set the view) is used by the inspector and later by table mode.
+
+### Changed
+
+- **Selecting a pin shows information first.** Previously a GM got an "Edit pin" form, plus an editable copy of the entry below the map, outside autosave, drafts, the leave guard and conflict checks. Entries are now edited only in their own editor (**Edit entry**). In edit mode, selecting a pin opens its own fields.
+- The confirmation dialogs say what is and isn't affected (linked entries are never deleted with a pin or a map).
+
+### Removed
+
+- `MapPinEntityContent` (the inline entry editor), `MapLayerToggles` and `AccessiblePinList`. The inspector replaces them, and its pin list is the keyboard route to every pin.
+
+### Tests
+
+- `e2e/maps-workspace.spec.ts` (4 × 3 browsers), with a real uploaded map image processed by the worker (`e2e/maps-helpers.ts`):
+  - **Placement and layout:** saved pins sit within 2px of their stored positions. There's no page scroll at 1440×900.
+  - **Inspector:** selection shows the summary and Open article; clicking empty map clears it; the inspector folds away and stays folded after a reload; the switcher changes maps.
+  - **Resizing:** the centre and on-screen scale are held when the inspector hides and when the sidebar collapses and expands. This is checked once the sidebar's width animation settles.
+  - **Keyboard:** arrows, +, −, 0, Escape.
+  - **Edit mode:** add a pin by clicking the map (saved at 60% / 50%), drag a pin (the new position is checked against the API), delete a pin (gone after a reload).
+- API: pins carry their entry's summary.
+- Two bugs found by these tests and fixed: background clicks outside the image didn't clear the selection, and back-to-back resize callbacks could apply the scale correction twice.
+
+### Verification
+
+Typecheck and lint clean (the same 2 existing warnings); web vitest 228/228; maps-workspace 24/24 (×2, all three browsers); shell spec 6/6; maps API pin tests passing. Screenshots were checked in a disposable review campaign at 1440 (light and dark: inspector open, pin selected, inspector closed, sidebar collapsed, edit mode) and 390.
+
 ## [1.11.1] - 2026-11-03
 
 **Entity Design D stabilization.** This entry records a full integration review of the finished Entity Design D work (1.8.0 to 1.11.0), plus the two fixes it turned up. Entity Design D is now functionally complete.

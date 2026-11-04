@@ -241,6 +241,22 @@
   padding: var(--wb-space-8) var(--wb-space-6);
 }
 
+/* Map workspace: the content area is exactly the window's height (the
+   sidebar is a full-height column beside it), with no padding or width
+   cap — the page fills it and nothing scrolls but the inspector. */
+.wb-campaign-layout__content--bleed {
+  display: flex;
+  /* A fixed height, not flex-grow: growing would let a long pins list
+     stretch the page instead of scrolling inside the inspector. */
+  flex: none;
+  flex-direction: column;
+  max-width: none;
+  height: 100svh;
+  min-height: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
 /* Mobile-only chrome — not rendered visibly (or exposed to assistive
    tech) above the breakpoint. */
 .wb-mobile-topbar,
@@ -327,6 +343,13 @@
     padding: var(--wb-space-5) var(--wb-space-4);
     /* Clear the fixed bottom tabs. */
     padding-bottom: calc(72px + env(safe-area-inset-bottom));
+  }
+
+  /* Between the top bar (56px + border) and the bottom tabs (56px +
+     border + safe area): the map fills exactly what's visible. */
+  .wb-campaign-layout__content--bleed {
+    height: calc(100svh - 57px - 57px - env(safe-area-inset-bottom));
+    padding: 0;
   }
 
   .wb-tabbar {

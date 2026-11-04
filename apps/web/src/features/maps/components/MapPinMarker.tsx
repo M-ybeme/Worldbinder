@@ -7,6 +7,7 @@ export interface MapPinMarkerProps {
   x: number
   y: number
   manageMode: boolean
+  selected?: boolean
   onPointerDown: (event: ReactPointerEvent<HTMLButtonElement>, pin: MapPinSummary) => void
   onPointerMove: (event: ReactPointerEvent<HTMLButtonElement>, pin: MapPinSummary) => void
   onPointerUp: (event: ReactPointerEvent<HTMLButtonElement>, pin: MapPinSummary) => void
@@ -23,6 +24,7 @@ export function MapPinMarker({
   x,
   y,
   manageMode,
+  selected = false,
   onPointerDown,
   onPointerMove,
   onPointerUp,
@@ -46,6 +48,8 @@ export function MapPinMarker({
       aria-label={label}
       data-visibility={pin.visibility}
       data-manage-mode={manageMode || undefined}
+      data-selected={selected || undefined}
+      aria-pressed={selected}
       onPointerDown={(event) => onPointerDown(event, pin)}
       onPointerMove={(event) => onPointerMove(event, pin)}
       onPointerUp={(event) => onPointerUp(event, pin)}

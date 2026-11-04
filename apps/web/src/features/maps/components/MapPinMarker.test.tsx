@@ -10,6 +10,7 @@ const pin: MapPinSummary = {
   locationEntityId: null,
   locationEntityName: null,
   locationEntityType: null,
+  locationEntitySummary: null,
   label: 'Watchtower',
   xNormalized: 0.5,
   yNormalized: 0.5,
