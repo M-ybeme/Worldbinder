@@ -4,6 +4,36 @@ All notable changes to this project are documented here. Format follows [Keep a 
 
 Every push to `main` should add an entry here. This is meant to be an honest record of what actually shipped, not a restatement of the roadmap's aspirations — if something was attempted and reverted, or shipped partially, say so.
 
+## [1.15.0] - 2026-11-04
+
+**App atmosphere: the starfield/orbit backdrop.** The artwork arrived at in earlier design iterations is now a faint, theme-aware backdrop behind the top of every page. It's visible in a page's open space and covered by everything else.
+
+### Added
+
+- **One shared layer**, defined in a single place (`apps/web/src/styles/global.css`, `body::before`): a fixed layer under all content (`z-index: -1`, above the body's own background colour).
+  - **Where it shows:** wherever a page leaves the background open, such as around headings, page headers and the gaps between cards.
+  - **Where it doesn't:** the sidebar, top bar, bottom tabs, cards, forms and dialogs all have opaque surfaces and cover it. The map workspace and At the Table do too, so maps are untouched.
+  - No per-page styling.
+- **Two images:** `apps/web/src/assets/backdrop/atmosphere-light.webp` (pale lavender) and `atmosphere-dark.webp` (starfield), switched by the same `prefers-color-scheme` the theme tokens use. Vite fingerprints them, so browsers cache them, and the browser only downloads the one for the current theme (about 110–125 kB).
+- **Tuning** (all in that one rule):
+  - **Opacity:** 0.4 in light, 0.35 in dark.
+  - **Size:** full width but never narrower than 1400px, so phones see the middle of the artwork at a readable scale instead of a thin strip.
+  - **Fade:** a top-down fade sized to the image itself, so it always finishes before the artwork's edge.
+  - **Scrolling and print:** the layer stays put while content scrolls, and it's hidden when printing.
+
+### Verification
+
+Typecheck and lint clean (the same 2 existing warnings); web vitest 248/248; shell, dashboard and maps-workspace e2e 27/27 across three browsers. The production build was checked to emit both images fingerprinted and referenced from the CSS. Screenshots were reviewed at 1440 and 390, light and dark, on these pages:
+
+- the campaigns page;
+- the dashboard;
+- the World list;
+- an entity article;
+- the maps list;
+- the map workspace.
+
+A first pass was too strong in dark mode (orbit lines behind article text) and ended in a visible edge where the artwork stopped. That's what led to the lower dark opacity and the fade fitted to the image.
+
 ## [1.14.1] - 2026-11-04
 
 **Maps workspace, Stage 4: stabilization.** This covers a performance review with a realistically large map, an accessibility pass, and a full regression run. It brings one performance fix and one accessibility fix. There are no schema or data changes.
