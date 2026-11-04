@@ -4,6 +4,55 @@ All notable changes to this project are documented here. Format follows [Keep a 
 
 Every push to `main` should add an entry here. This is meant to be an honest record of what actually shipped, not a restatement of the roadmap's aspirations — if something was attempted and reverted, or shipped partially, say so.
 
+## [1.13.0] - 2026-11-03
+
+**Maps workspace, Stage 2: finding, choosing and editing pins.** The inspector's pin list can now be searched and filtered, and the filter narrows the map too. Pins that overlap become one marker that offers a choice. Edit mode has keyboard moves and never drops unsaved pin changes silently. On phones the inspector is a bottom sheet. Frontend only: no API, schema or data changes.
+
+### Added
+
+- **Pin browser** (`PinBrowser`). It searches pin names, linked entries' names and summaries, and layer names. **Kind chips** show counts per entry type, plus "No entry". **Visibility chips** ("Everyone can see" / "GM only") appear only when there are GM-only pins to see, so players never get them. A "Showing N of M" line comes with Clear. Pins are grouped by layer, and a hidden layer is marked "(hidden on the map)" but still listed. The same filter applies to the pins drawn on the map.
+- **Overlapping pins.** Pins whose markers would overlap at the current zoom (within 22px) are drawn as **one numbered marker**. Its accessible name lists the pins, e.g. "3 pins here: Ashford, Brightwater, Cinder Hollow". Activating it by click, tap, Enter or Space opens a **chooser** (`PinChooser`):
+  - On desktop it floats beside the marker; on phones it opens in the bottom sheet.
+  - Focus starts on the first pin, arrow keys, Home and End move, and Escape or a click elsewhere closes it and returns focus to the marker.
+  - It only lists pins already on the map, so only pins the API returned to this viewer.
+  - Zooming in separates the pins. The selected pin always stands on its own, and group markers are drawn above single pins so a group next to the selected pin stays reachable.
+- **Name labels on the map.** Pins show their name beside the marker when there's room: the selected pin first, then pins linked to entries, then the rest. A label is left out (the name still shows on hover or focus) if it would cover another label or another marker.
+- **Keyboard moves in edit mode.** With a pin focused, arrow keys move it by 0.5% of the map (Shift: 2%). The move is saved once the keys go quiet (400ms), and any move still waiting is saved if you leave the page. In view mode the arrow keys pan the map and never move a pin.
+- **Unsaved-changes guard for the pin form.** Changes in the pin form are never dropped silently. Choosing another pin, clicking empty map, switching to View, Add pin, closing the form, or leaving the page (links, Back/Forward, the map switcher) first asks "Discard your changes to this pin?" with **Keep editing** or **Discard changes**. Closing the tab gets the browser's own warning.
+- **Phone bottom sheet.** At 768px and below the inspector is a sheet over the map:
+  - **Collapsed**, it's a handle labelled "Pins (N)", or the selected pin's name. The map stops above it, so the zoom controls (44px targets) and pins are never under it.
+  - **Expanded** (selecting a pin, or tapping the handle), it shows the pin's details, layers and the pin browser. "Show the map" collapses it.
+  - The bottom tabs stay as they are, and nothing scrolls sideways at 360 or 390px.
+
+### Changed
+
+- **Pin form:** it explains how to move a pin. Positions are shown to one decimal place. Saving a pin only re-saves its position if you changed it in the form, so a drag or keyboard move made while the form was open isn't overwritten by the form's older numbers.
+- **Markers:** a type icon in a 22px dot (28px on touch screens). GM-only pins have a dashed warning-coloured dot, and "(GM only)" is part of their accessible name. The selected pin is outlined.
+- **A fitted view follows the layout.** When a window crosses the phone breakpoint, an untouched view switches between "whole map" (desktop) and "fill the area" (phone).
+
+### Tests
+
+- `e2e/maps-pins.spec.ts` (7 × 3 browsers), against the real API with a worker-processed map image:
+  - **Search and filters:** search by summary, then no matches and Clear; kind and GM-only chips; hiding a layer hides its pins on the map but not in the list.
+  - **Overlap:** the grouped marker's name; keyboard open, Escape back to the marker, arrows and Enter; mouse; separation when zoomed in.
+  - **Player:** the player sees 2 of 5 pins. Nothing shows from a GM-only pin overlapping a public one, a public pin on a GM-only layer, or a pin linked to a GM-only entry: no names, chooser, layer, counts or visibility chips, and search can't find them.
+  - **Edit guard:** Keep editing and Discard; nothing is saved after Discard; saved changes don't ask.
+  - **Keyboard moves:** the saved position is checked against the API, and the pin keeps focus.
+  - **Phone, 360 and 390, with touch:** sheet collapsed and expanded, zoom controls above the sheet, the chooser in the sheet, search from the sheet, no sideways scroll.
+- `maps-workspace.spec.ts` now measures a pin's position by its dot, since the button also holds its label.
+- Unit tests: `lib/pins` (filter matching, overlap grouping, label room), `PinChooser` (focus, arrows, Home, End, wrap, Escape, click outside) and `PinBrowser` (groups, search, chips, no visibility chips without GM-only pins).
+- Two bugs found by the tests or screenshots and fixed:
+  - the selected pin covered the rest of its group;
+  - labels were drawn over neighbouring markers.
+
+### Verification
+
+Typecheck clean; lint clean (the same 2 existing warnings); web vitest 248/248; maps e2e 33/33 (maps-pins and maps-workspace, Chromium, Firefox and WebKit). Screenshots were taken in a disposable review campaign (40 pins, including a three-pin overlap with one GM-only) and checked:
+
+- **Desktop 1440, light and dark:** labels and groups, chooser, search, kind filter.
+- **Desktop 1440, light:** edit form, discard prompt.
+- **Phone 390 light and 360 dark:** collapsed sheet, chooser in the sheet, selected pin, collapsed with a pin selected.
+
 ## [1.12.0] - 2026-11-03
 
 **Maps workspace, Stage 1: the map is the page.** A map now fills the content area, with a compact header and a collapsible inspector beside it. Before, it sat in a fixed half-width box under header buttons, an Add-pin box and a layers panel. Existing maps, pins, positions, layers, permissions and images are untouched. There's no schema change and no new rendering library.

@@ -1,6 +1,6 @@
 import { deflateSync } from 'node:zlib'
 import { expect, type APIRequestContext, type Page } from '@playwright/test'
-import { clearRateLimits, login, PASSWORD, registerAndVerify } from './helpers'
+import { clearRateLimits, findEmailLink, login, PASSWORD, registerAndVerify } from './helpers'
 
 export const API = 'http://localhost:3000'
 
@@ -78,7 +78,8 @@ export async function seedMap(page: Page, request: APIRequestContext, label: str
     expect(res.ok(), await res.text()).toBe(true)
     return method === 'delete' ? null : res.json()
   }
-  const campaign = await send('post', '/campaigns', { name: `Maps ${label} ${stamp}` })
+  const campaignName = `Maps ${label} ${stamp}`
+  const campaign = await send('post', '/campaigns', { name: campaignName })
   const c = campaign.id
   const png = mapPng()
   const presign = await send('post', `/campaigns/${c}/attachments/presign`, {
@@ -128,6 +129,7 @@ export async function seedMap(page: Page, request: APIRequestContext, label: str
   }
   return {
     campaignId: c,
+    campaignName,
     mapId: map.id,
     layers: { towns: towns.id, secrets: secrets.id },
     pinIds,
@@ -136,4 +138,19 @@ export async function seedMap(page: Page, request: APIRequestContext, label: str
     send,
     url: `/app/campaign/${c}/maps/${map.id}`,
   }
+}
+
+/** Signs `page` in as a new player of the seeded campaign (invited by the
+ * owner through the API, accepted from the emailed link). */
+export async function joinAsPlayer(
+  page: Page,
+  world: Pick<Awaited<ReturnType<typeof seedMap>>, 'campaignId' | 'campaignName' | 'send'>,
+) {
+  const email = `pw-maps-player-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@verify.local`
+  await registerAndVerify(page, email, 'PW Maps Player')
+  await login(page, email)
+  await world.send('post', `/campaigns/${world.campaignId}/invitations`, { email, role: 'player' })
+  await page.goto(await findEmailLink(email, world.campaignName))
+  await page.getByRole('button', { name: 'Accept invitation' }).click()
+  await expect(page).toHaveURL(/\/app\/campaign\//)
 }

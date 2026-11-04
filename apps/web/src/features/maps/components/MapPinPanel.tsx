@@ -19,6 +19,7 @@ export interface MapPinPanelProps {
   onDelete?: () => void
   isSaving: boolean
   error?: string | null
+  onDirtyChange?: (dirty: boolean) => void
 }
 
 /** A pin's own fields (label, linked entry, layer, visibility, position)
@@ -35,6 +36,7 @@ export function MapPinPanel({
   onDelete,
   isSaving,
   error,
+  onDirtyChange,
 }: MapPinPanelProps) {
   const title = pin?.label ?? pin?.locationEntityName ?? (pin ? 'Unlabeled pin' : 'New pin')
 
@@ -73,6 +75,7 @@ export function MapPinPanel({
           onDelete={onDelete}
           isSaving={isSaving}
           error={error}
+          onDirtyChange={onDirtyChange}
         />
       )}
 

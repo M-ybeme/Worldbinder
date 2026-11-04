@@ -314,19 +314,273 @@
     padding: 0 var(--wb-space-2);
   }
 
-  .wb-mapws__inspector {
-    position: absolute;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 2;
-    width: auto;
-    max-height: 60%;
-    border-left: 0;
-    border-top: 1px solid var(--wb-border-default);
-    border-radius: var(--wb-radius-lg) var(--wb-radius-lg) 0 0;
-    box-shadow: var(--wb-shadow-lg);
+  /* The map stops above the collapsed sheet's handle, so its toolbar and
+     pins are never under it. */
+  .wb-mapws__map {
+    margin-bottom: 52px;
   }
+}
+
+/* --- Phone bottom sheet ------------------------------------------------- */
+
+.wb-mapws__inspector--sheet {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 3;
+  gap: var(--wb-space-4);
+  width: auto;
+  max-height: 52px;
+  overflow: hidden;
+  padding: 0 var(--wb-space-3);
+  border-left: 0;
+  border-top: 1px solid var(--wb-border-default);
+  border-radius: var(--wb-radius-lg) var(--wb-radius-lg) 0 0;
+  box-shadow: var(--wb-shadow-lg);
+}
+
+.wb-mapws__inspector--expanded {
+  max-height: 72%;
+  overflow-y: auto;
+  padding-bottom: var(--wb-space-4);
+}
+
+.wb-mapws__sheet-handle {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: var(--wb-space-2);
+  width: 100%;
+  min-height: 52px;
+  padding: 10px 0 0;
+  border: 0;
+  background: var(--wb-bg-surface);
+  color: var(--wb-text-primary);
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.wb-mapws__sheet-grip {
+  position: absolute;
+  top: 6px;
+  left: 50%;
+  width: 36px;
+  height: 4px;
+  margin-left: -18px;
+  border-radius: var(--wb-radius-full);
+  background: var(--wb-border-strong);
+}
+
+.wb-mapws__sheet-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wb-mapws__sheet-handle:focus-visible {
+  outline: 2px solid var(--wb-accent);
+  outline-offset: -2px;
+}
+
+/* --- Pin browser -------------------------------------------------------- */
+
+.wb-pin-browser__search {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.wb-pin-browser__search > svg {
+  position: absolute;
+  left: 10px;
+  color: var(--wb-text-muted);
+  pointer-events: none;
+}
+
+.wb-pin-browser__search input {
+  width: 100%;
+  padding-left: 34px;
+}
+
+.wb-pin-browser__filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--wb-space-1);
+}
+
+.wb-pin-browser__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--wb-space-1);
+  min-height: 30px;
+  padding: 0 var(--wb-space-2);
+  border: 1px solid var(--wb-border-default);
+  border-radius: var(--wb-radius-full);
+  background: transparent;
+  color: var(--wb-text-secondary);
+  font: inherit;
+  font-size: var(--wb-text-sm);
+  cursor: pointer;
+}
+
+.wb-pin-browser__chip:hover {
+  background: var(--wb-bg-surface-hover);
+}
+
+.wb-pin-browser__chip[aria-pressed='true'] {
+  border-color: var(--wb-accent);
+  background: color-mix(in srgb, var(--wb-accent) 14%, transparent);
+  color: var(--wb-text-primary);
+}
+
+.wb-pin-browser__chip:focus-visible,
+.wb-pin-browser__clear:focus-visible {
+  outline: 2px solid var(--wb-accent);
+  outline-offset: 2px;
+}
+
+.wb-pin-browser__chip-count {
+  color: var(--wb-text-muted);
+  font-size: var(--wb-text-xs);
+}
+
+.wb-pin-browser__status {
+  display: flex;
+  align-items: center;
+  gap: var(--wb-space-2);
+  margin: 0;
+  color: var(--wb-text-muted);
+  font-size: var(--wb-text-sm);
+}
+
+.wb-pin-browser__clear {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--wb-accent);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+@media (pointer: coarse) {
+  .wb-pin-browser__chip {
+    min-height: 40px;
+  }
+
+  .wb-mapws__pin-row {
+    min-height: 44px;
+  }
+}
+
+/* --- Overlapping-pin chooser ------------------------------------------- */
+
+.wb-pin-chooser {
+  display: flex;
+  flex-direction: column;
+  gap: var(--wb-space-1);
+}
+
+.wb-pin-chooser--floating {
+  position: absolute;
+  z-index: 4;
+  width: 280px;
+  max-height: calc(100% - 16px);
+  overflow-y: auto;
+  padding: var(--wb-space-2);
+  border: 1px solid var(--wb-border-default);
+  border-radius: var(--wb-radius-md);
+  background: var(--wb-bg-surface);
+  box-shadow: var(--wb-shadow-lg);
+}
+
+.wb-pin-chooser__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--wb-space-2);
+  padding-left: var(--wb-space-1);
+}
+
+.wb-pin-chooser__title {
+  margin: 0;
+  font-size: var(--wb-text-sm);
+  font-weight: 600;
+}
+
+.wb-pin-chooser__list {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.wb-pin-chooser__option {
+  display: flex;
+  align-items: center;
+  gap: var(--wb-space-2);
+  width: 100%;
+  min-height: 44px;
+  padding: var(--wb-space-1) var(--wb-space-2);
+  border: 0;
+  border-radius: var(--wb-radius-sm);
+  background: transparent;
+  color: var(--wb-text-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.wb-pin-chooser__option:hover {
+  background: var(--wb-bg-surface-hover);
+}
+
+.wb-pin-chooser__option:focus-visible {
+  outline: 2px solid var(--wb-accent);
+  outline-offset: -2px;
+}
+
+.wb-pin-chooser__icon {
+  display: inline-grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 2px solid var(--wb-bg-surface);
+  border-radius: var(--wb-radius-full);
+  background: var(--wb-accent);
+  color: var(--wb-accent-fg);
+}
+
+.wb-pin-chooser__icon[data-visibility='gm_only'] {
+  border-style: dashed;
+  background: var(--wb-warning);
+}
+
+.wb-pin-chooser__name {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.wb-pin-chooser__meta {
+  color: var(--wb-text-muted);
+  font-size: var(--wb-text-xs);
+}
+
+.wb-map-pin-form__hint {
+  margin: 0;
+  color: var(--wb-text-muted);
+  font-size: var(--wb-text-sm);
 }
 
 /* --- Selected pin ------------------------------------------------------ */
@@ -543,63 +797,148 @@
 /* --- Pins ---------------------------------------------------------------- */
 
 /* Drawn at a constant on-screen size: the stage is scaled by the zoom, so
-   each pin is scaled back by 1 / zoom (--wb-map-zoom, set on the stage). */
+   each pin is scaled back by 1 / zoom (--wb-map-zoom, set on the stage).
+   The dot sits on the pin's point; a name, when there's room, follows it. */
 .wb-map-pin {
   position: absolute;
-  transform: translate(-50%, -50%) scale(calc(1 / var(--wb-map-zoom, 1)));
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transform: translate(-11px, -50%) scale(calc(1 / var(--wb-map-zoom, 1)));
+  transform-origin: 11px 50%;
   border: none;
   background: none;
   padding: 0;
   cursor: pointer;
-  font-size: 1.4rem;
-  line-height: 1;
-  color: var(--wb-accent);
   touch-action: none;
 }
 
-/* Sighted-user affordance layered on top of the native `title` attribute —
-   appears immediately on hover/focus instead of the browser's ~1s delay. */
+.wb-map-pin__dot {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  flex: none;
+  border: 2px solid var(--wb-bg-surface-raised);
+  border-radius: 999px;
+  background: var(--wb-accent);
+  color: var(--wb-accent-fg);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.35);
+}
+
+.wb-map-pin[data-visibility='gm_only'] .wb-map-pin__dot {
+  background: var(--wb-warning);
+  border-style: dashed;
+}
+
+.wb-map-pin__label {
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--wb-bg-surface-raised) 92%, transparent);
+  color: var(--wb-text-primary);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.2);
+  font-size: var(--wb-text-xs);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* Name on hover/focus, for pins without room for a label. */
 .wb-map-pin__tooltip {
   position: absolute;
-  bottom: calc(100% + 6px);
-  left: 50%;
-  transform: translateX(-50%);
-  padding: 2px 6px;
-  border-radius: var(--wb-radius-sm);
+  left: 26px;
+  top: 50%;
+  transform: translateY(-50%);
+  padding: 2px 7px;
+  border-radius: 999px;
   background: var(--wb-text-primary);
   color: var(--wb-bg-surface-raised);
-  font-size: var(--wb-text-sm);
-  font-weight: 400;
+  font-size: var(--wb-text-xs);
+  font-weight: 600;
   white-space: nowrap;
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
-  transition: opacity var(--wb-motion-duration-fast, 100ms) var(--wb-motion-ease, ease);
 }
 
 .wb-map-pin:hover .wb-map-pin__tooltip,
-.wb-map-pin:focus-visible .wb-map-pin__tooltip,
-.wb-map-pin[data-selected] .wb-map-pin__tooltip {
+.wb-map-pin:focus-visible .wb-map-pin__tooltip {
   opacity: 1;
   visibility: visible;
-}
-
-.wb-map-pin[data-visibility='gm_only'] {
-  color: var(--wb-warning);
+  z-index: 2;
 }
 
 .wb-map-pin[data-selected] {
-  filter: drop-shadow(0 0 0 var(--wb-accent)) drop-shadow(0 0 3px var(--wb-accent));
+  z-index: 3;
+}
+
+.wb-map-pin[data-selected] .wb-map-pin__dot {
+  outline: 3px solid var(--wb-accent);
+  outline-offset: 2px;
+}
+
+.wb-map-pin[data-selected] .wb-map-pin__label {
+  background: var(--wb-accent);
+  color: var(--wb-accent-fg);
 }
 
 .wb-map-pin:focus-visible {
-  outline: 2px solid var(--wb-accent);
-  outline-offset: 3px;
-  border-radius: 50%;
+  outline: none;
+}
+
+.wb-map-pin:focus-visible .wb-map-pin__dot {
+  outline: 3px solid var(--wb-text-primary);
+  outline-offset: 2px;
 }
 
 .wb-map-pin[data-manage-mode] {
   cursor: grab;
+}
+
+/* Several pins in one spot: a numbered marker that opens a chooser. */
+.wb-map-cluster {
+  position: absolute;
+  display: inline-grid;
+  place-items: center;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 6px;
+  transform: translate(-50%, -50%) scale(calc(1 / var(--wb-map-zoom, 1)));
+  border: 2px solid var(--wb-bg-surface-raised);
+  border-radius: 999px;
+  background: var(--wb-text-primary);
+  color: var(--wb-bg-surface-raised);
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.4);
+  font: inherit;
+  font-size: var(--wb-text-sm);
+  font-weight: 700;
+  cursor: pointer;
+  /* Above every single pin, the selected one included: a selected pin can
+     sit right beside the rest of its group, and the group must stay
+     reachable. */
+  z-index: 4;
+}
+
+.wb-map-cluster:focus-visible {
+  outline: 3px solid var(--wb-accent);
+  outline-offset: 2px;
+}
+
+/* Phones: bigger targets for fingers. */
+@media (pointer: coarse) {
+  .wb-map-pin__dot {
+    width: 28px;
+    height: 28px;
+  }
+
+  .wb-map-pin {
+    transform: translate(-14px, -50%) scale(calc(1 / var(--wb-map-zoom, 1)));
+    transform-origin: 14px 50%;
+  }
+
+  .wb-map-cluster {
+    min-width: 36px;
+    height: 36px;
+  }
 }
 
 .wb-mapws__switcher .wb-menu,

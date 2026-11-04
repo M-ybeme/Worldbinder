@@ -6,7 +6,8 @@ import {
   type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
 } from 'react'
-import { MapPinMarker } from './MapPinMarker'
+import type { PinGroup } from '../lib/pins'
+import { MapClusterMarker, MapPinMarker } from './MapPinMarker'
 
 export interface MapCanvasProps {
   imageUrl: string | null
@@ -29,6 +30,13 @@ export interface MapCanvasProps {
   selectedPinId?: string | null
   /** The image's natural size, once loaded (when the API didn't store it). */
   onImageLoad?: (width: number, height: number) => void
+  /** Several pins that overlap at this zoom were chosen between. */
+  onClusterActivate?: (pins: MapPinSummary[], element: HTMLElement) => void
+  /** Edit mode: arrow keys on a focused pin move it. */
+  onPinNudge?: (pin: MapPinSummary, dx: number, dy: number) => void
+  /** Set by MapViewport: how pins group and which have room for a name at
+   * the current zoom. Without it, every pin is drawn on its own. */
+  layout?: { groups: PinGroup[]; labelled: Set<string> } | null
 }
 
 // A pointer that moved less than this is treated as a click, not a drag —
@@ -50,6 +58,9 @@ export function MapCanvas({
   onPinReposition,
   selectedPinId,
   onImageLoad,
+  onClusterActivate,
+  onPinNudge,
+  layout,
 }: MapCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const dragStart = useRef<{ pinId: string; clientX: number; clientY: number } | null>(null)
@@ -143,24 +154,40 @@ export function MapCanvas({
         decoding="async"
         onLoad={(event) => onImageLoad?.(event.currentTarget.naturalWidth, event.currentTarget.naturalHeight)}
       />
-      {pins.map((pin) => {
-        const position =
-          dragPosition?.pinId === pin.id ? dragPosition : { x: pin.xNormalized, y: pin.yNormalized }
-        return (
-          <MapPinMarker
-            key={pin.id}
-            pin={pin}
-            x={position.x}
-            y={position.y}
-            manageMode={manageMode}
-            selected={pin.id === selectedPinId}
-            onPointerDown={handlePointerDown}
-            onPointerMove={handlePointerMove}
-            onPointerUp={handlePointerUp}
-            onActivate={onPinActivate}
-          />
-        )
-      })}
+      {(layout?.groups ?? pins.map((pin) => ({ key: pin.id, pins: [pin], xNormalized: pin.xNormalized, yNormalized: pin.yNormalized }))).map(
+        (group) => {
+          if (group.pins.length > 1) {
+            return (
+              <MapClusterMarker
+                key={group.key}
+                pins={group.pins}
+                x={group.xNormalized}
+                y={group.yNormalized}
+                onActivate={(groupPins, element) => onClusterActivate?.(groupPins, element)}
+              />
+            )
+          }
+          const pin = group.pins[0]!
+          const position =
+            dragPosition?.pinId === pin.id ? dragPosition : { x: pin.xNormalized, y: pin.yNormalized }
+          return (
+            <MapPinMarker
+              key={pin.id}
+              pin={pin}
+              x={position.x}
+              y={position.y}
+              manageMode={manageMode}
+              selected={pin.id === selectedPinId}
+              showLabel={layout?.labelled.has(pin.id) ?? false}
+              onPointerDown={handlePointerDown}
+              onPointerMove={handlePointerMove}
+              onPointerUp={handlePointerUp}
+              onActivate={onPinActivate}
+              onNudge={onPinNudge}
+            />
+          )
+        },
+      )}
     </div>
   )
 }

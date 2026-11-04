@@ -18,7 +18,8 @@ const pinButton = (page: Page, name: string) =>
   surface(page).getByRole('button', { name, exact: true })
 
 async function center(page: Page, name: string) {
-  const box = (await pinButton(page, name).boundingBox())!
+  // The dot is the pin's point; the button also holds its label.
+  const box = (await pinButton(page, name).locator('.wb-map-pin__dot').boundingBox())!
   return { x: box.x + box.width / 2, y: box.y + box.height / 2 }
 }
 

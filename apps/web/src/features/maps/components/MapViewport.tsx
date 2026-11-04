@@ -5,6 +5,7 @@ import {
   useId,
   useImperativeHandle,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   type CSSProperties,
@@ -14,6 +15,7 @@ import {
   type ReactNode,
 } from 'react'
 import '../maps.css'
+import { groupOverlapping, pinsWithRoomForLabels } from '../lib/pins'
 import { MapCanvas, type MapCanvasProps } from './MapCanvas'
 import { MapToolbar } from './MapToolbar'
 
@@ -28,6 +30,8 @@ const PAN_THRESHOLD_PX = 4
 const WHEEL_ZOOM_SENSITIVITY = 0.0015
 const BUTTON_ZOOM_STEP = 1.25
 const KEY_PAN_PX = 80
+// Pins whose markers are closer than this on screen are grouped.
+const CLUSTER_RADIUS_PX = 22
 
 /** A viewport position independent of the container's size: the map point
  * at the centre (0–1 on each axis) and the zoom relative to fit. */
@@ -177,6 +181,40 @@ export const MapViewport = forwardRef<MapViewportHandle, MapViewportProps>(funct
     observer.observe(surface)
     return () => observer.disconnect()
   }, [aspect, commit, coverZoom, canvasProps.imageUrl])
+
+  // A fitted view follows the fit when the layout changes it (a window
+  // narrowed to phone width switches to cover, and back).
+  useEffect(() => {
+    if (!fittedRef.current || fittedRef.current === fitMode) return
+    fittedRef.current = fitMode
+    const { width, height } = sizeRef.current
+    commit({ centerX: 0.5, centerY: 0.5, zoom: fitMode === 'cover' ? coverZoom(width, height) : 1 })
+  }, [fitMode, commit, coverZoom])
+
+  // At the current zoom: which pins overlap (grouped) and which have room
+  // for their name.
+  const { pins, selectedPinId } = canvasProps
+  const layout = useMemo(() => {
+    if (base.width === 0) return null
+    const points = pins.map((pin) => ({
+      pin,
+      x: pin.xNormalized * base.width * view.zoom,
+      y: pin.yNormalized * base.height * view.zoom,
+    }))
+    const groups = groupOverlapping(points, CLUSTER_RADIUS_PX, selectedPinId)
+    const singles = new Set(groups.filter((group) => group.pins.length === 1).map((group) => group.pins[0]!.id))
+    return {
+      groups,
+      labelled: pinsWithRoomForLabels(
+        points.filter((point) => singles.has(point.pin.id)),
+        selectedPinId,
+        groups.map((group) => ({
+          x: group.xNormalized * base.width * view.zoom,
+          y: group.yNormalized * base.height * view.zoom,
+        })),
+      ),
+    }
+  }, [pins, base.width, base.height, view.zoom, selectedPinId])
 
   // Pan offset (px) of the stage's top-left corner for the current view.
   const pan = {
@@ -420,13 +458,14 @@ export const MapViewport = forwardRef<MapViewportHandle, MapViewportProps>(funct
         onClick={(event) => {
           // Anywhere on the map that isn't a pin (or a placement, which
           // MapCanvas stops): around the image as well as on it.
-          if ((event.target as HTMLElement).closest('.wb-map-pin')) return
+          if ((event.target as HTMLElement).closest('.wb-map-pin, .wb-map-cluster')) return
           canvasProps.onBackgroundClick?.()
         }}
       >
         <div className="wb-map-viewport__stage" style={stageStyle}>
           <MapCanvas
             {...canvasProps}
+            layout={layout}
             onImageLoad={(width, height) => {
               if (!canvasProps.imageWidth || !canvasProps.imageHeight) setNatural({ width, height })
             }}
